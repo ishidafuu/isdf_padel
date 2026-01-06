@@ -71,3 +71,25 @@ pub struct WallReflectionEvent {
     /// 反射後の速度
     pub reflected_velocity: Vec3,
 }
+
+/// ネット接触イベント
+/// @spec 30503_boundary_behavior.md#beh-30503-005
+#[derive(Event, Debug, Clone)]
+pub struct NetHitEvent {
+    /// ネットに当たったボールのEntity
+    pub ball: Entity,
+    /// 接触点の座標
+    pub contact_point: Vec3,
+}
+
+/// 地面バウンドイベント
+/// @spec 30503_boundary_behavior.md#beh-30503-006
+#[derive(Event, Debug, Clone)]
+pub struct GroundBounceEvent {
+    /// バウンドしたボールのEntity
+    pub ball: Entity,
+    /// バウンド位置
+    pub bounce_point: Vec3,
+    /// バウンドしたコート側
+    pub court_side: super::court::CourtSide,
+}
