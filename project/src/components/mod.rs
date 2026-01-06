@@ -1,5 +1,6 @@
 //! Components層: Entityのデータ構造定義
 //! @spec 20001_layers.md#layer-3-components
+//! @spec 30401_trajectory_spec.md
 
 use bevy::prelude::*;
 
@@ -128,6 +129,29 @@ impl PlayerBundle {
             velocity: Velocity::default(),
             knockback: KnockbackState::default(),
             grounded: GroundedState::default(),
+            transform: Transform::from_translation(position),
+        }
+    }
+}
+
+/// ボールバンドル（ボール生成時に使用）
+/// @spec 30401_trajectory_spec.md
+#[derive(Bundle)]
+pub struct BallBundle {
+    pub ball: Ball,
+    pub velocity: Velocity,
+    pub bounce_count: BounceCount,
+    pub transform: Transform,
+}
+
+impl BallBundle {
+    /// 通常ショット用ボールを生成
+    /// @spec 30401_trajectory_spec.md#req-30401-002
+    pub fn new(position: Vec3, velocity: Vec3) -> Self {
+        Self {
+            ball: Ball,
+            velocity: Velocity { value: velocity },
+            bounce_count: BounceCount::default(),
             transform: Transform::from_translation(position),
         }
     }

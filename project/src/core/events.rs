@@ -3,6 +3,7 @@
 //! @spec 30502_wall_design.md
 //! @spec 30201_movement_spec.md
 //! @spec 30202_jump_spec.md
+//! @spec 30401_trajectory_spec.md
 
 use bevy::prelude::*;
 
@@ -126,4 +127,14 @@ pub struct GroundBounceEvent {
     pub bounce_point: Vec3,
     /// バウンドしたコート側
     pub court_side: super::court::CourtSide,
+}
+
+/// ボールアウトオブバウンズイベント
+/// @spec 30401_trajectory_spec.md#req-30401-006
+#[derive(Event, Message, Debug, Clone)]
+pub struct BallOutOfBoundsEvent {
+    /// アウトになったボールのEntity
+    pub ball: Entity,
+    /// 最終位置
+    pub final_position: Vec3,
 }

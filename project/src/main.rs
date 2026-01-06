@@ -13,8 +13,8 @@ use core::{PlayerJumpEvent, PlayerLandEvent, PlayerMoveEvent};
 use resource::config::{load_game_config, GameConfig};
 use systems::{
     ceiling_collision_system, gravity_system, jump_system, landing_system, movement_system,
-    read_input_system, read_jump_input_system, vertical_movement_system, BoundaryPlugin,
-    JumpInput, MovementInput,
+    read_input_system, read_jump_input_system, vertical_movement_system, BallTrajectoryPlugin,
+    BoundaryPlugin, JumpInput, MovementInput,
 };
 
 fn main() {
@@ -32,6 +32,7 @@ fn main() {
             ..default()
         }))
         .add_plugins(BoundaryPlugin)
+        .add_plugins(BallTrajectoryPlugin)
         .insert_resource(config)
         .init_resource::<MovementInput>()
         .init_resource::<JumpInput>()
