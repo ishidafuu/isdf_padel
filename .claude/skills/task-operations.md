@@ -79,14 +79,31 @@ Edit(spec_ids: ["30201"] -> ["30201", "30202"])
 
 #### game-dev タスク（worktreeあり）
 
+> **CRITICAL: 実装コミットにタスク完了を含める**
+>
+> タスクファイルの更新（status, completed_at）は実装のスカッシュマージと同じコミットに含める。
+> 別コミット（`chore: タスク完了`）は作成しない。
+
 ```bash
 # 1. mainリポジトリに戻り、mainを最新化
 cd /path/to/main/repository
 git checkout main
 git pull origin main
 
-# 2. スカッシュマージ
+# 2. スカッシュマージ（--no-commit でステージングのみ）
 git merge --squash auto-12345-jump
+
+# 3. タスクファイルを archive/ に移動し、status を更新
+mv project/tasks/3_in-review/30101-*.md project/tasks/4_archive/
+Edit(status: "in-review" -> "done")
+Edit(completed_at: null -> "2025-12-29T16:00:00+09:00")
+Edit(branch_name: "auto-12345-jump" -> null)
+Edit(worktree_path: "../spec-driven-framework-jump" -> null)
+
+# 4. タスクファイルもステージング
+git add project/tasks/4_archive/30101-*.md
+
+# 5. まとめてコミット（実装 + タスク完了）
 git commit -m "feat(30101): ジャンプ機能実装
 
 REQ-30201対応
@@ -95,23 +112,14 @@ REQ-30201対応
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 
-# 3. worktree削除
+# 6. worktree削除
 git worktree remove ../spec-driven-framework-jump
 
-# 4. ブランチ削除（-D: スカッシュマージ後は強制削除が必要）
+# 7. ブランチ削除（-D: スカッシュマージ後は強制削除が必要）
 git branch -D auto-12345-jump
 
-# 5. mainをプッシュ
+# 8. mainをプッシュ
 git push origin main
-
-# 6. タスクファイルを archive/ に移動
-mv project/tasks/3_in-review/30101-*.md project/tasks/4_archive/
-
-# 7. status と completed_at を更新
-Edit(status: "in-review" -> "done")
-Edit(completed_at: null -> "2025-12-29T16:00:00+09:00")
-Edit(branch_name: "auto-12345-jump" -> null)
-Edit(worktree_path: "../spec-driven-framework-jump" -> null)
 ```
 
 #### project-wide / framework タスク（worktreeなし）
