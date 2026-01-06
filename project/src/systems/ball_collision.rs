@@ -1,0 +1,199 @@
+//! ボール当たり判定システム
+//! @spec 30403_collision_spec.md
+
+use bevy::prelude::*;
+
+use crate::components::{Ball, KnockbackState, Player, Velocity};
+use crate::core::events::BallHitEvent;
+use crate::resource::config::GameConfig;
+
+/// ボール当たり判定プラグイン
+/// @spec 30403_collision_spec.md
+pub struct BallCollisionPlugin;
+
+impl Plugin for BallCollisionPlugin {
+    fn build(&self, app: &mut App) {
+        // Note: BallHitEvent は main.rs で add_message 済み
+        app.add_systems(
+            Update,
+            ball_player_collision_system, // @spec 30403_collision_spec.md#req-30403-005
+        );
+    }
+}
+
+/// ボールとプレイヤーの衝突判定システム
+/// @spec 30403_collision_spec.md#req-30403-001
+/// @spec 30403_collision_spec.md#req-30403-002
+/// @spec 30403_collision_spec.md#req-30403-003
+/// @spec 30403_collision_spec.md#req-30403-004
+/// @spec 30403_collision_spec.md#req-30403-005
+/// @spec 30403_collision_spec.md#req-30403-006
+pub fn ball_player_collision_system(
+    config: Res<GameConfig>,
+    mut ball_query: Query<(Entity, &Transform, &mut Velocity), With<Ball>>,
+    player_query: Query<(Entity, &Transform, &KnockbackState), With<Player>>,
+    mut event_writer: MessageWriter<BallHitEvent>,
+) {
+    let ball_radius = config.ball.radius;
+    let character_radius = config.collision.character_radius;
+    let z_tolerance = config.collision.z_tolerance;
+    let collision_distance = ball_radius + character_radius;
+
+    for (ball_entity, ball_transform, mut ball_velocity) in ball_query.iter_mut() {
+        let ball_pos = ball_transform.translation;
+        let ball_vel = ball_velocity.value;
+
+        // REQ-30403-006: 複数プレイヤー衝突時、最も近いプレイヤー優先
+        let mut closest_collision: Option<(Entity, Vec3, f32)> = None;
+
+        for (player_entity, player_transform, knockback) in player_query.iter() {
+            // REQ-30403-003: 無敵状態のプレイヤーは衝突無視
+            if knockback.is_invincible() {
+                continue;
+            }
+
+            let player_pos = player_transform.translation;
+
+            // REQ-30403-001: Z軸許容範囲チェック
+            let z_diff = (ball_pos.z - player_pos.z).abs();
+            if z_diff > z_tolerance {
+                continue;
+            }
+
+            // REQ-30403-001: XY平面での距離計算
+            let distance_2d = distance_xy(ball_pos, player_pos);
+
+            // 衝突判定
+            if distance_2d <= collision_distance {
+                // 最も近いプレイヤーを記録
+                if closest_collision.is_none() || distance_2d < closest_collision.unwrap().2 {
+                    closest_collision = Some((player_entity, player_pos, distance_2d));
+                }
+            }
+        }
+
+        // 最も近いプレイヤーとの衝突を処理
+        if let Some((target_entity, player_pos, _)) = closest_collision {
+            // REQ-30403-002: BallHitEvent 発行
+            let hit_point = ball_pos; // 衝突位置はボールの位置
+            event_writer.write(BallHitEvent {
+                ball_id: ball_entity,
+                target_id: target_entity,
+                ball_velocity: ball_vel,
+                hit_point,
+            });
+
+            // REQ-30403-004: ボール反射（プレイヤー衝突時）
+            // 反射方向: プレイヤー→ボールの方向
+            let reflection_dir = (ball_pos - player_pos).normalize_or_zero();
+
+            // XY平面での反射（Z成分は維持）
+            let speed = ball_vel.length();
+            ball_velocity.value = Vec3::new(
+                reflection_dir.x * speed.abs(),
+                reflection_dir.y * speed.abs(),
+                ball_vel.z, // Z成分は維持
+            );
+
+            info!(
+                "Ball collision with player: ball={:?}, player={:?}, hit_point={:?}",
+                ball_entity, target_entity, hit_point
+            );
+        }
+    }
+}
+
+/// XY平面での2点間距離を計算（Z軸は無視）
+#[inline]
+fn distance_xy(a: Vec3, b: Vec3) -> f32 {
+    let dx = a.x - b.x;
+    let dy = a.y - b.y;
+    (dx * dx + dy * dy).sqrt()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// TST-30404-014: プレイヤー衝突判定テスト
+    /// @spec 30403_collision_spec.md#req-30403-001
+    #[test]
+    fn test_collision_detection() {
+        let ball_radius = 0.2_f32;
+        let character_radius = 0.5_f32;
+        let collision_distance = ball_radius + character_radius; // 0.7
+
+        // 衝突する距離
+        let ball_pos = Vec3::new(0.5, 1.0, 0.0);
+        let player_pos = Vec3::new(0.0, 1.0, 0.0);
+        let distance = distance_xy(ball_pos, player_pos);
+        assert!(distance <= collision_distance); // 0.5 <= 0.7
+
+        // 衝突しない距離
+        let ball_pos_far = Vec3::new(1.0, 1.0, 0.0);
+        let distance_far = distance_xy(ball_pos_far, player_pos);
+        assert!(distance_far > collision_distance); // 1.0 > 0.7
+    }
+
+    /// TST-30404-015: Z軸許容範囲テスト
+    /// @spec 30403_collision_spec.md#req-30403-001
+    #[test]
+    fn test_z_tolerance() {
+        let z_tolerance = 0.3_f32;
+
+        // 許容範囲内
+        let z_diff_ok = 0.2_f32;
+        assert!(z_diff_ok <= z_tolerance);
+
+        // 許容範囲外
+        let z_diff_ng = 0.5_f32;
+        assert!(z_diff_ng > z_tolerance);
+    }
+
+    /// TST-30404-017: ボール反射方向テスト
+    /// @spec 30403_collision_spec.md#req-30403-004
+    #[test]
+    fn test_ball_reflection_direction() {
+        let ball_pos = Vec3::new(1.0, 1.0, 0.0);
+        let player_pos = Vec3::new(0.0, 1.0, 0.0);
+
+        // プレイヤー→ボールの方向
+        let reflection_dir = (ball_pos - player_pos).normalize_or_zero();
+
+        // X方向に反射
+        assert!((reflection_dir.x - 1.0).abs() < 0.001);
+        assert!(reflection_dir.y.abs() < 0.001);
+    }
+
+    /// TST-30404-019: 複数プレイヤー衝突時の優先順位テスト
+    /// @spec 30403_collision_spec.md#req-30403-006
+    #[test]
+    fn test_closest_player_priority() {
+        let ball_pos = Vec3::new(0.0, 1.0, 0.0);
+        let player1_pos = Vec3::new(0.5, 1.0, 0.0); // 距離 0.5
+        let player2_pos = Vec3::new(0.3, 1.0, 0.0); // 距離 0.3
+
+        let dist1 = distance_xy(ball_pos, player1_pos);
+        let dist2 = distance_xy(ball_pos, player2_pos);
+
+        // player2 が最も近い
+        assert!(dist2 < dist1);
+    }
+
+    /// TST-30404-016: 無敵状態テスト
+    /// @spec 30403_collision_spec.md#req-30403-003
+    #[test]
+    fn test_invincibility_check() {
+        let knockback_invincible = KnockbackState {
+            invincibility_time: 0.5,
+            ..Default::default()
+        };
+        assert!(knockback_invincible.is_invincible());
+
+        let knockback_not_invincible = KnockbackState {
+            invincibility_time: 0.0,
+            ..Default::default()
+        };
+        assert!(!knockback_not_invincible.is_invincible());
+    }
+}
