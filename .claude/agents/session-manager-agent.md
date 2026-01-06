@@ -55,15 +55,28 @@ description: |
 Markdownタスクシステムを使用する場合、責務を以下のように分担：
 
 ```
-task-manager-agent: タスク作成・状態管理
-session-manager-agent: worktree作成 + ID範囲予約 + フォルダロック
+task-manager-agent: タスク状態管理（MAIN側で先に実行）
+session-manager-agent: 並列セッション準備（worktree一括作成、ID範囲予約）
 ```
 
-**連携フロー:**
-1. `task-manager-agent` がタスクファイルを作成（`project/tasks/2_in-progress/30101-*.md`）
-2. `session-manager-agent` が worktree を作成し、タスクファイルを更新（`branch_name`, `worktree_path`）
-3. 並列実装実行
-4. `task-manager-agent` がタスク状態を更新（`in-progress` → `in-review` → `done`）
+> **CRITICAL: MAIN側で先にステータス変更を行う**
+>
+> タスク開始時は、worktree作成**前**にMAIN側でステータス変更する。
+> これにより他のセッションが `ls project/tasks/2_in-progress/` で並列作業状況を把握できる。
+
+**単一タスク開始フロー（task-manager-agent が担当）:**
+1. MAIN側でタスクファイルを `1_todo/` → `2_in-progress/` に移動
+2. MAIN側で status を "in-progress" に更新
+3. worktree作成
+4. タスクファイル更新（`branch_name`, `worktree_path`）
+5. MAIN側でコミット（並列作業状況を記録）
+6. worktreeに移動して実装開始
+
+**並列セッション準備フロー（session-manager-agent が担当）:**
+1. 複数タスクのステータスを一括でMAIN側で更新
+2. 複数worktreeを一括作成
+3. ID範囲予約
+4. 各Terminalへのコマンド案内
 
 詳細は `skills/task-workflow.md` を参照。
 

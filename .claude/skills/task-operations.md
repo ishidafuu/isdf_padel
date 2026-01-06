@@ -20,9 +20,18 @@
 
 ### 2. タスク開始
 
+> **CRITICAL: MAIN側で先にステータス変更を行う**
+>
+> ステータス変更（status, ファイル移動）は **worktree作成より前に** MAIN側で実行する。
+> これにより、他のセッションが `ls project/tasks/2_in-progress/` で並列作業状況を把握できる。
+>
+> **禁止**: worktree側でステータス変更を行うこと（MAINに並列作業が見えなくなる）
+
 #### game-dev タスク（worktree作成あり）
 
 ```bash
+# === MAIN側で実行（worktree作成前）===
+
 # 1. タスクファイルを 1_todo/ から 2_in-progress/ に移動
 mv project/tasks/1_todo/30101-*.md project/tasks/2_in-progress/
 
@@ -30,11 +39,19 @@ mv project/tasks/1_todo/30101-*.md project/tasks/2_in-progress/
 Edit(status: "todo" -> "in-progress")
 
 # 3. worktree作成（game-devタスクのみ）
-git worktree add ../spec-driven-framework-jump auto-$$-jump
+git worktree add ../isdf_padel-30101-jump -b task/30101-jump
 
-# 4. タスクファイル更新
-Edit(branch_name: null -> "auto-12345-jump")
-Edit(worktree_path: null -> "../spec-driven-framework-jump")
+# 4. タスクファイル更新（branch_name, worktree_path）
+Edit(branch_name: null -> "task/30101-jump")
+Edit(worktree_path: null -> "../isdf_padel-30101-jump")
+
+# 5. コミット（MAIN側で並列作業状況を記録）
+git add project/tasks/2_in-progress/30101-*.md
+git commit -m "chore(30101): タスク開始"
+
+# === worktree側で実行 ===
+cd ../isdf_padel-30101-jump
+# 実装作業開始（Progress/Next Actions の更新はworktree側で行う）
 ```
 
 #### project-wide / framework タスク（worktree作成なし）

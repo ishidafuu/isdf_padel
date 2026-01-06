@@ -285,17 +285,28 @@ Edit(
 
 ### 1. タスク開始フロー
 
+> **CRITICAL: MAIN側で先にステータス変更を行う**
+>
+> ステータス変更はworktree作成**前**にMAIN側で実行する。
+> これにより他のセッションが並列作業状況を把握できる。
+
 ```
 ユーザー: 「タスク 30101 を開始したい」
   ↓
-task-manager-agent:
+task-manager-agent（MAIN側で実行）:
   1. タスクファイル読み込み
-  2. status を "in-progress" に更新
-  3. worktree が必要な場合:
+  2. ファイルを 1_todo/ → 2_in-progress/ に移動
+  3. status を "in-progress" に更新
+  4. worktree が必要な場合（game-devタスク）:
      - ブランチ名生成
      - worktree作成
      - タスクファイル更新（branch_name, worktree_path）
-  4. 開始完了を報告
+  5. MAIN側でコミット（並列作業状況を記録）
+  6. 開始完了を報告、worktreeパスを案内
+  ↓
+【worktree側で実行】
+  7. 実装作業開始
+  8. Progress/Next Actions の更新
 ```
 
 ### 2. タスク完了フロー
@@ -414,39 +425,56 @@ Read("project/tasks/2_in-progress/30101-ジャンプ機能実装.md")
 エージェント思考:
 1. タスクファイルを読み込み
 2. type: "game-dev" なのでworktree作成が必要
-3. statusを "in-progress" に更新
+3. 【MAIN側で先に】ファイル移動 + status更新
 4. worktree作成
-5. タスクファイル更新
+5. タスクファイル更新（branch_name, worktree_path）
+6. MAIN側でコミット
 
-実行:
+実行（MAIN側で実行）:
 ```bash
-# タスクファイル読み込み
-Read("project/tasks/2_in-progress/30101-ジャンプ機能実装.md")
+# 1. タスクファイル読み込み
+Read("project/tasks/1_todo/30101-ジャンプ機能実装.md")
 
-# status更新
+# 2. ファイルを 2_in-progress/ に移動
+mv project/tasks/1_todo/30101-ジャンプ機能実装.md \
+   project/tasks/2_in-progress/30101-ジャンプ機能実装.md
+
+# 3. status更新
 Edit(
   file_path="project/tasks/2_in-progress/30101-ジャンプ機能実装.md",
   old_string='status: "todo"',
   new_string='status: "in-progress"'
 )
 
-# worktree作成
-BRANCH="auto-12345-jump-feature"
-git worktree add ../spec-driven-framework-jump "${BRANCH}"
+# 4. worktree作成
+BRANCH="task/30101-jump"
+git worktree add ../isdf_padel-30101-jump -b "${BRANCH}"
 
-# タスクファイル更新
+# 5. タスクファイル更新
 Edit(
   file_path="project/tasks/2_in-progress/30101-ジャンプ機能実装.md",
-  old_string='branch_name: null\nworktree_path: null',
-  new_string='branch_name: "auto-12345-jump-feature"\nworktree_path: "../spec-driven-framework-jump"'
+  old_string='branch_name: null',
+  new_string='branch_name: "task/30101-jump"'
 )
+Edit(
+  file_path="project/tasks/2_in-progress/30101-ジャンプ機能実装.md",
+  old_string='worktree_path: null',
+  new_string='worktree_path: "../isdf_padel-30101-jump"'
+)
+
+# 6. MAIN側でコミット（並列作業状況を記録）
+git add project/tasks/2_in-progress/30101-ジャンプ機能実装.md
+git commit -m "chore(30101): タスク開始"
 ```
 
 応答:
 タスク 30101 を開始しました。
 - ステータス: in-progress
-- worktree: ../spec-driven-framework-jump
-- ブランチ: auto-12345-jump-feature
+- worktree: ../isdf_padel-30101-jump
+- ブランチ: task/30101-jump
+
+次のコマンドでworktreeに移動してください:
+cd ../isdf_padel-30101-jump
 ```
 
 ### 例2: タスク一覧表示
