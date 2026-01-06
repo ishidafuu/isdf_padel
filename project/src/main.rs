@@ -9,9 +9,13 @@ mod systems;
 
 use bevy::prelude::*;
 use components::PlayerBundle;
-use core::PlayerMoveEvent;
+use core::{PlayerJumpEvent, PlayerLandEvent, PlayerMoveEvent};
 use resource::config::{load_game_config, GameConfig};
-use systems::{movement_system, read_input_system, BoundaryPlugin, MovementInput};
+use systems::{
+    ceiling_collision_system, gravity_system, jump_system, landing_system, movement_system,
+    read_input_system, read_jump_input_system, vertical_movement_system, BoundaryPlugin,
+    JumpInput, MovementInput,
+};
 
 fn main() {
     // GameConfig をロード
@@ -30,9 +34,25 @@ fn main() {
         .add_plugins(BoundaryPlugin)
         .insert_resource(config)
         .init_resource::<MovementInput>()
+        .init_resource::<JumpInput>()
         .add_message::<PlayerMoveEvent>()
+        .add_message::<PlayerJumpEvent>()
+        .add_message::<PlayerLandEvent>()
         .add_systems(Startup, setup)
-        .add_systems(Update, (read_input_system, movement_system).chain())
+        .add_systems(
+            Update,
+            (
+                // 入力読み取り
+                (read_input_system, read_jump_input_system),
+                // ジャンプ・重力
+                (jump_system, gravity_system, vertical_movement_system).chain(),
+                // 水平移動
+                movement_system,
+                // 境界チェック
+                (ceiling_collision_system, landing_system),
+            )
+                .chain(),
+        )
         .run();
 }
 

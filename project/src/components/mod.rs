@@ -81,6 +81,20 @@ pub struct KnockbackState {
     pub direction: Vec3,
 }
 
+/// 接地状態コンポーネント
+/// @spec 30202_jump_spec.md
+#[derive(Component, Debug, Clone, Copy)]
+pub struct GroundedState {
+    /// 接地しているかどうか
+    pub is_grounded: bool,
+}
+
+impl Default for GroundedState {
+    fn default() -> Self {
+        Self { is_grounded: true }
+    }
+}
+
 impl KnockbackState {
     /// ふっとばし中かどうか
     /// @spec 30201_movement_spec.md#req-30201-005
@@ -92,11 +106,13 @@ impl KnockbackState {
 
 /// プレイヤーバンドル（プレイヤー生成時に使用）
 /// @spec 30200_player_overview.md
+/// @spec 30202_jump_spec.md
 #[derive(Bundle)]
 pub struct PlayerBundle {
     pub player: Player,
     pub velocity: Velocity,
     pub knockback: KnockbackState,
+    pub grounded: GroundedState,
     pub transform: Transform,
 }
 
@@ -111,6 +127,7 @@ impl PlayerBundle {
             player: Player { id, court_side },
             velocity: Velocity::default(),
             knockback: KnockbackState::default(),
+            grounded: GroundedState::default(),
             transform: Transform::from_translation(position),
         }
     }

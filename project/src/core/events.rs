@@ -2,6 +2,7 @@
 //! @spec 20005_event_system.md
 //! @spec 30502_wall_design.md
 //! @spec 30201_movement_spec.md
+//! @spec 30202_jump_spec.md
 
 use bevy::prelude::*;
 
@@ -15,6 +16,26 @@ pub struct PlayerMoveEvent {
     pub position: Vec3,
     /// 移動速度ベクトル
     pub velocity: Vec3,
+}
+
+/// プレイヤージャンプイベント
+/// @spec 30202_jump_spec.md#req-30202-007
+#[derive(Event, Message, Debug, Clone)]
+pub struct PlayerJumpEvent {
+    /// プレイヤーID
+    pub player_id: u8,
+    /// ジャンプ初速度
+    pub jump_velocity: f32,
+}
+
+/// プレイヤー着地イベント
+/// @spec 30202_jump_spec.md#req-30202-008
+#[derive(Event, Message, Debug, Clone)]
+pub struct PlayerLandEvent {
+    /// プレイヤーID
+    pub player_id: u8,
+    /// 着地位置
+    pub land_position: Vec3,
 }
 
 /// ボールヒットイベント
