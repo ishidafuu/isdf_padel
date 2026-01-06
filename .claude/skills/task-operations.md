@@ -60,6 +60,45 @@ Edit(spec_ids: ["30201"] -> ["30201", "30202"])
 
 ### 4. タスク完了
 
+#### game-dev タスク（worktreeあり）
+
+```bash
+# 1. mainリポジトリに戻り、mainを最新化
+cd /path/to/main/repository
+git checkout main
+git pull origin main
+
+# 2. スカッシュマージ
+git merge --squash auto-12345-jump
+git commit -m "feat(30101): ジャンプ機能実装
+
+REQ-30201対応
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+
+# 3. worktree削除
+git worktree remove ../spec-driven-framework-jump
+
+# 4. ブランチ削除（-D: スカッシュマージ後は強制削除が必要）
+git branch -D auto-12345-jump
+
+# 5. mainをプッシュ
+git push origin main
+
+# 6. タスクファイルを archive/ に移動
+mv project/tasks/3_in-review/30101-*.md project/tasks/4_archive/
+
+# 7. status と completed_at を更新
+Edit(status: "in-review" -> "done")
+Edit(completed_at: null -> "2025-12-29T16:00:00+09:00")
+Edit(branch_name: "auto-12345-jump" -> null)
+Edit(worktree_path: "../spec-driven-framework-jump" -> null)
+```
+
+#### project-wide / framework タスク（worktreeなし）
+
 ```bash
 # 1. ファイルを archive/ に移動
 mv project/tasks/3_in-review/30101-*.md project/tasks/4_archive/
@@ -67,9 +106,6 @@ mv project/tasks/3_in-review/30101-*.md project/tasks/4_archive/
 # 2. status と completed_at を更新
 Edit(status: "in-review" -> "done")
 Edit(completed_at: null -> "2025-12-29T16:00:00+09:00")
-
-# 3. worktree削除（オプション、game-devタスクのみ）
-git worktree remove ../spec-driven-framework-jump
 ```
 
 ### 5. タスクキャンセル
@@ -186,11 +222,19 @@ WORKTREE="../spec-driven-framework-feature"
 git worktree add "${WORKTREE}" "${BRANCH}"
 ```
 
-### worktree削除
+### worktree削除とブランチ削除
+
+worktree削除後は、対応するブランチも削除する:
 
 ```bash
+# 1. worktree削除
 git worktree remove ../spec-driven-framework-feature
+
+# 2. ブランチ削除（-D: スカッシュマージ後は強制削除が必要）
+git branch -D auto-12345-feature
 ```
+
+**注意**: スカッシュマージ後はブランチがmainにマージされた記録が残らないため、`-d` ではなく `-D`（強制削除）を使用する。worktree削除 → ブランチ削除の順序は必須（逆にするとworktreeが孤立する）。
 
 ### worktree一覧
 

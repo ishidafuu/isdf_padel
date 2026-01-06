@@ -206,16 +206,77 @@ impl-agent: （通常通り実装、独立したディレクトリで作業）
 1. auto-12346-enemy (dependencies.md 変更あり - 先にマージ)
 2. auto-12345-player
 3. auto-12347-stage
+```
 
-次のステップ:
-各worktreeで:
+#### 方法A: ローカルスカッシュマージ（推奨）
+
+mainリポジトリで各ブランチをスカッシュマージ:
+
+```bash
+# 1. mainリポジトリに移動、mainを最新化
+cd /path/to/main/repository
+git checkout main
+git pull origin main
+
+# 2. 各ブランチを推奨順序でスカッシュマージ
+# --- Enemy ---
+git merge --squash auto-12346-enemy
+git commit -m "feat(30201): Enemy実装
+
+REQ-30201対応
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+
+# --- Player ---
+git merge --squash auto-12345-player
+git commit -m "feat(30101): Player実装
+
+REQ-30101対応
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+
+# --- Stage ---
+git merge --squash auto-12347-stage
+git commit -m "feat(30301): Stage実装
+
+REQ-30301対応
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+
+# 3. mainをプッシュ
+git push origin main
+```
+
+#### 方法B: GitHub PR経由（チームレビューが必要な場合）
+
+```bash
+# 各worktreeで:
 git push origin <branch>
 gh pr create --title "..." --body "..."
+```
 
-マージ完了後、worktreeをクリーンアップ:
+PR作成後、GitHub上で **Squash and merge** を選択してマージ。
+
+#### クリーンアップ（共通）
+
+マージ完了後、worktreeとブランチをクリーンアップ:
+
+```bash
+# worktree削除
 git worktree remove ../spec-driven-framework-player
 git worktree remove ../spec-driven-framework-enemy
 git worktree remove ../spec-driven-framework-stage
+
+# ブランチ削除（-D: スカッシュマージ後は強制削除が必要）
+git branch -D auto-12345-player
+git branch -D auto-12346-enemy
+git branch -D auto-12347-stage
 ```
 
 ---
@@ -351,11 +412,15 @@ spec.md 冒頭のコメントを手動編集:
 ### Q3: 古いセッションが残っている
 
 **対応**:
-```
-.session-locks.yml を直接編集して削除
+```bash
+# 1. worktreeを削除
+git worktree remove <worktree-path> --force
 
-または:
+# 2. ブランチを削除（-D: 強制削除）
 git branch -D <古いブランチ名>
+
+# 3. .session-locks.yml を編集して該当エントリを削除
+Edit(.session-locks.yml から該当セッションを削除)
 ```
 
 ---

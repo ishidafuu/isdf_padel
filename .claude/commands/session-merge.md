@@ -66,27 +66,62 @@ Claude:
 2. auto-12346-enemy (3 commits)
 3. auto-12347-stage (2 commits)
 
-各worktreeで以下を実行してください:
+### スカッシュマージ手順（推奨）
 
-# 1. auto-12345-player
-cd ../spec-driven-framework-player
-git push origin auto-12345-player
-gh pr create --title "[Player] 実装完了" --body "REQ-30101対応"
+mainリポジトリで以下を実行:
 
-# 2. auto-12346-enemy
-cd ../spec-driven-framework-enemy
-git push origin auto-12346-enemy
-gh pr create --title "[Enemy] 実装完了" --body "REQ-30201対応"
+# 1. mainを最新化
+git checkout main
+git pull origin main
 
-# 3. auto-12347-stage
-cd ../spec-driven-framework-stage
-git push origin auto-12347-stage
-gh pr create --title "[Stage] 実装完了" --body "REQ-30301対応"
+# 2. 各ブランチをスカッシュマージ（推奨順序で実行）
 
-マージ完了後、worktreeをクリーンアップ:
+# --- auto-12345-player ---
+git merge --squash auto-12345-player
+git commit -m "feat(30101): Player実装完了
+
+REQ-30101対応
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+
+# --- auto-12346-enemy ---
+git merge --squash auto-12346-enemy
+git commit -m "feat(30201): Enemy実装完了
+
+REQ-30201対応
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+
+# --- auto-12347-stage ---
+git merge --squash auto-12347-stage
+git commit -m "feat(30301): Stage実装完了
+
+REQ-30301対応
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+
+# 3. mainをプッシュ
+git push origin main
+
+### クリーンアップ
+
+マージ完了後、worktreeとブランチを削除:
+
+# worktree削除
 git worktree remove ../spec-driven-framework-player
 git worktree remove ../spec-driven-framework-enemy
 git worktree remove ../spec-driven-framework-stage
+
+# ブランチ削除（-D: スカッシュマージ後は強制削除が必要）
+git branch -D auto-12345-player
+git branch -D auto-12346-enemy
+git branch -D auto-12347-stage
 ```
 
 ### 競合ありの場合
@@ -151,7 +186,15 @@ Claude:
 ユーザー: /session-merge --cleanup
 
 Claude:
-...（マージ処理）...
+競合分析結果: 競合なし
+
+スカッシュマージを実行中...
+✅ auto-12345-player → main にスカッシュマージ完了
+✅ auto-12346-enemy → main にスカッシュマージ完了
+✅ auto-12347-stage → main にスカッシュマージ完了
+
+mainをプッシュ中...
+✅ main をリモートにプッシュ完了
 
 worktreeをクリーンアップ中...
 ✅ 削除: ../spec-driven-framework-player
@@ -159,9 +202,9 @@ worktreeをクリーンアップ中...
 ✅ 削除: ../spec-driven-framework-stage
 
 ローカルブランチを削除中...
-✅ 削除: auto-12345-player
-✅ 削除: auto-12346-enemy
-✅ 削除: auto-12347-stage
+✅ 削除: auto-12345-player (-D)
+✅ 削除: auto-12346-enemy (-D)
+✅ 削除: auto-12347-stage (-D)
 
 クリーンアップ完了
 ```

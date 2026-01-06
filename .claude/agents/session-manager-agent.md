@@ -297,28 +297,84 @@ Task IDs: 30101, 30102, 30103
    - PRの作成手順
    - マージ順序の説明
 
-### フロー D: クリーンアップ（マージ完了後）
+### フロー D: スカッシュマージ（ローカル実行）
 
-すべてのPRがマージされた後:
+並列セッションの全作業完了後、mainにスカッシュマージ:
 
 ```bash
-# worktreeを削除
+# 0. mainリポジトリに移動
+cd /path/to/main/repository
+
+# 1. mainを最新化
+git checkout main
+git pull origin main
+
+# 2. 各ブランチを順番にスカッシュマージ
+# --- Player ---
+git merge --squash auto-${SESSION_ID_1}-player
+git commit -m "feat(30101): Player実装完了
+
+REQ-30101対応
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+
+# --- Enemy ---
+git merge --squash auto-${SESSION_ID_2}-enemy
+git commit -m "feat(30201): Enemy実装完了
+
+REQ-30201対応
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+
+# --- Stage ---
+git merge --squash auto-${SESSION_ID_3}-stage
+git commit -m "feat(30301): Stage実装完了
+
+REQ-30301対応
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+
+# 3. mainをプッシュ
+git push origin main
+```
+
+**スカッシュマージの利点:**
+- コミット履歴がクリーンになる
+- 1機能1コミットで追跡が容易
+- 開発中の細かいコミットが隠される
+
+### フロー E: クリーンアップ（マージ完了後）
+
+スカッシュマージ完了後:
+
+```bash
 PROJECT_ROOT=$(pwd)
 PARENT_DIR=$(dirname "$PROJECT_ROOT")
 PROJECT_NAME=$(basename "$PROJECT_ROOT")
 
+# 1. worktreeを削除
 git worktree remove "${PARENT_DIR}/${PROJECT_NAME}-player"
 git worktree remove "${PARENT_DIR}/${PROJECT_NAME}-enemy"
 git worktree remove "${PARENT_DIR}/${PROJECT_NAME}-stage"
 
-# ブランチを削除
-git branch -d auto-${SESSION_ID_1}-player
-git branch -d auto-${SESSION_ID_2}-enemy
-git branch -d auto-${SESSION_ID_3}-stage
+# 2. ブランチを削除（-D: スカッシュマージ後は強制削除が必要）
+git branch -D auto-${SESSION_ID_1}-player
+git branch -D auto-${SESSION_ID_2}-enemy
+git branch -D auto-${SESSION_ID_3}-stage
 
-# .session-locks.yml をクリア
+# 3. .session-locks.yml をクリア
 rm docs/.session-locks.yml
 ```
+
+**注意**:
+- スカッシュマージ後は `git branch -d` ではマージ済みと認識されないため、`-D`（強制削除）を使用
+- worktree削除 → ブランチ削除の順序は必ず守る（逆にするとworktreeが孤立する）
 
 ## 競合検出とマージ順序判断
 
