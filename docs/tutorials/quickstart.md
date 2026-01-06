@@ -364,8 +364,9 @@ CLAUDE.md
 **メイン Claude Code の動作（task-manager-agent.md を参照）:**
 ```
 → status: todo → in-progress
-→ worktree作成: ../spec-driven-framework-jump
 → ファイル移動: 1_todo/ → 2_in-progress/
+→ worktree作成: ../spec-driven-framework-jump
+※ コミットしない（worktree存在で並列作業を検出可能）
 ```
 
 #### 3. 実装

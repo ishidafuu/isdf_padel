@@ -20,12 +20,16 @@
 
 ### 2. タスク開始
 
-> **CRITICAL: MAIN側で先にステータス変更を行う**
+> **NOTE: MAIN側で先にステータス変更を行う**
 >
 > ステータス変更（status, ファイル移動）は **worktree作成より前に** MAIN側で実行する。
-> これにより、他のセッションが `ls project/tasks/2_in-progress/` で並列作業状況を把握できる。
+> **コミットは不要** - worktree の存在で並列作業状況を把握できる。
 >
-> **禁止**: worktree側でステータス変更を行うこと（MAINに並列作業が見えなくなる）
+> **並列作業の確認方法:**
+> - game-dev タスク: `git worktree list` で確認（推奨）
+> - 全タスク: `ls project/tasks/2_in-progress/` で補助的に確認
+>
+> **制限事項**: PXXX/FXXX タスクは worktree を作成しないため `git worktree list` では検出不可
 
 #### game-dev タスク（worktree作成あり）
 
@@ -45,9 +49,7 @@ git worktree add ../isdf_padel-30101-jump -b task/30101-jump
 Edit(branch_name: null -> "task/30101-jump")
 Edit(worktree_path: null -> "../isdf_padel-30101-jump")
 
-# 5. コミット（MAIN側で並列作業状況を記録）
-git add project/tasks/2_in-progress/30101-*.md
-git commit -m "chore(30101): タスク開始"
+# ※ コミットしない（worktree存在で並列作業を検出可能）
 
 # === worktree側で実行 ===
 cd ../isdf_padel-30101-jump

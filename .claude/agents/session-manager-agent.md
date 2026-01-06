@@ -59,24 +59,28 @@ task-manager-agent: タスク状態管理（MAIN側で先に実行）
 session-manager-agent: 並列セッション準備（worktree一括作成、ID範囲予約）
 ```
 
-> **CRITICAL: MAIN側で先にステータス変更を行う**
+> **NOTE: MAIN側で先にステータス変更を行う**
 >
 > タスク開始時は、worktree作成**前**にMAIN側でステータス変更する。
-> これにより他のセッションが `ls project/tasks/2_in-progress/` で並列作業状況を把握できる。
+> **コミットは不要** - worktree の存在で並列作業状況を把握できる。
+>
+> **並列作業の確認**: `git worktree list`（推奨）
+> **制限事項**: PXXX/FXXX タスクは worktree を作成しないため検出不可
 
 **単一タスク開始フロー（task-manager-agent が担当）:**
 1. MAIN側でタスクファイルを `1_todo/` → `2_in-progress/` に移動
 2. MAIN側で status を "in-progress" に更新
 3. worktree作成
 4. タスクファイル更新（`branch_name`, `worktree_path`）
-5. MAIN側でコミット（並列作業状況を記録）
-6. worktreeに移動して実装開始
+※ コミットしない
+5. worktreeに移動して実装開始
 
 **並列セッション準備フロー（session-manager-agent が担当）:**
 1. 複数タスクのステータスを一括でMAIN側で更新
 2. 複数worktreeを一括作成
 3. ID範囲予約
 4. 各Terminalへのコマンド案内
+※ コミットしない
 
 詳細は `skills/task-workflow.md` を参照。
 

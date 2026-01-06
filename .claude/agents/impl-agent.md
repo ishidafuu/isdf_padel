@@ -51,10 +51,20 @@ description: |
 **すべての実装にはタスクが必要です。**
 
 ```bash
-# タスク確認
+# タスク確認（推奨: worktree で並列作業を検出）
+git worktree list
+
+# 補助的な確認（全タスク）
 ls tasks/2_in-progress/
 ls project/tasks/2_in-progress/
 ```
+
+**タスクタイプ別の確認方法:**
+| タスクタイプ | 確認方法 |
+|------------|---------|
+| game-dev（30XXX） | `git worktree list` で worktree を確認 |
+| project-wide（PXXX） | `ls project/tasks/2_in-progress/` のみ（worktree なし） |
+| framework（FXXX） | `ls tasks/2_in-progress/` のみ（worktree なし） |
 
 **タスクが存在しない場合:**
 ```

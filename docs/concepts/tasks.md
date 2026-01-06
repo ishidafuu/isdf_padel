@@ -165,6 +165,15 @@ stateDiagram-v2
 
 ### 基本操作フロー
 
+**コミット方針: 1タスク = 1コミット**
+
+タスク開始時のコミットは不要です。worktree の存在で並列作業状況を把握できます。
+
+**並列作業の確認方法:**
+- game-dev タスク: `git worktree list` で確認（推奨）
+- 全タスク: `ls project/tasks/2_in-progress/` で補助的に確認
+- **制限事項**: PXXX/FXXX タスクは worktree を作成しないため `git worktree list` では検出不可
+
 ```
 1. タスク作成
    「プレイヤーのジャンプ機能のタスクを作成して」
@@ -173,13 +182,14 @@ stateDiagram-v2
 2. タスク開始
    「タスク30101を開始して」
    → status: todo → in-progress
-   → worktree作成（game-devタスクの場合）
    → ファイル移動: 1_todo/ → 2_in-progress/
+   → worktree作成（game-devタスクの場合）
+   ※ コミットしない
 
 3. 実装
    「プレイヤーのジャンプ機能を実装して」
    → impl-agent が仕様書に基づいて実装
-   → コミット
+   → worktree側でコミット
 
 4. レビュー準備
    「タスク30101をレビュー待ちにして」
@@ -189,9 +199,10 @@ stateDiagram-v2
 
 5. タスク完了
    「タスク30101を完了にして」
+   → スカッシュマージ + タスクファイル更新を1コミットに
    → status: in-review → done
    → ファイル移動: 3_in-review/ → 4_archive/
-   → worktree削除（オプション）
+   → worktree削除、ブランチ削除
 ```
 
 ---

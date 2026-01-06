@@ -285,10 +285,13 @@ Edit(
 
 ### 1. タスク開始フロー
 
-> **CRITICAL: MAIN側で先にステータス変更を行う**
+> **NOTE: MAIN側で先にステータス変更を行う**
 >
 > ステータス変更はworktree作成**前**にMAIN側で実行する。
-> これにより他のセッションが並列作業状況を把握できる。
+> **コミットは不要** - worktree の存在で並列作業状況を把握できる。
+>
+> **並列作業の確認**: `git worktree list`（推奨）
+> **制限事項**: PXXX/FXXX は worktree 非対応のため検出不可
 
 ```
 ユーザー: 「タスク 30101 を開始したい」
@@ -301,12 +304,12 @@ task-manager-agent（MAIN側で実行）:
      - ブランチ名生成
      - worktree作成
      - タスクファイル更新（branch_name, worktree_path）
-  5. MAIN側でコミット（並列作業状況を記録）
-  6. 開始完了を報告、worktreeパスを案内
+  ※ コミットしない
+  5. 開始完了を報告、worktreeパスを案内
   ↓
 【worktree側で実行】
-  7. 実装作業開始
-  8. Progress/Next Actions の更新
+  6. 実装作業開始
+  7. Progress/Next Actions の更新
 ```
 
 ### 2. タスク完了フロー
@@ -440,7 +443,7 @@ Read("project/tasks/2_in-progress/30101-ジャンプ機能実装.md")
 3. 【MAIN側で先に】ファイル移動 + status更新
 4. worktree作成
 5. タスクファイル更新（branch_name, worktree_path）
-6. MAIN側でコミット
+※ コミットしない（worktree存在で並列作業を検出可能）
 
 実行（MAIN側で実行）:
 ```bash
@@ -474,9 +477,7 @@ Edit(
   new_string='worktree_path: "../isdf_padel-30101-jump"'
 )
 
-# 6. MAIN側でコミット（並列作業状況を記録）
-git add project/tasks/2_in-progress/30101-ジャンプ機能実装.md
-git commit -m "chore(30101): タスク開始"
+# ※ コミットしない
 ```
 
 応答:
