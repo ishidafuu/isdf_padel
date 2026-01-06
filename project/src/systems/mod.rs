@@ -4,9 +4,11 @@
 mod ball_trajectory;
 mod boundary;
 mod jump;
+mod knockback;
 mod movement;
 
 pub use ball_trajectory::*;
 pub use boundary::*;
 pub use jump::*;
+pub use knockback::*;
 pub use movement::*;

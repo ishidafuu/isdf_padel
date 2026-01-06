@@ -39,12 +39,32 @@ pub struct PlayerLandEvent {
     pub land_position: Vec3,
 }
 
-/// ボールヒットイベント
-#[derive(Message)]
+/// ボールヒットイベント（プレイヤーにボールが当たった）
+/// @spec 30203_knockback_spec.md#req-30203-001
+#[derive(Event, Message, Debug, Clone)]
 pub struct BallHitEvent {
+    /// ボールのEntity
     pub ball_id: Entity,
+    /// 被弾したプレイヤーのEntity
     pub target_id: Entity,
+    /// ボールの速度
+    pub ball_velocity: Vec3,
+    /// 衝突位置
     pub hit_point: Vec3,
+}
+
+/// プレイヤーふっとばしイベント
+/// @spec 30203_knockback_spec.md#req-30203-007
+#[derive(Event, Message, Debug, Clone)]
+pub struct PlayerKnockbackEvent {
+    /// プレイヤーID
+    pub player_id: u8,
+    /// ふっとばし速度ベクトル
+    pub knockback_velocity: Vec3,
+    /// ふっとばし時間（秒）
+    pub duration: f32,
+    /// 無敵時間（秒）
+    pub invincibility_time: f32,
 }
 
 /// 壁の種類

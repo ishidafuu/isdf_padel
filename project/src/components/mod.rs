@@ -75,11 +75,17 @@ impl BounceCount {
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct KnockbackState {
     /// ふっとばし中かどうか
+    /// @spec 30203_knockback_spec.md#req-30203-001
     pub is_active: bool,
-    /// 残り時間（秒）
+    /// 残りふっとばし時間（秒）- 操作不能時間
+    /// @spec 30203_knockback_spec.md#req-30203-004
     pub remaining_time: f32,
-    /// ふっとばし方向
-    pub direction: Vec3,
+    /// 残り無敵時間（秒）
+    /// @spec 30203_knockback_spec.md#req-30203-005
+    pub invincibility_time: f32,
+    /// ふっとばし速度ベクトル
+    /// @spec 30203_knockback_spec.md#req-30203-002
+    pub velocity: Vec3,
 }
 
 /// 接地状態コンポーネント
@@ -97,11 +103,35 @@ impl Default for GroundedState {
 }
 
 impl KnockbackState {
-    /// ふっとばし中かどうか
-    /// @spec 30201_movement_spec.md#req-30201-005
+    /// ふっとばし中かどうか（操作不能状態）
+    /// @spec 30203_knockback_spec.md#req-30203-006
     #[inline]
     pub fn is_knockback_active(&self) -> bool {
         self.is_active && self.remaining_time > 0.0
+    }
+
+    /// 無敵状態かどうか
+    /// @spec 30203_knockback_spec.md#req-30203-005
+    #[inline]
+    pub fn is_invincible(&self) -> bool {
+        self.invincibility_time > 0.0
+    }
+
+    /// ふっとばしを開始
+    /// @spec 30203_knockback_spec.md#req-30203-001
+    pub fn start(&mut self, velocity: Vec3, duration: f32, invincibility_time: f32) {
+        self.is_active = true;
+        self.velocity = velocity;
+        self.remaining_time = duration;
+        self.invincibility_time = invincibility_time;
+    }
+
+    /// ふっとばしを終了
+    /// @spec 30203_knockback_spec.md#req-30203-004
+    pub fn end(&mut self) {
+        self.is_active = false;
+        self.velocity = Vec3::ZERO;
+        self.remaining_time = 0.0;
     }
 }
 

@@ -9,10 +9,11 @@ mod systems;
 
 use bevy::prelude::*;
 use components::PlayerBundle;
-use core::{PlayerJumpEvent, PlayerLandEvent, PlayerMoveEvent};
+use core::{BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent};
 use resource::config::{load_game_config, GameConfig};
 use systems::{
-    ceiling_collision_system, gravity_system, jump_system, landing_system, movement_system,
+    ceiling_collision_system, gravity_system, jump_system, knockback_movement_system,
+    knockback_start_system, knockback_timer_system, landing_system, movement_system,
     read_input_system, read_jump_input_system, vertical_movement_system, BallTrajectoryPlugin,
     BoundaryPlugin, JumpInput, MovementInput,
 };
@@ -39,16 +40,22 @@ fn main() {
         .add_message::<PlayerMoveEvent>()
         .add_message::<PlayerJumpEvent>()
         .add_message::<PlayerLandEvent>()
+        .add_message::<BallHitEvent>()
+        .add_message::<PlayerKnockbackEvent>()
         .add_systems(Startup, setup)
         .add_systems(
             Update,
             (
                 // 入力読み取り
                 (read_input_system, read_jump_input_system),
+                // ふっとばし開始（BallHitEvent を処理）
+                knockback_start_system,
                 // ジャンプ・重力
                 (jump_system, gravity_system, vertical_movement_system).chain(),
-                // 水平移動
+                // 水平移動（ふっとばし中はスキップ）
                 movement_system,
+                // ふっとばし移動・タイマー
+                (knockback_movement_system, knockback_timer_system),
                 // 境界チェック
                 (ceiling_collision_system, landing_system),
             )
