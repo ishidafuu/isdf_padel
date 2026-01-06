@@ -1,10 +1,12 @@
 //! ボール軌道システム
 //! @spec 30401_trajectory_spec.md
+//! @spec 30402_reflection_spec.md
 
 use bevy::prelude::*;
 
 use crate::components::{Ball, Velocity};
-use crate::core::events::BallOutOfBoundsEvent;
+use crate::core::events::{BallOutOfBoundsEvent, GroundBounceEvent, WallReflectionEvent};
+use crate::core::{CourtBounds, WallReflection};
 use crate::resource::config::GameConfig;
 
 /// ボール軌道プラグイン
@@ -13,15 +15,20 @@ pub struct BallTrajectoryPlugin;
 
 impl Plugin for BallTrajectoryPlugin {
     fn build(&self, app: &mut App) {
-        app.add_message::<BallOutOfBoundsEvent>().add_systems(
-            Update,
-            (
-                ball_gravity_system,
-                ball_position_update_system,
-                ball_out_of_bounds_system,
-            )
-                .chain(),
-        );
+        app.add_message::<BallOutOfBoundsEvent>()
+            .add_message::<GroundBounceEvent>()
+            .add_message::<WallReflectionEvent>()
+            .add_systems(
+                Update,
+                (
+                    ball_gravity_system,
+                    ball_position_update_system,
+                    ball_ground_bounce_system,
+                    ball_wall_reflection_system,
+                    ball_out_of_bounds_system,
+                )
+                    .chain(),
+            );
     }
 }
 
@@ -57,6 +64,79 @@ pub fn ball_position_update_system(
     for (velocity, mut transform) in query.iter_mut() {
         // REQ-30401-003: Position += Velocity * deltaTime
         transform.translation += velocity.value * delta;
+    }
+}
+
+/// 地面バウンドシステム
+/// @spec 30402_reflection_spec.md#req-30402-001
+/// @spec 30402_reflection_spec.md#req-30402-002
+pub fn ball_ground_bounce_system(
+    config: Res<GameConfig>,
+    mut query: Query<(Entity, &mut Velocity, &mut Transform), With<Ball>>,
+    mut event_writer: MessageWriter<GroundBounceEvent>,
+) {
+    let bounce_factor = config.ball.bounce_factor;
+    let net_z = config.court.net_z;
+
+    for (entity, mut velocity, mut transform) in query.iter_mut() {
+        let pos = transform.translation;
+
+        // REQ-30402-001: ボールが地面（Y <= 0）に接触し、下向きに移動中の場合
+        if pos.y <= 0.0 && velocity.value.y < 0.0 {
+            // 速度Y成分を反転し、バウンド係数を適用
+            velocity.value.y = -velocity.value.y * bounce_factor;
+
+            // 位置を地面に補正（めり込み防止）
+            transform.translation.y = 0.0;
+
+            // REQ-30402-002: GroundBounceEvent 発行
+            let court_side = crate::core::determine_court_side(pos.z, net_z);
+            event_writer.write(GroundBounceEvent {
+                ball: entity,
+                bounce_point: Vec3::new(pos.x, 0.0, pos.z),
+                court_side,
+            });
+        }
+    }
+}
+
+/// 壁・天井反射システム
+/// @spec 30402_reflection_spec.md#req-30402-003
+/// @spec 30402_reflection_spec.md#req-30402-004
+/// @spec 30402_reflection_spec.md#req-30402-005
+/// @spec 30402_reflection_spec.md#req-30402-006
+/// @spec 30402_reflection_spec.md#req-30402-007
+pub fn ball_wall_reflection_system(
+    config: Res<GameConfig>,
+    mut query: Query<(Entity, &mut Velocity, &mut Transform), With<Ball>>,
+    mut event_writer: MessageWriter<WallReflectionEvent>,
+) {
+    let bounds = CourtBounds::from_config(&config.court);
+    let bounce_factor = config.ball.bounce_factor;
+
+    for (entity, mut velocity, mut transform) in query.iter_mut() {
+        let pos = transform.translation;
+        let vel = velocity.value;
+
+        // 壁・天井との接触チェックと反射計算
+        if let Some(result) = WallReflection::check_and_reflect(pos, vel, &bounds, bounce_factor) {
+            // 速度を反射後の値に更新
+            velocity.value = result.reflected_velocity;
+
+            // REQ-30402-007: 位置を境界内に補正（めり込み防止）
+            transform.translation.x = bounds.clamp_x(pos.x);
+            transform.translation.y = bounds.clamp_y(pos.y);
+            transform.translation.z = bounds.clamp_z(pos.z);
+
+            // REQ-30402-004: WallReflectionEvent 発行
+            event_writer.write(WallReflectionEvent {
+                ball: entity,
+                wall_type: result.wall_type,
+                contact_point: result.contact_point,
+                incident_velocity: vel,
+                reflected_velocity: result.reflected_velocity,
+            });
+        }
     }
 }
 
@@ -176,5 +256,165 @@ mod tests {
         let pos = Vec3::new(0.0, -0.1, 0.0);
         let is_out = pos.y < 0.0;
         assert!(is_out);
+    }
+
+    /// TST-30404-007: 地面バウンドテスト
+    /// @spec 30402_reflection_spec.md#req-30402-001
+    #[test]
+    fn test_ground_bounce() {
+        let bounce_factor = 0.8_f32;
+        let mut velocity_y = -10.0_f32; // 下向きの速度
+
+        // 地面に接触した場合、速度Y成分を反転し、バウンド係数を適用
+        if velocity_y < 0.0 {
+            velocity_y = -velocity_y * bounce_factor;
+        }
+
+        // 期待値: 10.0 * 0.8 = 8.0
+        assert!((velocity_y - 8.0).abs() < 0.001);
+    }
+
+    /// TST-30404-008: 地面バウンドで上向きの場合は反射しない
+    /// @spec 30402_reflection_spec.md#req-30402-001
+    #[test]
+    fn test_ground_no_bounce_when_moving_up() {
+        let bounce_factor = 0.8_f32;
+        let mut velocity_y = 5.0_f32; // 上向きの速度
+        let original_velocity_y = velocity_y;
+
+        // 上向きの場合はバウンドしない
+        if velocity_y < 0.0 {
+            velocity_y = -velocity_y * bounce_factor;
+        }
+
+        // 速度は変化しない
+        assert!((velocity_y - original_velocity_y).abs() < 0.001);
+    }
+
+    /// TST-30404-009: 壁反射後の速度計算テスト
+    /// @spec 30402_reflection_spec.md#req-30402-003
+    #[test]
+    fn test_wall_reflection_velocity() {
+        use crate::core::{CourtBounds, WallReflection};
+        use crate::resource::CourtConfig;
+
+        let config = CourtConfig {
+            width: 10.0,
+            depth: 6.0,
+            ceiling_height: 5.0,
+            max_jump_height: 5.0,
+            net_height: 1.0,
+            net_z: 0.0,
+        };
+        let bounds = CourtBounds::from_config(&config);
+        let bounce_factor = 0.8_f32;
+
+        // 左壁に向かう速度
+        let pos = Vec3::new(-5.0, 2.5, 0.0);
+        let vel = Vec3::new(-10.0, 5.0, 3.0);
+
+        let result = WallReflection::check_and_reflect(pos, vel, &bounds, bounce_factor);
+        assert!(result.is_some());
+
+        let reflected = result.unwrap().reflected_velocity;
+        // X成分が反転し、バウンド係数が適用される
+        assert!((reflected.x - 8.0).abs() < 0.001); // -(-10.0) * 0.8 = 8.0
+        assert!((reflected.y - 4.0).abs() < 0.001); // 5.0 * 0.8 = 4.0
+        assert!((reflected.z - 2.4).abs() < 0.001); // 3.0 * 0.8 = 2.4
+    }
+
+    /// TST-30404-010: 天井反射テスト
+    /// @spec 30402_reflection_spec.md#req-30402-006
+    #[test]
+    fn test_ceiling_reflection() {
+        use crate::core::{CourtBounds, WallReflection};
+        use crate::resource::CourtConfig;
+
+        let config = CourtConfig {
+            width: 10.0,
+            depth: 6.0,
+            ceiling_height: 5.0,
+            max_jump_height: 5.0,
+            net_height: 1.0,
+            net_z: 0.0,
+        };
+        let bounds = CourtBounds::from_config(&config);
+        let bounce_factor = 0.8_f32;
+
+        // 天井に向かう速度
+        let pos = Vec3::new(0.0, 5.0, 0.0);
+        let vel = Vec3::new(5.0, 10.0, 3.0);
+
+        let result = WallReflection::check_and_reflect(pos, vel, &bounds, bounce_factor);
+        assert!(result.is_some());
+
+        let reflected = result.unwrap().reflected_velocity;
+        // Y成分が反転し、バウンド係数が適用される
+        assert!((reflected.x - 4.0).abs() < 0.001); // 5.0 * 0.8 = 4.0
+        assert!((reflected.y - (-8.0)).abs() < 0.001); // -(10.0) * 0.8 = -8.0
+        assert!((reflected.z - 2.4).abs() < 0.001); // 3.0 * 0.8 = 2.4
+    }
+
+    /// TST-30404-011: 奥壁反射テスト（Z軸）
+    /// @spec 30402_reflection_spec.md#req-30402-005
+    #[test]
+    fn test_back_wall_reflection() {
+        use crate::core::{CourtBounds, WallReflection};
+        use crate::resource::CourtConfig;
+
+        let config = CourtConfig {
+            width: 10.0,
+            depth: 6.0,
+            ceiling_height: 5.0,
+            max_jump_height: 5.0,
+            net_height: 1.0,
+            net_z: 0.0,
+        };
+        let bounds = CourtBounds::from_config(&config);
+        let bounce_factor = 0.8_f32;
+
+        // 1P側奥壁に向かう速度
+        let pos = Vec3::new(0.0, 2.5, -3.0);
+        let vel = Vec3::new(5.0, 3.0, -10.0);
+
+        let result = WallReflection::check_and_reflect(pos, vel, &bounds, bounce_factor);
+        assert!(result.is_some());
+
+        let reflected = result.unwrap().reflected_velocity;
+        // Z成分が反転し、バウンド係数が適用される
+        assert!((reflected.x - 4.0).abs() < 0.001); // 5.0 * 0.8 = 4.0
+        assert!((reflected.y - 2.4).abs() < 0.001); // 3.0 * 0.8 = 2.4
+        assert!((reflected.z - 8.0).abs() < 0.001); // -(-10.0) * 0.8 = 8.0
+    }
+
+    /// TST-30404-012: めり込み防止テスト
+    /// @spec 30402_reflection_spec.md#req-30402-007
+    #[test]
+    fn test_position_clamp() {
+        use crate::core::CourtBounds;
+        use crate::resource::CourtConfig;
+
+        let config = CourtConfig {
+            width: 10.0,
+            depth: 6.0,
+            ceiling_height: 5.0,
+            max_jump_height: 5.0,
+            net_height: 1.0,
+            net_z: 0.0,
+        };
+        let bounds = CourtBounds::from_config(&config);
+
+        // 壁をはみ出した位置をクランプ
+        let out_x = -6.0_f32;
+        let out_y = 6.0_f32;
+        let out_z = 4.0_f32;
+
+        let clamped_x = bounds.clamp_x(out_x);
+        let clamped_y = bounds.clamp_y(out_y);
+        let clamped_z = bounds.clamp_z(out_z);
+
+        assert!((clamped_x - (-5.0)).abs() < 0.001); // クランプ: -5.0
+        assert!((clamped_y - 5.0).abs() < 0.001); // クランプ: 5.0
+        assert!((clamped_z - 3.0).abs() < 0.001); // クランプ: 3.0
     }
 }
