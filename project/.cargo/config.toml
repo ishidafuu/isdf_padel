@@ -1,0 +1,16 @@
+# Bevy 高速コンパイル設定
+# https://bevyengine.org/learn/quick-start/getting-started/setup/
+
+# macOS 用リンカー最適化
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/ld"]
+
+[target.x86_64-apple-darwin]
+rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/ld"]
+
+# 開発ビルド最適化
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3

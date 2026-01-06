@@ -1,0 +1,44 @@
+#!/bin/bash
+# Pre-commit hook: 検証ツール実行
+
+echo "🔍 Running validation checks..."
+
+# 変更されたファイルを取得
+CHANGED_MD=$(git diff --cached --name-only --diff-filter=ACM | grep '\.md$' || true)
+CHANGED_CODE=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(cs|py|ts|js|gd)$' || true)
+
+# マークダウンファイルが変更されている場合
+if [ -n "$CHANGED_MD" ]; then
+  echo "📋 Validating markdown files..."
+  
+  # ID検証
+  python3 scripts/validate-ids.py --path docs/
+  if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ ID validation failed. Commit aborted."
+    exit 1
+  fi
+  
+  # リンク検証
+  python3 scripts/validate-links.py --path docs/
+  if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Link validation failed. Commit aborted."
+    exit 1
+  fi
+fi
+
+# コードファイルが変更されている場合
+if [ -n "$CHANGED_CODE" ] && [ -d "src/" ]; then
+  echo "💻 Validating code files..."
+  
+  python3 scripts/validate-impl-comments.py --code-path src/ --docs-path docs/
+  if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Implementation comment validation failed. Commit aborted."
+    exit 1
+  fi
+fi
+
+echo "✅ All validation checks passed"
+exit 0

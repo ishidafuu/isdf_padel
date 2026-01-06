@@ -1,0 +1,15 @@
+# Task Management Configuration
+
+id_numbering:
+  prefix: "T"
+  start: 1
+  format: "T{:03d}"  # T001, T002, etc.
+
+defaults:
+  priority: "medium"
+  status: "todo"
+
+# Archive settings
+archive:
+  auto_archive_done: false  # Manual archive only
+  retention_days: null      # Keep forever

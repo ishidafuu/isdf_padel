@@ -1,0 +1,8 @@
+# 廃止された仕様書を除外
+# 理由: 古いID参照を防ぎ、AIの自律探索対象から除外する
+docs/_deprecated/
+project/docs/_deprecated/
+
+# 引き継ぎドキュメントのアーカイブを除外
+# 理由: 古い引き継ぎドキュメントが検索結果に混入するのを防ぐ
+.claude/handover/archive/

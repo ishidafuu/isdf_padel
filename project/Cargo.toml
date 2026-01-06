@@ -1,0 +1,29 @@
+[package]
+name = "padel_game"
+version = "0.1.0"
+edition = "2024"
+description = "Padel Game - MVP v0.1"
+license = "MIT"
+
+[dependencies]
+bevy = "0.17"
+serde = { version = "1.0", features = ["derive"] }
+ron = "0.10"
+
+[features]
+default = []
+# 開発時の高速リンク用
+dynamic_linking = ["bevy/dynamic_linking"]
+
+# 開発プロファイル: 高速コンパイル優先
+[profile.dev]
+opt-level = 1
+
+# 依存クレートは最適化（Bevyの起動時間短縮）
+[profile.dev.package."*"]
+opt-level = 3
+
+# リリースプロファイル: 最大最適化
+[profile.release]
+lto = "thin"
+codegen-units = 1
