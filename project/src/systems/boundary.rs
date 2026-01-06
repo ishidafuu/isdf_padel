@@ -50,13 +50,13 @@ pub fn player_boundary_system(
         // BEH-30503-001: 左右壁制限
         if pos.x < bounds.left {
             pos.x = bounds.left;
-            if velocity.0.x < 0.0 {
-                velocity.0.x = 0.0;
+            if velocity.value.x < 0.0 {
+                velocity.value.x = 0.0;
             }
         } else if pos.x > bounds.right {
             pos.x = bounds.right;
-            if velocity.0.x > 0.0 {
-                velocity.0.x = 0.0;
+            if velocity.value.x > 0.0 {
+                velocity.value.x = 0.0;
             }
         }
 
@@ -66,15 +66,15 @@ pub fn player_boundary_system(
                 // 1Pは Z < net_z の範囲
                 if pos.z < bounds.back_1p {
                     pos.z = bounds.back_1p;
-                    if velocity.0.z < 0.0 {
-                        velocity.0.z = 0.0;
+                    if velocity.value.z < 0.0 {
+                        velocity.value.z = 0.0;
                     }
                 }
                 // BEH-30503-003: ネット通過禁止（1Pは net_z 未満）
                 if pos.z > net.z {
                     pos.z = net.z;
-                    if velocity.0.z > 0.0 {
-                        velocity.0.z = 0.0;
+                    if velocity.value.z > 0.0 {
+                        velocity.value.z = 0.0;
                     }
                 }
             }
@@ -82,15 +82,15 @@ pub fn player_boundary_system(
                 // 2Pは Z > net_z の範囲
                 if pos.z > bounds.back_2p {
                     pos.z = bounds.back_2p;
-                    if velocity.0.z > 0.0 {
-                        velocity.0.z = 0.0;
+                    if velocity.value.z > 0.0 {
+                        velocity.value.z = 0.0;
                     }
                 }
                 // BEH-30503-003: ネット通過禁止（2Pは net_z 超過）
                 if pos.z < net.z {
                     pos.z = net.z;
-                    if velocity.0.z < 0.0 {
-                        velocity.0.z = 0.0;
+                    if velocity.value.z < 0.0 {
+                        velocity.value.z = 0.0;
                     }
                 }
             }
@@ -99,16 +99,16 @@ pub fn player_boundary_system(
         // 天井制限（ジャンプ時）
         if pos.y > bounds.ceiling {
             pos.y = bounds.ceiling;
-            if velocity.0.y > 0.0 {
-                velocity.0.y = 0.0;
+            if velocity.value.y > 0.0 {
+                velocity.value.y = 0.0;
             }
         }
 
         // 地面制限
         if pos.y < bounds.ground {
             pos.y = bounds.ground;
-            if velocity.0.y < 0.0 {
-                velocity.0.y = 0.0;
+            if velocity.value.y < 0.0 {
+                velocity.value.y = 0.0;
             }
         }
     }
@@ -137,7 +137,7 @@ pub fn ball_boundary_system(
 
     for (entity, mut transform, mut velocity, bounce_count) in query.iter_mut() {
         let pos = transform.translation;
-        let vel = velocity.0;
+        let vel = velocity.value;
 
         // 優先順位1: ネット接触判定 (BEH-30503-005)
         if court.net.is_collision(pos.y, pos.z, net_tolerance) && vel.length_squared() > f32::EPSILON
@@ -147,7 +147,7 @@ pub fn ball_boundary_system(
                 contact_point: pos,
             });
             // ネット接触時は停止
-            velocity.0 = Vec3::ZERO;
+            velocity.value = Vec3::ZERO;
             continue;
         }
 
@@ -155,9 +155,9 @@ pub fn ball_boundary_system(
         if pos.y <= court.bounds.ground && vel.y < 0.0 {
             transform.translation.y = court.bounds.ground;
             // 地面バウンド反射
-            velocity.0.y = -vel.y * bounce_factor;
-            velocity.0.x *= bounce_factor;
-            velocity.0.z *= bounce_factor;
+            velocity.value.y = -vel.y * bounce_factor;
+            velocity.value.x *= bounce_factor;
+            velocity.value.z *= bounce_factor;
 
             let court_side = court.get_court_side(pos.z);
 
@@ -181,7 +181,7 @@ pub fn ball_boundary_system(
             // 位置を接触点に補正
             transform.translation = result.contact_point;
             // 反射後の速度を設定
-            velocity.0 = result.reflected_velocity;
+            velocity.value = result.reflected_velocity;
 
             wall_events.write(WallReflectionEvent {
                 ball: entity,

@@ -1,8 +1,21 @@
 //! イベント定義
 //! @spec 20005_event_system.md
 //! @spec 30502_wall_design.md
+//! @spec 30201_movement_spec.md
 
 use bevy::prelude::*;
+
+/// プレイヤー移動イベント
+/// @spec 30201_movement_spec.md#req-30201-006
+#[derive(Event, Message, Debug, Clone)]
+pub struct PlayerMoveEvent {
+    /// プレイヤーID
+    pub player_id: u8,
+    /// 新しい位置
+    pub position: Vec3,
+    /// 移動速度ベクトル
+    pub velocity: Vec3,
+}
 
 /// ボールヒットイベント
 #[derive(Message)]

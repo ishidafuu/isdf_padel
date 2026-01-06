@@ -6,9 +6,11 @@ use bevy::prelude::*;
 use crate::core::CourtSide;
 
 /// プレイヤーマーカーコンポーネント
-/// @spec 30201_player_spec.md
-#[derive(Component, Debug, Clone, Copy)]
+/// @spec 30200_player_overview.md
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Player {
+    /// プレイヤーID（1 or 2）
+    pub id: u8,
     /// プレイヤーがどちら側のコートにいるか
     pub court_side: CourtSide,
 }
@@ -19,18 +21,23 @@ pub struct Player {
 pub struct Ball;
 
 /// 速度コンポーネント
-/// @spec 30503_boundary_behavior.md
+/// @spec 30201_movement_spec.md
 #[derive(Component, Debug, Clone, Copy, Default)]
-pub struct Velocity(pub Vec3);
+pub struct Velocity {
+    /// 速度ベクトル
+    pub value: Vec3,
+}
 
 impl Velocity {
     pub fn new(x: f32, y: f32, z: f32) -> Self {
-        Self(Vec3::new(x, y, z))
+        Self {
+            value: Vec3::new(x, y, z),
+        }
     }
 
     #[inline]
     pub fn is_moving(&self) -> bool {
-        self.0.length_squared() > f32::EPSILON
+        self.value.length_squared() > f32::EPSILON
     }
 }
 
@@ -59,5 +66,52 @@ impl BounceCount {
     pub fn reset(&mut self) {
         self.count = 0;
         self.last_court_side = None;
+    }
+}
+
+/// ふっとばし状態コンポーネント
+/// @spec 30203_knockback_spec.md
+#[derive(Component, Debug, Clone, Copy, Default)]
+pub struct KnockbackState {
+    /// ふっとばし中かどうか
+    pub is_active: bool,
+    /// 残り時間（秒）
+    pub remaining_time: f32,
+    /// ふっとばし方向
+    pub direction: Vec3,
+}
+
+impl KnockbackState {
+    /// ふっとばし中かどうか
+    /// @spec 30201_movement_spec.md#req-30201-005
+    #[inline]
+    pub fn is_knockback_active(&self) -> bool {
+        self.is_active && self.remaining_time > 0.0
+    }
+}
+
+/// プレイヤーバンドル（プレイヤー生成時に使用）
+/// @spec 30200_player_overview.md
+#[derive(Bundle)]
+pub struct PlayerBundle {
+    pub player: Player,
+    pub velocity: Velocity,
+    pub knockback: KnockbackState,
+    pub transform: Transform,
+}
+
+impl PlayerBundle {
+    pub fn new(id: u8, position: Vec3) -> Self {
+        let court_side = if id == 1 {
+            CourtSide::Player1
+        } else {
+            CourtSide::Player2
+        };
+        Self {
+            player: Player { id, court_side },
+            velocity: Velocity::default(),
+            knockback: KnockbackState::default(),
+            transform: Transform::from_translation(position),
+        }
     }
 }

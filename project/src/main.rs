@@ -8,8 +8,10 @@ mod resource;
 mod systems;
 
 use bevy::prelude::*;
+use components::PlayerBundle;
+use core::PlayerMoveEvent;
 use resource::config::{load_game_config, GameConfig};
-use systems::BoundaryPlugin;
+use systems::{movement_system, read_input_system, BoundaryPlugin, MovementInput};
 
 fn main() {
     // GameConfig をロード
@@ -27,11 +29,15 @@ fn main() {
         }))
         .add_plugins(BoundaryPlugin)
         .insert_resource(config)
+        .init_resource::<MovementInput>()
+        .add_message::<PlayerMoveEvent>()
         .add_systems(Startup, setup)
+        .add_systems(Update, (read_input_system, movement_system).chain())
         .run();
 }
 
 /// 初期セットアップ
+/// @spec 30200_player_overview.md
 fn setup(mut commands: Commands, config: Res<GameConfig>) {
     // Camera2d をスポーン
     commands.spawn(Camera2d);
@@ -39,5 +45,15 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
     // GameConfig のロード確認
     info!("GameConfig loaded successfully!");
     info!("Court size: {}x{}", config.court.width, config.court.depth);
-    info!("Player move speed: {}", config.player.move_speed);
+    info!("Player move speed: X={}, Z={}", config.player.move_speed, config.player.move_speed_z);
+
+    // Player 1 をスポーン（1Pコート側）
+    let player1_pos = Vec3::new(0.0, 0.0, config.player.z_min + 1.0);
+    commands.spawn(PlayerBundle::new(1, player1_pos));
+    info!("Player 1 spawned at {:?}", player1_pos);
+
+    // Player 2 をスポーン（2Pコート側）
+    let player2_pos = Vec3::new(0.0, 0.0, config.player.z_max - 1.0);
+    commands.spawn(PlayerBundle::new(2, player2_pos));
+    info!("Player 2 spawned at {:?}", player2_pos);
 }
