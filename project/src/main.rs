@@ -9,6 +9,7 @@ mod systems;
 
 use bevy::prelude::*;
 use resource::config::{load_game_config, GameConfig};
+use systems::BoundaryPlugin;
 
 fn main() {
     // GameConfig をロード
@@ -24,6 +25,7 @@ fn main() {
             }),
             ..default()
         }))
+        .add_plugins(BoundaryPlugin)
         .insert_resource(config)
         .add_systems(Startup, setup)
         .run();

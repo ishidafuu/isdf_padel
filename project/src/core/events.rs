@@ -5,7 +5,7 @@
 use bevy::prelude::*;
 
 /// ボールヒットイベント
-#[derive(Event)]
+#[derive(Message)]
 pub struct BallHitEvent {
     pub ball_id: Entity,
     pub target_id: Entity,
@@ -58,7 +58,7 @@ impl WallType {
 /// 壁反射イベント
 /// @spec 30502_wall_design.md#des-30502-003
 /// @spec 30502_wall_design.md#beh-30502-005
-#[derive(Event, Debug, Clone)]
+#[derive(Message, Debug, Clone)]
 pub struct WallReflectionEvent {
     /// 反射したボールのEntity
     pub ball: Entity,
@@ -74,7 +74,7 @@ pub struct WallReflectionEvent {
 
 /// ネット接触イベント
 /// @spec 30503_boundary_behavior.md#beh-30503-005
-#[derive(Event, Debug, Clone)]
+#[derive(Message, Debug, Clone)]
 pub struct NetHitEvent {
     /// ネットに当たったボールのEntity
     pub ball: Entity,
@@ -84,7 +84,7 @@ pub struct NetHitEvent {
 
 /// 地面バウンドイベント
 /// @spec 30503_boundary_behavior.md#beh-30503-006
-#[derive(Event, Debug, Clone)]
+#[derive(Message, Debug, Clone)]
 pub struct GroundBounceEvent {
     /// バウンドしたボールのEntity
     pub ball: Entity,
