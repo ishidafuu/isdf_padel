@@ -185,7 +185,23 @@ Task IDs: 30101, 30102, 30103
    git worktree add "${PARENT_DIR}/${PROJECT_NAME}-stage" -b "auto-${SESSION_ID_3}-stage"
    ```
 
-3. **.session-locks.yml への記録**
+3. **ビルドキャッシュの共有設定（Rust project用）**
+   ```bash
+   # メインリポジトリのtarget/へシンボリックリンクを作成
+   # これにより各worktreeでフルビルドを回避
+   for feature in player enemy stage; do
+     WORKTREE_PATH="${PARENT_DIR}/${PROJECT_NAME}-${feature}"
+     if [ -d "${PROJECT_ROOT}/project/target" ]; then
+       # worktree側のtargetを削除（存在する場合）
+       rm -rf "${WORKTREE_PATH}/project/target" 2>/dev/null
+       # シンボリックリンク作成
+       ln -s "${PROJECT_ROOT}/project/target" "${WORKTREE_PATH}/project/target"
+       echo "✅ target/ symlink created for ${feature}"
+     fi
+   done
+   ```
+
+4. **.session-locks.yml への記録**
    ```bash
    # セッション情報を記録
    cat >> docs/.session-locks.yml <<EOF
@@ -213,7 +229,7 @@ Task IDs: 30101, 30102, 30103
    EOF
    ```
 
-4. **ユーザーへの案内（コピー可能なコマンド出力）**
+5. **ユーザーへの案内（コピー可能なコマンド出力）**
    ```bash
    # ユーザーに実行すべきコマンドを明確に出力
    echo ""
