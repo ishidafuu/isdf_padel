@@ -314,6 +314,27 @@ Task IDs: 30101, 30102, 30103
 
 並列セッションの全作業完了後、mainにスカッシュマージ:
 
+**⚠️ マージ前の重要手順（CRITICAL）:**
+
+worktree側の `project/target` シンボリックリンクをマージに含めないようにする:
+
+```bash
+# 各worktreeでシンボリックリンクを削除（MAINで実行）
+PROJECT_ROOT=$(pwd)
+PARENT_DIR=$(dirname "$PROJECT_ROOT")
+PROJECT_NAME=$(basename "$PROJECT_ROOT")
+
+for feature in player enemy stage; do
+  WORKTREE_PATH="${PARENT_DIR}/${PROJECT_NAME}-${feature}"
+  if [ -L "${WORKTREE_PATH}/project/target" ]; then
+    rm "${WORKTREE_PATH}/project/target"
+    echo "✅ Removed symlink: ${feature}/project/target"
+  fi
+done
+```
+
+**理由:** シンボリックリンクがマージされると、MAIN の `project/target` ディレクトリがシンボリックリンクに置き換わり、ビルドが壊れる。
+
 ```bash
 # 0. mainリポジトリに移動
 cd /path/to/main/repository
@@ -361,6 +382,11 @@ git push origin main
 - コミット履歴がクリーンになる
 - 1機能1コミットで追跡が容易
 - 開発中の細かいコミットが隠される
+
+**⚠️ シンボリックリンクに関する注意:**
+- worktree の `project/target` は MAIN へのシンボリックリンク（ビルドキャッシュ共有用）
+- マージ前に必ず削除すること（上記「マージ前の重要手順」参照）
+- 削除を忘れると MAIN の target が壊れ、`cargo build` が失敗する
 
 ### フロー E: クリーンアップ（マージ完了後）
 
