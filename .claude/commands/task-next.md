@@ -5,6 +5,14 @@ argument-hint: [--limit <N>]
 
 # /task-next
 
+## 実行（CRITICAL）
+
+**以下のコマンドを即座に実行してください。ファイル読み込みは不要です:**
+
+```bash
+python3 scripts/task-next.py [--limit N]
+```
+
 ## 概要
 
 `project/tasks/` 内の着手可能なタスクを一覧表示し、推奨タスクを提案する。
@@ -14,33 +22,16 @@ argument-hint: [--limit <N>]
 - `project/tasks/` のみ（30XXX/B30XXX/R30XXX/PXXX）
 - フレームワーク開発タスク（FXXX）は対象外
 
-## 処理フロー
+## 処理フロー（スクリプト内部）
 
 ```
-1. Glob で project/tasks/1_todo/*.md を取得
-   → todoタスク一覧
-
-2. Glob で project/tasks/4_archive/*.md を取得
-   → 完了済みタスクのIDを収集（status: "done" のみ）
-
-3. Glob で project/tasks/2_in-progress/*.md, 3_in-review/*.md を取得
-   → 進行中タスク一覧
-
-4. 各todoタスクについて:
-   a. Frontmatter の blocked_by を読み取り
-   b. blocked_by の全IDが完了済み(done)なら READY
-   c. blocked_by が空なら READY
-
-5. READY タスクについて:
-   a. 進行中タスクと相互依存がないか確認
-   b. 相互依存なしなら「並列可能」
-
-6. ソート:
-   a. priority: high > medium > low
-   b. blocks.length: 多い順（解除インパクト大）
-   c. id: 小さい順
-
-7. --limit N オプションで表示件数を制限（デフォルト: 全件）
+1. project/tasks/1_todo/*.md を取得 → todoタスク一覧
+2. project/tasks/4_archive/*.md を取得 → 完了済みID収集（status: "done" のみ）
+3. project/tasks/2_in-progress/*.md, 3_in-review/*.md を取得 → 進行中タスク
+4. 各todoタスクの blocked_by を判定 → READY タスク抽出
+5. 並列可能判定（進行中タスクとの相互依存チェック）
+6. ソート: priority > blocks.length > id
+7. 整形出力
 ```
 
 ## 出力形式
