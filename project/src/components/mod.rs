@@ -102,6 +102,36 @@ impl Default for GroundedState {
     }
 }
 
+/// ショット状態コンポーネント
+/// @spec 30601_shot_input_spec.md
+#[derive(Component, Debug, Clone, Copy, Default)]
+pub struct ShotState {
+    /// クールダウン残り時間（秒）
+    /// @spec 30601_shot_input_spec.md#req-30601-004
+    pub cooldown_timer: f32,
+}
+
+impl ShotState {
+    /// クールダウン中かどうか
+    /// @spec 30601_shot_input_spec.md#req-30601-004
+    #[inline]
+    pub fn is_on_cooldown(&self) -> bool {
+        self.cooldown_timer > 0.0
+    }
+
+    /// クールダウンを開始
+    /// @spec 30601_shot_input_spec.md#req-30601-004
+    pub fn start_cooldown(&mut self, duration: f32) {
+        self.cooldown_timer = duration;
+    }
+
+    /// クールダウンタイマーを更新
+    /// @spec 30601_shot_input_spec.md#req-30601-004
+    pub fn update_cooldown(&mut self, delta: f32) {
+        self.cooldown_timer = (self.cooldown_timer - delta).max(0.0);
+    }
+}
+
 impl KnockbackState {
     /// ふっとばし中かどうか（操作不能状態）
     /// @spec 30203_knockback_spec.md#req-30203-006
@@ -138,12 +168,14 @@ impl KnockbackState {
 /// プレイヤーバンドル（プレイヤー生成時に使用）
 /// @spec 30200_player_overview.md
 /// @spec 30202_jump_spec.md
+/// @spec 30601_shot_input_spec.md
 #[derive(Bundle)]
 pub struct PlayerBundle {
     pub player: Player,
     pub velocity: Velocity,
     pub knockback: KnockbackState,
     pub grounded: GroundedState,
+    pub shot_state: ShotState,
     pub transform: Transform,
 }
 
@@ -159,6 +191,7 @@ impl PlayerBundle {
             velocity: Velocity::default(),
             knockback: KnockbackState::default(),
             grounded: GroundedState::default(),
+            shot_state: ShotState::default(),
             transform: Transform::from_translation(position),
         }
     }

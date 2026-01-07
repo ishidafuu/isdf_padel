@@ -4,6 +4,7 @@
 //! @spec 30201_movement_spec.md
 //! @spec 30202_jump_spec.md
 //! @spec 30401_trajectory_spec.md
+//! @spec 30601_shot_input_spec.md
 
 use bevy::prelude::*;
 
@@ -157,4 +158,17 @@ pub struct BallOutOfBoundsEvent {
     pub ball: Entity,
     /// 最終位置
     pub final_position: Vec3,
+}
+
+/// ショットイベント
+/// @spec 30601_shot_input_spec.md#req-30601-001
+/// @spec 30601_shot_input_spec.md#req-30601-006
+#[derive(Event, Message, Debug, Clone)]
+pub struct ShotEvent {
+    /// プレイヤーID
+    pub player_id: u8,
+    /// 入力方向（十字キー、正規化済み）
+    pub direction: Vec2,
+    /// ジャンプ中の高さ（Position.Y）
+    pub jump_height: f32,
 }

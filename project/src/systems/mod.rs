@@ -7,6 +7,7 @@ mod boundary;
 mod jump;
 mod knockback;
 mod movement;
+mod shot_input;
 
 pub use ball_collision::*;
 pub use ball_trajectory::*;
@@ -14,3 +15,4 @@ pub use boundary::*;
 pub use jump::*;
 pub use knockback::*;
 pub use movement::*;
+pub use shot_input::*;
