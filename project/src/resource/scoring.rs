@@ -1,5 +1,6 @@
 //! スコアリングリソース
 //! @spec 30701_point_spec.md
+//! @spec 30702_game_spec.md
 
 use bevy::prelude::*;
 
@@ -30,7 +31,7 @@ impl PlayerPoint {
 }
 
 /// プレイヤーのゲーム/セット状態
-/// @spec 30701_point_spec.md
+/// @spec 30702_game_spec.md#req-30702-001
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PlayerGameScore {
     /// 現在のセットでのゲーム獲得数
@@ -41,6 +42,7 @@ pub struct PlayerGameScore {
 
 impl PlayerGameScore {
     /// ゲームを獲得
+    /// @spec 30702_game_spec.md#req-30702-002
     #[inline]
     pub fn win_game(&mut self) {
         self.games += 1;
@@ -145,6 +147,7 @@ impl MatchScore {
     }
 
     /// ゲーム獲得処理
+    /// @spec 30702_game_spec.md#req-30702-002
     pub fn win_game(&mut self, winner: CourtSide) {
         match winner {
             CourtSide::Player1 => self.player1_score.win_game(),
@@ -156,6 +159,7 @@ impl MatchScore {
     }
 
     /// セット獲得判定
+    /// @spec 30702_game_spec.md#req-30702-003
     pub fn check_set_win(&self, winner: CourtSide, games_to_win: u32) -> bool {
         let games = match winner {
             CourtSide::Player1 => self.player1_score.games,

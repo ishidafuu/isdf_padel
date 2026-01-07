@@ -1,5 +1,6 @@
 //! スコアリングシステム
 //! @spec 30701_point_spec.md
+//! @spec 30702_game_spec.md
 
 use bevy::prelude::*;
 
@@ -63,6 +64,7 @@ pub fn rally_end_system(
         // @spec 30701_point_spec.md#req-30701-003
         if new_index >= win_index {
             // ゲーム獲得
+            // @spec 30702_game_spec.md#req-30702-002
             match_score.win_game(scorer);
 
             let games_won = match scorer {
@@ -81,6 +83,7 @@ pub fn rally_end_system(
             });
 
             // セット勝利判定
+            // @spec 30702_game_spec.md#req-30702-003
             if match_score.check_set_win(scorer, config.scoring.games_to_win_set) {
                 match_score.win_set(scorer);
 
@@ -280,5 +283,137 @@ mod tests {
 
         assert_eq!(match_score.player1_point.index, 0);
         assert_eq!(match_score.player2_point.index, 0);
+    }
+
+    // ========================================
+    // 30702: ゲームカウント管理テスト
+    // ========================================
+
+    /// TST-30706-001: ゲームカウント初期化テスト
+    /// @spec 30702_game_spec.md#req-30702-001
+    #[test]
+    fn test_game_count_initialization() {
+        let match_score = MatchScore::new();
+        assert_eq!(match_score.player1_score.games, 0);
+        assert_eq!(match_score.player2_score.games, 0);
+        assert_eq!(match_score.player1_score.sets, 0);
+        assert_eq!(match_score.player2_score.sets, 0);
+    }
+
+    /// TST-30706-002: ゲームカウント加算テスト
+    /// @spec 30702_game_spec.md#req-30702-002
+    #[test]
+    fn test_game_count_increment() {
+        let mut match_score = MatchScore::new();
+
+        // Player1がゲームを獲得
+        match_score.win_game(CourtSide::Player1);
+        assert_eq!(match_score.player1_score.games, 1);
+        assert_eq!(match_score.player2_score.games, 0);
+
+        // Player2がゲームを獲得
+        match_score.win_game(CourtSide::Player2);
+        assert_eq!(match_score.player1_score.games, 1);
+        assert_eq!(match_score.player2_score.games, 1);
+
+        // Player1が再度ゲームを獲得
+        match_score.win_game(CourtSide::Player1);
+        assert_eq!(match_score.player1_score.games, 2);
+    }
+
+    /// TST-30706-003: セット勝利判定テスト（6ゲーム先取）
+    /// @spec 30702_game_spec.md#req-30702-003
+    #[test]
+    fn test_set_win_at_six_games() {
+        let mut match_score = MatchScore::new();
+        let games_to_win = 6;
+
+        // Player1が5ゲーム獲得（まだセット勝利ではない）
+        for _ in 0..5 {
+            match_score.win_game(CourtSide::Player1);
+        }
+        assert!(!match_score.check_set_win(CourtSide::Player1, games_to_win));
+
+        // Player1が6ゲーム目を獲得（セット勝利）
+        match_score.win_game(CourtSide::Player1);
+        assert!(match_score.check_set_win(CourtSide::Player1, games_to_win));
+    }
+
+    /// TST-30706-004: ポイントリセット確認（ゲーム獲得後）
+    /// @spec 30702_game_spec.md#req-30702-002
+    #[test]
+    fn test_points_reset_after_game_win() {
+        let mut match_score = MatchScore::new();
+
+        // ポイントを獲得
+        match_score.add_point(CourtSide::Player1);
+        match_score.add_point(CourtSide::Player1);
+        assert_eq!(match_score.get_point_index(CourtSide::Player1), 2);
+
+        // ゲーム獲得（ポイントもリセットされる）
+        match_score.win_game(CourtSide::Player1);
+
+        // ポイントがリセットされていることを確認
+        assert_eq!(match_score.player1_point.index, 0);
+        assert_eq!(match_score.player2_point.index, 0);
+        // ゲームカウントが増えていることを確認
+        assert_eq!(match_score.player1_score.games, 1);
+    }
+
+    /// TST-30706-005: ゲームカウント表示テスト
+    /// @spec 30702_game_spec.md#req-30702-005
+    #[test]
+    fn test_game_count_display() {
+        let mut match_score = MatchScore::new();
+
+        // 初期状態
+        assert_eq!(match_score.player1_score.games, 0);
+        assert_eq!(match_score.player2_score.games, 0);
+
+        // ゲーム獲得後の表示
+        match_score.win_game(CourtSide::Player1);
+        match_score.win_game(CourtSide::Player1);
+        match_score.win_game(CourtSide::Player2);
+
+        assert_eq!(match_score.player1_score.games, 2);
+        assert_eq!(match_score.player2_score.games, 1);
+    }
+
+    /// TST-30706-006: サーバー交代テスト（ゲーム獲得後）
+    /// @spec 30702_game_spec.md
+    #[test]
+    fn test_server_switch_after_game() {
+        let mut match_score = MatchScore::new();
+
+        // 初期サーバーはPlayer1
+        assert_eq!(match_score.server, CourtSide::Player1);
+
+        // ゲーム獲得後はPlayer2がサーバー
+        match_score.win_game(CourtSide::Player1);
+        assert_eq!(match_score.server, CourtSide::Player2);
+
+        // 次のゲーム後はPlayer1がサーバー
+        match_score.win_game(CourtSide::Player2);
+        assert_eq!(match_score.server, CourtSide::Player1);
+    }
+
+    /// TST-30706-007: セット獲得後のゲームカウントリセットテスト
+    /// @spec 30702_game_spec.md
+    #[test]
+    fn test_game_count_reset_after_set_win() {
+        let mut match_score = MatchScore::new();
+
+        // Player1が6ゲーム獲得
+        for _ in 0..6 {
+            match_score.win_game(CourtSide::Player1);
+        }
+        assert_eq!(match_score.player1_score.games, 6);
+
+        // セット獲得
+        match_score.win_set(CourtSide::Player1);
+
+        // ゲームカウントがリセットされ、セット数が増加
+        assert_eq!(match_score.player1_score.games, 0);
+        assert_eq!(match_score.player1_score.sets, 1);
     }
 }
