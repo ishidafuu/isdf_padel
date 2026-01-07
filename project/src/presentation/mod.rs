@@ -8,6 +8,7 @@ pub use debug_ui::DebugUiPlugin;
 use bevy::prelude::*;
 
 use crate::components::{Ball, HasShadow, LogicalPosition, Player, Shadow};
+use crate::resource::config::GameConfig;
 
 /// ワールド座標→ピクセル座標変換用スケール
 /// 1ワールドユニット = 100ピクセル
@@ -31,17 +32,26 @@ pub fn sync_transform_system(mut query: Query<(&LogicalPosition, &mut Transform)
 }
 
 /// 影の位置を更新するシステム
-/// 影は所有者の真下（地面）に表示される
+/// 影は所有者の足元（地面）に表示される
 pub fn sync_shadow_system(
+    config: Res<GameConfig>,
     owner_query: Query<&LogicalPosition>,
+    player_query: Query<Entity, With<Player>>,
     mut shadow_query: Query<(&Shadow, &mut Transform)>,
 ) {
     for (shadow, mut transform) in shadow_query.iter_mut() {
         if let Ok(owner_pos) = owner_query.get(shadow.owner) {
             // 影は地面（Y=0）に表示（90度回転版）
             let display_x = owner_pos.value.z * WORLD_SCALE;
-            let display_y = owner_pos.value.x * WORLD_SCALE; // Y=0なので高さ成分なし
-            let display_z = 0.5; // 影はプレイヤーより手前
+            // プレイヤーの影は足元にオフセット、ボールの影はオフセットなし
+            let y_offset = if player_query.get(shadow.owner).is_ok() {
+                config.shadow.player_y_offset
+            } else {
+                config.shadow.ball_y_offset
+            };
+            let display_y = owner_pos.value.x * WORLD_SCALE - y_offset;
+            // 影は背面に表示
+            let display_z = config.shadow.z_layer;
 
             transform.translation = Vec3::new(display_x, display_y, display_z);
         }
@@ -51,6 +61,7 @@ pub fn sync_shadow_system(
 /// ボール生成時に影をスポーンするシステム
 pub fn spawn_ball_shadow_system(
     mut commands: Commands,
+    config: Res<GameConfig>,
     ball_query: Query<Entity, Added<Ball>>,
     shadow_query: Query<&Shadow>,
 ) {
@@ -62,14 +73,15 @@ pub fn spawn_ball_shadow_system(
         }
 
         // 影をスポーン
+        let (width, height) = config.shadow.ball_size;
         commands.spawn((
             Shadow { owner: ball_entity },
             Sprite {
-                color: Color::srgba(0.0, 0.0, 0.0, 0.5), // 半透明の黒
-                custom_size: Some(Vec2::new(25.0, 10.0)), // 楕円形の影
+                color: Color::srgba(0.0, 0.0, 0.0, config.shadow.ball_alpha),
+                custom_size: Some(Vec2::new(width, height)),
                 ..default()
             },
-            Transform::default(),
+            Transform::from_xyz(0.0, 0.0, config.shadow.z_layer),
         ));
     }
 }
@@ -78,19 +90,20 @@ pub fn spawn_ball_shadow_system(
 /// HasShadowを持たないプレイヤーに対して影を生成する
 pub fn spawn_player_shadow_system(
     mut commands: Commands,
+    config: Res<GameConfig>,
     player_query: Query<Entity, (With<Player>, Without<HasShadow>)>,
 ) {
     for player_entity in player_query.iter() {
         // 影をスポーン（プレイヤーはボールより大きい）
-        // z=0.5 でプレイヤー(z~1.0)より手前、背景(z=-1.0)より後ろ
+        let (width, height) = config.shadow.player_size;
         commands.spawn((
             Shadow { owner: player_entity },
             Sprite {
-                color: Color::srgba(0.0, 0.0, 0.0, 0.6), // 濃い半透明の黒
-                custom_size: Some(Vec2::new(50.0, 20.0)), // プレイヤー用の大きめの影
+                color: Color::srgba(0.0, 0.0, 0.0, config.shadow.player_alpha),
+                custom_size: Some(Vec2::new(width, height)),
                 ..default()
             },
-            Transform::from_xyz(0.0, 0.0, 0.5), // z=0.5 で前面に
+            Transform::from_xyz(0.0, 0.0, config.shadow.z_layer),
         ));
         // HasShadowマーカーを追加して重複スポーンを防ぐ
         commands.entity(player_entity).insert(HasShadow);
