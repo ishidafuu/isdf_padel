@@ -79,9 +79,10 @@ pub fn movement_system(
             _ => Vec2::ZERO,
         };
 
-        // 入力がない場合はスキップ
+        // 入力がない場合は水平速度のみ0にする（Y成分は保持：ジャンプ対応）
         if raw_input == Vec2::ZERO {
-            velocity.value = Vec3::ZERO;
+            velocity.value.x = 0.0;
+            velocity.value.z = 0.0;
             continue;
         }
 
@@ -113,7 +114,9 @@ pub fn movement_system(
             target_velocity
         };
 
-        velocity.value = final_velocity;
+        // 水平速度のみ設定（Y成分は保持：ジャンプ対応）
+        velocity.value.x = final_velocity.x;
+        velocity.value.z = final_velocity.z;
 
         // 位置更新（論理座標を操作）
         let old_position = logical_pos.value;

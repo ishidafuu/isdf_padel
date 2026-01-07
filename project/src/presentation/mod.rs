@@ -7,7 +7,7 @@ pub use debug_ui::DebugUiPlugin;
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, LogicalPosition, Shadow};
+use crate::components::{Ball, HasShadow, LogicalPosition, Player, Shadow};
 
 /// ワールド座標→ピクセル座標変換用スケール
 /// 1ワールドユニット = 100ピクセル
@@ -41,7 +41,7 @@ pub fn sync_shadow_system(
             // 影は地面（Y=0）に表示（90度回転版）
             let display_x = owner_pos.value.z * WORLD_SCALE;
             let display_y = owner_pos.value.x * WORLD_SCALE; // Y=0なので高さ成分なし
-            let display_z = -1.0; // 影は最背面
+            let display_z = 0.5; // 影はプレイヤーより手前
 
             transform.translation = Vec3::new(display_x, display_y, display_z);
         }
@@ -74,14 +74,43 @@ pub fn spawn_ball_shadow_system(
     }
 }
 
-/// ボール消滅時に影を削除するシステム
+/// プレイヤーに影をスポーンするシステム
+/// HasShadowを持たないプレイヤーに対して影を生成する
+pub fn spawn_player_shadow_system(
+    mut commands: Commands,
+    player_query: Query<Entity, (With<Player>, Without<HasShadow>)>,
+) {
+    for player_entity in player_query.iter() {
+        // 影をスポーン（プレイヤーはボールより大きい）
+        // z=0.5 でプレイヤー(z~1.0)より手前、背景(z=-1.0)より後ろ
+        commands.spawn((
+            Shadow { owner: player_entity },
+            Sprite {
+                color: Color::srgba(0.0, 0.0, 0.0, 0.6), // 濃い半透明の黒
+                custom_size: Some(Vec2::new(50.0, 20.0)), // プレイヤー用の大きめの影
+                ..default()
+            },
+            Transform::from_xyz(0.0, 0.0, 0.5), // z=0.5 で前面に
+        ));
+        // HasShadowマーカーを追加して重複スポーンを防ぐ
+        commands.entity(player_entity).insert(HasShadow);
+    }
+}
+
+/// ボール消滅時にボールの影を削除するシステム
+/// プレイヤーの影は削除しない
 pub fn despawn_ball_shadow_system(
     mut commands: Commands,
     ball_query: Query<Entity, With<Ball>>,
+    player_query: Query<Entity, With<Player>>,
     shadow_query: Query<(Entity, &Shadow)>,
 ) {
     for (shadow_entity, shadow) in shadow_query.iter() {
-        // 所有者が存在しなければ影を削除
+        // プレイヤーの影はスキップ
+        if player_query.get(shadow.owner).is_ok() {
+            continue;
+        }
+        // ボールの影で、所有者が存在しなければ削除
         if ball_query.get(shadow.owner).is_err() {
             commands.entity(shadow_entity).despawn();
         }

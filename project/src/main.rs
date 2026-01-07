@@ -14,8 +14,8 @@ use core::{
     ShotEvent, ShotExecutedEvent,
 };
 use presentation::{
-    despawn_ball_shadow_system, spawn_ball_shadow_system, sync_shadow_system,
-    sync_transform_system, DebugUiPlugin, WORLD_SCALE,
+    despawn_ball_shadow_system, spawn_ball_shadow_system, spawn_player_shadow_system,
+    sync_shadow_system, sync_transform_system, DebugUiPlugin, WORLD_SCALE,
 };
 use resource::config::{load_game_config, GameConfig};
 use resource::MatchFlowState;
@@ -84,7 +84,7 @@ fn main() {
                 // 座標変換（論理座標→表示座標）
                 sync_transform_system,
                 // 影システム
-                (spawn_ball_shadow_system, sync_shadow_system, despawn_ball_shadow_system),
+                (spawn_ball_shadow_system, spawn_player_shadow_system, sync_shadow_system, despawn_ball_shadow_system),
             )
                 .chain(),
         )

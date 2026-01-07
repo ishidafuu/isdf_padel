@@ -29,6 +29,10 @@ pub struct Shadow {
     pub owner: Entity,
 }
 
+/// 影がスポーンされたことを示すマーカー
+#[derive(Component, Debug, Clone, Copy, Default)]
+pub struct HasShadow;
+
 /// プレイヤーマーカーコンポーネント
 /// @spec 30200_player_overview.md
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
