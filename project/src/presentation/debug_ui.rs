@@ -3,8 +3,9 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, BounceCount, KnockbackState, Player, ShotState};
+use crate::components::{Ball, BounceCount, KnockbackState, LogicalPosition, Player, ShotState};
 use crate::core::CourtSide;
+use crate::presentation::WORLD_SCALE;
 use crate::resource::{GameConfig, MatchScore, RallyPhase, RallyState};
 
 /// デバッグUIプラグイン
@@ -12,9 +13,16 @@ pub struct DebugUiPlugin;
 
 impl Plugin for DebugUiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_debug_ui)
-            .add_systems(Update, update_debug_ui);
+        app.add_systems(Startup, (setup_debug_ui, setup_shot_range_visuals))
+            .add_systems(Update, (update_debug_ui, update_shot_range_visuals));
     }
+}
+
+/// ショット判定枠マーカー
+#[derive(Component)]
+pub struct ShotRangeVisual {
+    /// 追従するプレイヤーEntity
+    pub owner: Entity,
 }
 
 /// デバッグUIマーカー
@@ -130,4 +138,71 @@ fn update_debug_ui(
     );
 
     **text = full_text;
+}
+
+/// ショット判定枠のセットアップ（プレイヤー生成時に呼ばれる）
+fn setup_shot_range_visuals(
+    mut commands: Commands,
+    config: Res<GameConfig>,
+    player_query: Query<Entity, With<Player>>,
+) {
+    let range_size = config.shot.max_distance * 2.0 * WORLD_SCALE;
+
+    for player_entity in player_query.iter() {
+        // ショット判定枠（半透明の矩形）
+        commands.spawn((
+            ShotRangeVisual {
+                owner: player_entity,
+            },
+            Sprite {
+                color: Color::srgba(1.0, 1.0, 0.0, 0.2), // 半透明の黄色
+                custom_size: Some(Vec2::new(range_size, range_size)),
+                ..default()
+            },
+            Transform::from_xyz(0.0, 0.0, 0.1), // プレイヤーより奥
+        ));
+    }
+}
+
+/// ショット判定枠の位置を更新
+fn update_shot_range_visuals(
+    config: Res<GameConfig>,
+    player_query: Query<(Entity, &LogicalPosition), With<Player>>,
+    mut visual_query: Query<(&ShotRangeVisual, &mut Transform, &mut Sprite)>,
+    mut commands: Commands,
+) {
+    let range_size = config.shot.max_distance * 2.0 * WORLD_SCALE;
+
+    // 既存のビジュアルを更新
+    for (visual, mut transform, mut sprite) in visual_query.iter_mut() {
+        if let Ok((_, logical_pos)) = player_query.get(visual.owner) {
+            // プレイヤーの地面位置（Y=0）に追従
+            let display_x = logical_pos.value.z * WORLD_SCALE;
+            let display_y = logical_pos.value.x * WORLD_SCALE; // 高さ成分なし（地面基準）
+
+            transform.translation.x = display_x;
+            transform.translation.y = display_y;
+
+            // サイズ更新（設定変更に対応）
+            sprite.custom_size = Some(Vec2::new(range_size, range_size));
+        }
+    }
+
+    // 新規プレイヤー用のビジュアルを生成
+    for (player_entity, _) in player_query.iter() {
+        let has_visual = visual_query.iter().any(|(v, _, _)| v.owner == player_entity);
+        if !has_visual {
+            commands.spawn((
+                ShotRangeVisual {
+                    owner: player_entity,
+                },
+                Sprite {
+                    color: Color::srgba(1.0, 1.0, 0.0, 0.2),
+                    custom_size: Some(Vec2::new(range_size, range_size)),
+                    ..default()
+                },
+                Transform::from_xyz(0.0, 0.0, 0.1),
+            ));
+        }
+    }
 }
