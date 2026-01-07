@@ -168,6 +168,8 @@ pub struct BallOutOfBoundsEvent {
 pub struct ShotEvent {
     /// プレイヤーID
     pub player_id: u8,
+    /// プレイヤーの所属コートサイド（ショット方向の決定に使用）
+    pub court_side: super::court::CourtSide,
     /// 入力方向（十字キー、正規化済み）
     pub direction: Vec2,
     /// ジャンプ中の高さ（Position.Y）

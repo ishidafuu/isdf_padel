@@ -31,15 +31,10 @@ pub fn shot_direction_system(
         };
 
         // 最後にショットを打ったプレイヤーを記録（自己衝突回避のため）
-        let shooter_side = if event.player_id == 1 {
-            CourtSide::Player1
-        } else {
-            CourtSide::Player2
-        };
-        last_shooter.record(shooter_side);
+        last_shooter.record(event.court_side);
 
-        // REQ-30602-001: 水平方向の計算
-        let horizontal_dir = calculate_horizontal_direction(event.direction);
+        // REQ-30602-001: 水平方向の計算（コートサイドに応じてZ軸方向を固定）
+        let horizontal_dir = calculate_horizontal_direction(event.direction, event.court_side);
 
         // REQ-30602-002, REQ-30602-003: ジャンプショット判定と速度決定
         // REQ-30603-001: ジャンプ判定（Position.Y > JumpThreshold）
@@ -81,18 +76,23 @@ pub fn shot_direction_system(
 
 /// 水平方向を計算
 /// @spec 30602_shot_direction_spec.md#req-30602-001
+/// Z軸方向（前後）: コートサイドに応じて常に相手コート方向に固定
+/// X軸方向（左右）: 入力で調整可能
 #[inline]
-fn calculate_horizontal_direction(direction: Vec2) -> Vec3 {
-    // Vec2(x, y) -> Vec3(x, 0, y) で XZ平面に変換
-    // y は Z軸方向（奥行き）に対応
-    if direction.length_squared() > f32::EPSILON {
-        Vec3::new(direction.x, 0.0, direction.y).normalize()
-    } else {
-        // 入力がない場合: 相手コート方向（Z軸正方向）
-        // Note: shot_input.rs で既にデフォルト方向が設定されているが、
-        // 万が一のフォールバック
-        Vec3::new(0.0, 0.0, 1.0)
-    }
+fn calculate_horizontal_direction(direction: Vec2, court_side: CourtSide) -> Vec3 {
+    // Z軸方向: コートサイドに応じて固定（常に相手コートへ）
+    // Player1側（Z < net_z）にいる場合: +Z方向（相手コート）
+    // Player2側（Z > net_z）にいる場合: -Z方向（相手コート）
+    let z_direction = match court_side {
+        CourtSide::Player1 => 1.0,
+        CourtSide::Player2 => -1.0,
+    };
+
+    // X軸方向: 入力値をそのまま使用（左右の打ち分け）
+    let x_direction = direction.x;
+
+    // 正規化して返す
+    Vec3::new(x_direction, 0.0, z_direction).normalize()
 }
 
 /// 打球ベクトルを計算
@@ -114,24 +114,36 @@ fn calculate_shot_velocity(horizontal_dir: Vec3, speed: f32, angle_deg: f32) -> 
 mod tests {
     use super::*;
 
-    /// TST-30604-007: 水平方向計算テスト
+    /// TST-30604-007: 水平方向計算テスト（Player1側コート、入力なし）
     #[test]
-    fn test_calculate_horizontal_direction_forward() {
-        // 前方向入力
-        let direction = Vec2::new(0.0, 1.0);
-        let result = calculate_horizontal_direction(direction);
+    fn test_calculate_horizontal_direction_player1_side_no_input() {
+        // Player1側コート: 入力なし -> +Z方向（相手コート）
+        let direction = Vec2::new(0.0, 0.0);
+        let result = calculate_horizontal_direction(direction, CourtSide::Player1);
 
         assert!((result.x - 0.0).abs() < 0.001);
         assert!((result.y - 0.0).abs() < 0.001);
         assert!((result.z - 1.0).abs() < 0.001);
     }
 
-    /// TST-30604-007: 水平方向計算テスト（斜め入力）
+    /// TST-30604-007: 水平方向計算テスト（Player2側コート、入力なし）
     #[test]
-    fn test_calculate_horizontal_direction_diagonal() {
-        // 右前入力
-        let direction = Vec2::new(1.0, 1.0).normalize();
-        let result = calculate_horizontal_direction(direction);
+    fn test_calculate_horizontal_direction_player2_side_no_input() {
+        // Player2側コート: 入力なし -> -Z方向（相手コート）
+        let direction = Vec2::new(0.0, 0.0);
+        let result = calculate_horizontal_direction(direction, CourtSide::Player2);
+
+        assert!((result.x - 0.0).abs() < 0.001);
+        assert!((result.y - 0.0).abs() < 0.001);
+        assert!((result.z - -1.0).abs() < 0.001);
+    }
+
+    /// TST-30604-007: 水平方向計算テスト（Player1側コート、右入力）
+    #[test]
+    fn test_calculate_horizontal_direction_player1_side_right() {
+        // Player1側コート: 右入力 -> 右前方向
+        let direction = Vec2::new(1.0, 0.0);
+        let result = calculate_horizontal_direction(direction, CourtSide::Player1);
 
         let expected = 1.0 / 2.0_f32.sqrt();
         assert!((result.x - expected).abs() < 0.001);
@@ -139,16 +151,17 @@ mod tests {
         assert!((result.z - expected).abs() < 0.001);
     }
 
-    /// TST-30604-007: 水平方向計算テスト（入力なし）
+    /// TST-30604-007: 水平方向計算テスト（Player2側コート、右入力）
     #[test]
-    fn test_calculate_horizontal_direction_no_input() {
-        // 入力なし -> デフォルトで前方向
-        let direction = Vec2::ZERO;
-        let result = calculate_horizontal_direction(direction);
+    fn test_calculate_horizontal_direction_player2_side_right() {
+        // Player2側コート: 右入力 -> 右後方向（-Z）
+        let direction = Vec2::new(1.0, 0.0);
+        let result = calculate_horizontal_direction(direction, CourtSide::Player2);
 
-        assert!((result.x - 0.0).abs() < 0.001);
+        let expected = 1.0 / 2.0_f32.sqrt();
+        assert!((result.x - expected).abs() < 0.001);
         assert!((result.y - 0.0).abs() < 0.001);
-        assert!((result.z - 1.0).abs() < 0.001);
+        assert!((result.z - -expected).abs() < 0.001);
     }
 
     /// TST-30604-008: 通常ショット速度テスト

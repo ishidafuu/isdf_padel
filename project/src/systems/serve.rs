@@ -107,6 +107,7 @@ pub fn serve_execute_system(
     // NOTE: ボール速度は上記で直接設定済み（commands.spawn の遅延適用対策）
     shot_event_writer.write(ShotEvent {
         player_id: server_id,
+        court_side: match_score.server,
         direction,
         jump_height: logical_pos.value.y,
     });
