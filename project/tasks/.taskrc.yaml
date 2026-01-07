@@ -30,3 +30,13 @@ worktree:
   enabled: true  # Enable worktree for game-dev tasks
   base_path: ".."  # Parent directory of repository
   branch_prefix: "auto"  # auto-{pid}-{feature}
+
+# Backlog settings
+backlog:
+  path: "0_backlog"
+  templates:
+    bug: "_bug_template.md"
+  statuses:
+    - unreviewed  # 未精査
+    - reviewed    # 精査済み
+    - tasked      # タスク化済み

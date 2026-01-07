@@ -62,6 +62,12 @@ todo → in-progress → in-review → done
 - タスク検索: `task-operations.md`
 - 状況表示: `task-status.md`
 
+### バグバックログ
+
+バグ発見時の一時記録からタスク化までのフロー。
+
+詳細: [bug-backlog.md](bug-backlog.md)
+
 ---
 
 ## 関連ドキュメント

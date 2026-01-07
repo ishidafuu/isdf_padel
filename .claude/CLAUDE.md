@@ -404,6 +404,7 @@ docs/_deprecated/
 | `.claude/skills/parallel-sessions.md` | 並列セッション実行ガイド | 全エージェント |
 | `.claude/skills/deep-investigation.md` | 技術質問への詳細回答 | 全エージェント（調査時） |
 | `.claude/skills/ntfy-notification.md` | ntfy経由リモート通知 | 全エージェント（フック実行） |
+| `.claude/skills/bug-backlog.md` | バグバックログ管理 | impl-agent, review-agent, task-manager-agent |
 
 **人間向け詳細**: `docs/concepts/tasks.md`（出力例、参考実装、FAQ）
 
