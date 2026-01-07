@@ -238,10 +238,23 @@ pub struct SetWonEvent {
     pub sets_won: u32,
 }
 
-/// マッチ勝利イベント
+/// マッチ勝利イベント（試合終了イベント）
 /// @spec 30701_point_spec.md
+/// @spec 30101_flow_spec.md#req-30101-005
 #[derive(Event, Message, Debug, Clone)]
 pub struct MatchWonEvent {
     /// 勝利したプレイヤー側
     pub winner: super::court::CourtSide,
+}
+
+/// 試合終了イベント（MatchWonEventのエイリアス）
+/// @spec 30101_flow_spec.md#req-30101-005
+pub type MatchEndEvent = MatchWonEvent;
+
+/// 試合開始イベント
+/// @spec 30101_flow_spec.md#req-30101-005
+#[derive(Event, Message, Debug, Clone)]
+pub struct MatchStartEvent {
+    /// サーブ権を持つプレイヤー側
+    pub first_server: super::court::CourtSide,
 }

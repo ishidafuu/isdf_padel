@@ -19,8 +19,8 @@ use systems::{
     knockback_start_system, knockback_timer_system, landing_system, movement_system,
     read_input_system, read_jump_input_system, read_shot_input_system, shot_cooldown_system,
     shot_direction_system, shot_input_system, vertical_movement_system, BallCollisionPlugin,
-    BallTrajectoryPlugin, BoundaryPlugin, JumpInput, MovementInput, PointJudgmentPlugin,
-    ScoringPlugin, ShotInput,
+    BallTrajectoryPlugin, BoundaryPlugin, JumpInput, MatchFlowPlugin, MovementInput,
+    PointJudgmentPlugin, ScoringPlugin, ShotInput,
 };
 
 fn main() {
@@ -42,6 +42,7 @@ fn main() {
         .add_plugins(BallCollisionPlugin)
         .add_plugins(ScoringPlugin)
         .add_plugins(PointJudgmentPlugin)
+        .add_plugins(MatchFlowPlugin)
         .insert_resource(config)
         .init_resource::<MovementInput>()
         .init_resource::<JumpInput>()

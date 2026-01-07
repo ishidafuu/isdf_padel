@@ -2,10 +2,28 @@
 //! @spec 30701_point_spec.md
 //! @spec 30702_game_spec.md
 //! @spec 30703_set_spec.md
+//! @spec 30101_flow_spec.md
 
 use bevy::prelude::*;
 
 use crate::core::CourtSide;
+
+/// 試合フロー状態
+/// @spec 30101_flow_spec.md#MatchStateType
+#[derive(States, Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum MatchFlowState {
+    /// 試合開始
+    #[default]
+    MatchStart,
+    /// サーブ待機
+    Serve,
+    /// ラリー中
+    Rally,
+    /// ポイント終了
+    PointEnd,
+    /// 試合終了
+    MatchEnd,
+}
 
 /// プレイヤーのポイント状態
 /// @spec 30701_point_spec.md#req-30701-001
