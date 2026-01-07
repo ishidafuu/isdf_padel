@@ -175,6 +175,7 @@ mod tests {
             },
             shadow: ShadowConfig::default(),
             shot_attributes: ShotAttributesConfig::default(),
+            ai: AiConfig::default(),
         }
     }
 

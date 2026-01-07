@@ -24,6 +24,8 @@ pub struct GameConfig {
     pub shadow: ShadowConfig,
     #[serde(default)]
     pub shot_attributes: ShotAttributesConfig,
+    #[serde(default)]
+    pub ai: AiConfig,
 }
 
 /// 物理演算パラメータ
@@ -339,6 +341,44 @@ fn default_ball_shadow_y_offset() -> f32 {
 }
 fn default_shadow_z_layer() -> f32 {
     -0.5
+}
+
+/// AIパラメータ
+/// @spec 30301_ai_movement_spec.md
+#[derive(Deserialize, Clone, Debug)]
+pub struct AiConfig {
+    /// AI移動速度（m/s）
+    /// @spec 30301_ai_movement_spec.md#req-30301-001
+    #[serde(default = "default_ai_move_speed")]
+    pub move_speed: f32,
+    /// ホームポジションX座標（m）
+    /// @spec 30301_ai_movement_spec.md#req-30301-005
+    #[serde(default = "default_ai_home_x")]
+    pub home_position_x: f32,
+    /// ホームポジションZ座標（m）
+    /// @spec 30301_ai_movement_spec.md#req-30301-005
+    #[serde(default = "default_ai_home_z")]
+    pub home_position_z: f32,
+}
+
+impl Default for AiConfig {
+    fn default() -> Self {
+        Self {
+            move_speed: default_ai_move_speed(),
+            home_position_x: default_ai_home_x(),
+            home_position_z: default_ai_home_z(),
+        }
+    }
+}
+
+fn default_ai_move_speed() -> f32 {
+    5.0
+}
+fn default_ai_home_x() -> f32 {
+    0.0
+}
+fn default_ai_home_z() -> f32 {
+    5.0 // 2Pコート側中央やや後方
 }
 
 /// ショット属性パラメータ

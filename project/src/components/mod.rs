@@ -43,6 +43,15 @@ pub struct Player {
     pub court_side: CourtSide,
 }
 
+/// AIコントローラーマーカーコンポーネント
+/// @spec 30301_ai_movement_spec.md
+#[derive(Component, Debug, Clone, Copy, Default)]
+pub struct AiController {
+    /// ホームポジション（待機位置）
+    /// @spec 30301_ai_movement_spec.md#req-30301-005
+    pub home_position: Vec3,
+}
+
 /// ボールマーカーコンポーネント
 /// @spec 30401_ball_spec.md
 #[derive(Component, Debug, Clone, Copy, Default)]

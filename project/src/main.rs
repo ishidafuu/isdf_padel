@@ -8,7 +8,7 @@ mod resource;
 mod systems;
 
 use bevy::{asset::AssetPlugin, prelude::*};
-use components::PlayerBundle;
+use components::{AiController, PlayerBundle};
 use core::{
     BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent,
     ShotEvent, ShotExecutedEvent,
@@ -20,12 +20,12 @@ use presentation::{
 use resource::config::{load_game_config, GameConfig, GameConfigHandle, GameConfigLoader};
 use resource::MatchFlowState;
 use systems::{
-    ceiling_collision_system, gravity_system, jump_system, knockback_movement_system,
-    knockback_start_system, knockback_timer_system, landing_system, movement_system,
-    read_input_system, read_jump_input_system, read_shot_input_system, shot_cooldown_system,
-    shot_direction_system, shot_input_system, vertical_movement_system, BallCollisionPlugin,
-    BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin, JumpInput, MatchFlowPlugin,
-    MovementInput, PointJudgmentPlugin, ScoringPlugin, ShotInput,
+    ai_movement_system, ceiling_collision_system, gravity_system, jump_system,
+    knockback_movement_system, knockback_start_system, knockback_timer_system, landing_system,
+    movement_system, read_input_system, read_jump_input_system, read_shot_input_system,
+    shot_cooldown_system, shot_direction_system, shot_input_system, vertical_movement_system,
+    BallCollisionPlugin, BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin, JumpInput,
+    MatchFlowPlugin, MovementInput, PointJudgmentPlugin, ScoringPlugin, ShotInput,
 };
 
 fn main() {
@@ -87,6 +87,9 @@ fn main() {
                 (jump_system, gravity_system, vertical_movement_system).chain(),
                 // 水平移動（ふっとばし中はスキップ）
                 movement_system,
+                // AI移動（AiController を持つプレイヤー）
+                // @spec 30301_ai_movement_spec.md
+                ai_movement_system,
                 // ショット入力処理（Rally状態でのみ動作 - サーブ中は shot_input_system を動かさない）
                 shot_input_system.run_if(in_state(MatchFlowState::Rally)),
                 // 方向計算・クールダウン（常に動作 - サーブの ShotEvent も処理する）
@@ -129,14 +132,23 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
     commands.spawn(PlayerBundle::new(1, player1_pos));
     info!("Player 1 spawned at {:?}", player1_pos);
 
-    // Player 2 をスポーン（2Pコート側: 画面上部）
+    // Player 2 をスポーン（2Pコート側: 画面上部）- AI制御
+    // @spec 30301_ai_movement_spec.md
     let player2_pos = Vec3::new(
         0.0,
         0.0, // 地面
         config.player.z_max - 1.0,
     );
-    commands.spawn(PlayerBundle::new(2, player2_pos));
-    info!("Player 2 spawned at {:?}", player2_pos);
+    let home_position = Vec3::new(
+        config.ai.home_position_x,
+        0.0,
+        config.ai.home_position_z,
+    );
+    commands.spawn((
+        PlayerBundle::new(2, player2_pos),
+        AiController { home_position },
+    ));
+    info!("Player 2 (AI) spawned at {:?}", player2_pos);
 }
 
 /// コートの境界線とネットを描画（横向き：左右の打ち合い）

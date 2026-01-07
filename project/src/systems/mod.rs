@@ -1,6 +1,7 @@
 //! Systems層: ゲームロジックの実装
 //! @spec 20001_layers.md#layer-4-systems
 
+mod ai_movement;
 mod ball_collision;
 mod ball_trajectory;
 mod boundary;
@@ -16,6 +17,7 @@ mod shot_attributes;
 mod shot_direction;
 mod shot_input;
 
+pub use ai_movement::*;
 pub use ball_collision::*;
 pub use ball_trajectory::*;
 pub use boundary::*;
