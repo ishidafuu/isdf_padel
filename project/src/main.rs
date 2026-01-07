@@ -20,7 +20,7 @@ use presentation::{
 use resource::config::{load_game_config, GameConfig, GameConfigHandle, GameConfigLoader};
 use resource::MatchFlowState;
 use systems::{
-    ai_movement_system, ceiling_collision_system, gravity_system, jump_system,
+    ai_movement_system, ai_shot_system, ceiling_collision_system, gravity_system, jump_system,
     knockback_movement_system, knockback_start_system, knockback_timer_system, landing_system,
     movement_system, read_input_system, read_jump_input_system, read_shot_input_system,
     shot_cooldown_system, shot_direction_system, shot_input_system, vertical_movement_system,
@@ -92,6 +92,9 @@ fn main() {
                 ai_movement_system,
                 // ショット入力処理（Rally状態でのみ動作 - サーブ中は shot_input_system を動かさない）
                 shot_input_system.run_if(in_state(MatchFlowState::Rally)),
+                // AIショット処理（Rally状態でのみ動作）
+                // @spec 30302_ai_shot_spec.md
+                ai_shot_system.run_if(in_state(MatchFlowState::Rally)),
                 // 方向計算・クールダウン（常に動作 - サーブの ShotEvent も処理する）
                 (shot_direction_system, shot_cooldown_system),
                 // ふっとばし移動・タイマー

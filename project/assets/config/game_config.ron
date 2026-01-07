@@ -66,4 +66,12 @@ GameConfig(
         ball_y_offset: 0.0,
         z_layer: -0.5,
     ),
+    // @spec 30301_ai_movement_spec.md
+    // @spec 30302_ai_shot_spec.md
+    ai: AiConfig(
+        move_speed: 5.0,
+        home_position_x: 0.0,
+        home_position_z: 5.0,
+        shot_cooldown: 0.5,
+    ),
 )

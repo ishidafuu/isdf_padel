@@ -345,6 +345,7 @@ fn default_shadow_z_layer() -> f32 {
 
 /// AIパラメータ
 /// @spec 30301_ai_movement_spec.md
+/// @spec 30302_ai_shot_spec.md
 #[derive(Deserialize, Clone, Debug)]
 pub struct AiConfig {
     /// AI移動速度（m/s）
@@ -359,6 +360,11 @@ pub struct AiConfig {
     /// @spec 30301_ai_movement_spec.md#req-30301-005
     #[serde(default = "default_ai_home_z")]
     pub home_position_z: f32,
+    /// AIショットクールダウン（秒）
+    /// @spec 30302_ai_shot_spec.md#req-30302-002
+    /// @spec 30302_ai_shot_spec.md#req-30302-004
+    #[serde(default = "default_ai_shot_cooldown")]
+    pub shot_cooldown: f32,
 }
 
 impl Default for AiConfig {
@@ -367,6 +373,7 @@ impl Default for AiConfig {
             move_speed: default_ai_move_speed(),
             home_position_x: default_ai_home_x(),
             home_position_z: default_ai_home_z(),
+            shot_cooldown: default_ai_shot_cooldown(),
         }
     }
 }
@@ -379,6 +386,10 @@ fn default_ai_home_x() -> f32 {
 }
 fn default_ai_home_z() -> f32 {
     5.0 // 2Pコート側中央やや後方
+}
+/// @spec 30302_ai_shot_spec.md#req-30302-002
+fn default_ai_shot_cooldown() -> f32 {
+    0.5 // デフォルト: 0.5秒
 }
 
 /// ショット属性パラメータ
