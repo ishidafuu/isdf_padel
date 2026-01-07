@@ -11,7 +11,7 @@
 ```
 spec-driven-framework/          (リポジトリルート)
 ├── .claude/                    # フレームワーク定義（共有）
-│   ├── agents/                 # エージェント定義（19種）
+│   ├── agents/                 # エージェント定義（20種）
 │   ├── commands/               # スラッシュコマンド
 │   └── skills/                 # スキルファイル
 ├── docs/                       # フレームワークドキュメント
@@ -213,6 +213,7 @@ git add（タスクファイルも追加）
 | タスク管理 | 📝 task-registration-agent, 🗂️ task-manager-agent |
 | 実装 | 💻 impl-agent → ✅ review-agent |
 | 横断 | 🏛️ architecture-agent, 🔗 deps-agent, 📊 data-agent, ♻️ refactor-agent |
+| 監査 | 🔍 audit-agent |
 | 並列セッション管理 | 🎯 session-manager-agent |
 | 参照資料 | 🔬 legacy-analyzer-agent, 🎮 game-reference-agent |
 
@@ -405,6 +406,7 @@ docs/_deprecated/
 | `.claude/skills/deep-investigation.md` | 技術質問への詳細回答 | 全エージェント（調査時） |
 | `.claude/skills/ntfy-notification.md` | ntfy経由リモート通知 | 全エージェント（フック実行） |
 | `.claude/skills/bug-backlog.md` | バグバックログ管理 | impl-agent, review-agent, task-manager-agent |
+| `.claude/skills/code-audit.md` | コード監査手順・チェック項目 | audit-agent |
 
 **人間向け詳細**: `docs/concepts/tasks.md`（出力例、参考実装、FAQ）
 
