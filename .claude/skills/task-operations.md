@@ -345,6 +345,97 @@ git worktree list
 
 ---
 
+## 次タスク判定
+
+**対象**: `project/tasks/` のタスク（30XXX/B30XXX/R30XXX/PXXX）のみ
+
+### 着手可能判定（isReady）
+
+タスクが着手可能（READY）かを判定:
+
+```
+isReady(task):
+  IF task.blocked_by が空:
+    RETURN true
+
+  FOR EACH dep_id IN task.blocked_by:
+    dep_task = findTaskById(dep_id)
+    IF dep_task が存在しない OR dep_task.status != "done":
+      RETURN false
+
+  RETURN true
+```
+
+**判定条件**:
+- `blocked_by` が空 → READY
+- `blocked_by` の全タスクが `4_archive/` に存在し、かつ `status: "done"` → READY
+- それ以外 → NOT READY
+
+### 並列実行可能判定（canParallel）
+
+READYタスクが進行中タスクと並列実行可能かを判定:
+
+```
+canParallel(readyTask, inProgressTasks):
+  FOR EACH ipTask IN inProgressTasks:
+    # 相互依存チェック
+    IF readyTask.id IN ipTask.blocked_by:
+      RETURN { can: false, reason: "{ipTask.id} が待機中" }
+
+    IF ipTask.id IN readyTask.blocked_by:
+      RETURN { can: false, reason: "{ipTask.id} 完了待ち" }
+
+    IF readyTask.id IN ipTask.blocks:
+      RETURN { can: false, reason: "{ipTask.id} と相互依存" }
+
+    IF ipTask.id IN readyTask.blocks:
+      RETURN { can: false, reason: "{ipTask.id} と相互依存" }
+
+  RETURN { can: true }
+```
+
+### ソート順
+
+着手可能タスクのソート優先度:
+
+```
+sortReadyTasks(tasks):
+  1. priority: high(0) > medium(1) > low(2)
+  2. blocks.length: 多い順（ブロック解除インパクト大）
+  3. id: 小さい順（数値として比較）
+```
+
+**ソート例**:
+```
+入力:
+  - 30013 (medium, blocks: [30014, 30016, 30018, 30021])
+  - 30012 (high, blocks: [])
+  - 30015 (medium, blocks: [30020])
+
+出力:
+  1. 30012 (high, blocks: 0件)    # priority が最優先
+  2. 30013 (medium, blocks: 4件)  # blocks.length が多い
+  3. 30015 (medium, blocks: 1件)  # blocks.length が少ない
+```
+
+### 推奨タスク選定
+
+```
+getRecommendedTask(readyTasks):
+  # ソート済みの先頭タスクを推奨
+  recommended = readyTasks[0]
+
+  # 推奨理由を生成
+  IF recommended.blocks.length > 0:
+    reason = "{recommended.id}を先に実装すると{blocks.length}タスクが着手可能になります"
+  ELSE:
+    reason = "{recommended.id}は優先度が高いタスクです"
+
+  RETURN { task: recommended, reason: reason }
+```
+
+---
+
 ## 関連ドキュメント
 
 - `skills/task-lifecycle.md` - タスク状態遷移、親子タスク
