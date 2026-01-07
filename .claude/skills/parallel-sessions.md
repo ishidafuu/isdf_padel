@@ -176,6 +176,38 @@ impl-agent: （通常通り実装、独立したディレクトリで作業）
 - ビルド成果物の競合なし
 - 各エージェントは通常通り作業するだけ
 
+### 絶対パス方式（推奨）
+
+worktree作業時は、**cdで移動せず絶対パスで操作する**ことを推奨します。
+
+**理由**:
+- cwdを維持でき、どのディレクトリで作業しているか混乱しない
+- メインリポジトリ側のファイルにも即座にアクセス可能
+- シェルスクリプトやツールがパスの一貫性を保てる
+
+```bash
+# 推奨: 絶対パスで操作（cwdを維持）
+WORKTREE_PATH="../spec-driven-framework-player"
+
+# cargo: --manifest-path または -C オプション
+cargo build --manifest-path ${WORKTREE_PATH}/project/Cargo.toml
+cargo run -C ${WORKTREE_PATH}/project
+
+# git: -C オプション
+git -C ${WORKTREE_PATH} status
+git -C ${WORKTREE_PATH} add .
+git -C ${WORKTREE_PATH} commit -m "feat: ..."
+
+# ファイル操作
+cat ${WORKTREE_PATH}/project/src/main.rs
+```
+
+```bash
+# 非推奨: cd による移動
+cd ../spec-driven-framework-player && cargo build
+# → cwdが変わり、他のファイルへのアクセスが面倒になる
+```
+
 ### Step 3: セッション状態確認（任意）
 
 ```
@@ -333,6 +365,11 @@ Session C: 303_stage
 
 4. **仕様書は事前に完成させる**
    - 午前に順次作成 → 午後に並列実装
+
+5. **絶対パス方式で操作する**
+   - cwdを維持し、混乱を防ぐ
+   - `cargo build --manifest-path /path/to/worktree/project/Cargo.toml`
+   - `git -C /path/to/worktree status`
 
 ### ❌ 避けるべき
 

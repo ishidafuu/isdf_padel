@@ -51,7 +51,26 @@ git worktree add ../spec-driven-framework-enemy -b auto-{PID}-enemy
 git worktree add ../spec-driven-framework-stage -b auto-{PID}-stage
 ```
 
-### 4. ID範囲予約
+### 4. target/ シンボリックリンク作成（CRITICAL）
+
+**必須**: worktree作成直後に、ビルドキャッシュを共有するためのシンボリックリンクを作成します。
+
+```bash
+# 各worktreeに対してtargetリンクを作成
+ln -s $(pwd)/project/target ../spec-driven-framework-player/project/target
+ln -s $(pwd)/project/target ../spec-driven-framework-enemy/project/target
+ln -s $(pwd)/project/target ../spec-driven-framework-stage/project/target
+```
+
+**チェックリスト**:
+- [ ] 各worktreeの `project/target` にシンボリックリンクが存在する
+- [ ] `ls -la ${WORKTREE_PATH}/project/target` でリンク先がメインリポジトリを指している
+
+**作成漏れの影響**:
+- フルビルドが発生（約3分のロス）
+- 各worktreeで独立したビルドキャッシュが生成され、ディスク容量を浪費
+
+### 5. ID範囲予約
 
 ```bash
 # 各セッションにID範囲を予約（50個ずつ）
@@ -60,7 +79,7 @@ git worktree add ../spec-driven-framework-stage -b auto-{PID}-stage
 /id-reserve REQ-30301 001-050  # stage
 ```
 
-### 5. セッション情報記録
+### 6. セッション情報記録
 
 `.session-locks.yml` に記録:
 
