@@ -4,6 +4,7 @@
 mod ball_collision;
 mod ball_trajectory;
 mod boundary;
+mod fault_judgment;
 mod jump;
 mod knockback;
 mod match_flow;
@@ -17,6 +18,7 @@ mod shot_input;
 pub use ball_collision::*;
 pub use ball_trajectory::*;
 pub use boundary::*;
+pub use fault_judgment::*;
 pub use jump::*;
 pub use knockback::*;
 pub use match_flow::*;

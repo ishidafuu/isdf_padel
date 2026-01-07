@@ -52,6 +52,10 @@ pub struct CourtConfig {
     pub net_height: f32,
     #[serde(default = "default_net_z")]
     pub net_z: f32,
+    /// サービスボックスの奥行き（ネットからの距離）
+    /// @spec 30902_fault_spec.md#req-30902-001
+    #[serde(default = "default_service_box_depth")]
+    pub service_box_depth: f32,
 }
 
 fn default_court_width() -> f32 {
@@ -71,6 +75,9 @@ fn default_net_height() -> f32 {
 }
 fn default_net_z() -> f32 {
     0.0
+}
+fn default_service_box_depth() -> f32 {
+    1.5
 }
 
 /// プレイヤー移動パラメータ

@@ -199,6 +199,7 @@ pub struct RallyEndEvent {
 /// ラリー終了理由
 /// @spec 30701_point_spec.md
 /// @spec 30103_point_end_spec.md
+/// @spec 30902_fault_spec.md
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RallyEndReason {
     /// ツーバウンド
@@ -212,6 +213,9 @@ pub enum RallyEndReason {
     /// 自コート打球（打った打球が自コートに落ちた）
     /// @spec 30103_point_end_spec.md#req-30103-003
     OwnCourtHit,
+    /// ダブルフォルト（サーブを2回連続でミス）
+    /// @spec 30902_fault_spec.md#req-30902-002
+    DoubleFault,
 }
 
 /// ポイント獲得イベント
@@ -263,4 +267,35 @@ pub type MatchEndEvent = MatchWonEvent;
 pub struct MatchStartEvent {
     /// サーブ権を持つプレイヤー側
     pub first_server: super::court::CourtSide,
+}
+
+/// フォールトイベント
+/// @spec 30902_fault_spec.md#req-30902-001
+/// @spec 30902_fault_spec.md#req-30902-003
+#[derive(Event, Message, Debug, Clone)]
+pub struct FaultEvent {
+    /// サーバー側
+    pub server: super::court::CourtSide,
+    /// 現在のフォールトカウント（このフォールト後の値）
+    pub fault_count: u32,
+    /// フォールト理由
+    pub reason: FaultReason,
+}
+
+/// フォールト理由
+/// @spec 30902_fault_spec.md#req-30902-001
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FaultReason {
+    /// サービスボックス外への着地
+    OutOfServiceBox,
+    /// ネットフォールト（サーブがネットに当たりサービスボックスに入らなかった）
+    NetFault,
+}
+
+/// ダブルフォールトイベント
+/// @spec 30902_fault_spec.md#req-30902-002
+#[derive(Event, Message, Debug, Clone)]
+pub struct DoubleFaultEvent {
+    /// サーバー側（失点するプレイヤー）
+    pub server: super::court::CourtSide,
 }

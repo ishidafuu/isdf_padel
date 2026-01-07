@@ -79,10 +79,13 @@ fn match_start_system(
     info!("Match started! First server: Player1. State: Serve");
 }
 
-/// サーブからラリーへの遷移システム
+/// サーブ実行検知システム
 /// @spec 30101_flow_spec.md#req-30101-002
+/// @spec 30902_fault_spec.md
+///
+/// ShotEventを受信してServingフェーズに遷移する。
+/// ラリーへの遷移はサービスボックス判定後に行う。
 fn serve_to_rally_system(
-    mut next_state: ResMut<NextState<MatchFlowState>>,
     mut shot_events: MessageReader<ShotEvent>,
     match_score: Res<MatchScore>,
     mut rally_state: ResMut<RallyState>,
@@ -96,12 +99,10 @@ fn serve_to_rally_system(
         };
 
         if event.player_id == server_id {
-            // @spec 30101_flow_spec.md#req-30101-002: MatchState を Rally に遷移する
+            // @spec 30902_fault_spec.md: Servingフェーズに遷移（サービスボックス判定待ち）
             rally_state.start_serve();
-            rally_state.start_rally();
-            next_state.set(MatchFlowState::Rally);
             info!(
-                "Serve executed by Player{}. State: Serve -> Rally",
+                "Serve executed by Player{}. Phase: WaitingServe -> Serving",
                 event.player_id
             );
         }

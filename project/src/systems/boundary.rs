@@ -212,6 +212,7 @@ mod tests {
                 max_jump_height: 5.0,
                 net_height: 1.0,
                 net_z: 0.0,
+                service_box_depth: 1.5,
             },
             player: PlayerConfig {
                 move_speed: 5.0,
