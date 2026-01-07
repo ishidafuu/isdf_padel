@@ -1,6 +1,7 @@
 //! スコアリングシステム
 //! @spec 30701_point_spec.md
 //! @spec 30702_game_spec.md
+//! @spec 30703_set_spec.md
 
 use bevy::prelude::*;
 
@@ -83,8 +84,9 @@ pub fn rally_end_system(
             });
 
             // セット勝利判定
-            // @spec 30702_game_spec.md#req-30702-003
+            // @spec 30703_set_spec.md#req-30703-002
             if match_score.check_set_win(scorer, config.scoring.games_to_win_set) {
+                // @spec 30703_set_spec.md#req-30703-002
                 match_score.win_set(scorer);
 
                 let sets_won = match scorer {
@@ -103,6 +105,7 @@ pub fn rally_end_system(
                 });
 
                 // マッチ勝利判定
+                // @spec 30703_set_spec.md#req-30703-003
                 if match_score.check_match_win(scorer, config.scoring.sets_to_win_match) {
                     match_score.game_state = GameState::MatchWon(scorer);
 
@@ -415,5 +418,72 @@ mod tests {
         // ゲームカウントがリセットされ、セット数が増加
         assert_eq!(match_score.player1_score.games, 0);
         assert_eq!(match_score.player1_score.sets, 1);
+    }
+
+    // ========================================
+    // 30703: セットカウント管理テスト
+    // ========================================
+
+    /// TST-30707-001: セットカウント初期化テスト
+    /// @spec 30703_set_spec.md#req-30703-001
+    #[test]
+    fn test_set_count_initialization() {
+        let match_score = MatchScore::new();
+        // @spec 30703_set_spec.md#req-30703-001: 両プレイヤーのセットカウントを0に初期化
+        assert_eq!(match_score.player1_score.sets, 0);
+        assert_eq!(match_score.player2_score.sets, 0);
+    }
+
+    /// TST-30707-002: セットカウント加算テスト
+    /// @spec 30703_set_spec.md#req-30703-002
+    #[test]
+    fn test_set_count_increment() {
+        let mut match_score = MatchScore::new();
+
+        // Player1がセットを獲得
+        match_score.win_set(CourtSide::Player1);
+        assert_eq!(match_score.player1_score.sets, 1);
+        assert_eq!(match_score.player2_score.sets, 0);
+
+        // Player2がセットを獲得
+        match_score.win_set(CourtSide::Player2);
+        assert_eq!(match_score.player1_score.sets, 1);
+        assert_eq!(match_score.player2_score.sets, 1);
+    }
+
+    /// TST-30707-003: マッチ勝利判定テスト（1セット制）
+    /// @spec 30703_set_spec.md#req-30703-003
+    #[test]
+    fn test_match_win_one_set() {
+        let mut match_score = MatchScore::new();
+        let sets_to_win = 1; // 1セット制
+
+        // セット獲得前は勝利ではない
+        assert!(!match_score.check_match_win(CourtSide::Player1, sets_to_win));
+
+        // Player1がセットを獲得
+        match_score.win_set(CourtSide::Player1);
+
+        // 1セット獲得でマッチ勝利
+        assert!(match_score.check_match_win(CourtSide::Player1, sets_to_win));
+        // 相手はまだ勝利ではない
+        assert!(!match_score.check_match_win(CourtSide::Player2, sets_to_win));
+    }
+
+    /// TST-30707-004: セットカウント表示テスト
+    /// @spec 30703_set_spec.md#req-30703-004
+    #[test]
+    fn test_set_count_display() {
+        let mut match_score = MatchScore::new();
+
+        // 初期状態: 0-0
+        assert_eq!(match_score.player1_score.sets, 0);
+        assert_eq!(match_score.player2_score.sets, 0);
+
+        // セット獲得後
+        match_score.win_set(CourtSide::Player1);
+        // 表示: "1" - "0"
+        assert_eq!(match_score.player1_score.sets, 1);
+        assert_eq!(match_score.player2_score.sets, 0);
     }
 }

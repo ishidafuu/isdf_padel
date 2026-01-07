@@ -1,6 +1,7 @@
 //! スコアリングリソース
 //! @spec 30701_point_spec.md
 //! @spec 30702_game_spec.md
+//! @spec 30703_set_spec.md
 
 use bevy::prelude::*;
 
@@ -49,6 +50,7 @@ impl PlayerGameScore {
     }
 
     /// セットを獲得（ゲーム数リセット）
+    /// @spec 30703_set_spec.md#req-30703-002
     #[inline]
     pub fn win_set(&mut self) {
         self.sets += 1;
@@ -158,8 +160,8 @@ impl MatchScore {
         self.server = self.server.opponent();
     }
 
-    /// セット獲得判定
-    /// @spec 30702_game_spec.md#req-30702-003
+    /// セット獲得判定（6ゲーム先取でセット獲得）
+    /// @spec 30703_set_spec.md#req-30703-002
     pub fn check_set_win(&self, winner: CourtSide, games_to_win: u32) -> bool {
         let games = match winner {
             CourtSide::Player1 => self.player1_score.games,
@@ -169,6 +171,7 @@ impl MatchScore {
     }
 
     /// セット獲得処理
+    /// @spec 30703_set_spec.md#req-30703-002
     pub fn win_set(&mut self, winner: CourtSide) {
         match winner {
             CourtSide::Player1 => self.player1_score.win_set(),
@@ -176,7 +179,8 @@ impl MatchScore {
         }
     }
 
-    /// マッチ勝利判定
+    /// マッチ勝利判定（1セット制: 1セット先取でマッチ勝利）
+    /// @spec 30703_set_spec.md#req-30703-003
     pub fn check_match_win(&self, winner: CourtSide, sets_to_win: u32) -> bool {
         let sets = match winner {
             CourtSide::Player1 => self.player1_score.sets,
