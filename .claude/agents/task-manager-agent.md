@@ -318,11 +318,21 @@ task-manager-agent（MAIN側で実行）:
 >
 > タスクファイルの更新は実装のスカッシュマージと同じコミットに含める。
 
+> **CRITICAL: game-dev タスクは in-review 経由必須**
+>
+> game-dev タスク（30XXX/B30XXX/R30XXX）の完了は必ず `3_in-review/` からのみ可能。
+> `2_in-progress/` から直接完了しようとした場合はエラーを表示して中断する。
+
 ```
 ユーザー: 「タスク 30101 が完了した」
   ↓
 task-manager-agent:
   【game-devタスクの場合】
+  0. 前提条件チェック（CRITICAL）
+     - タスクファイルが `3_in-review/` にあるか確認
+     - `2_in-progress/` にある場合:
+       → エラー: "game-dev タスクは in-review を経由する必要があります"
+       → 処理中断、impl-agent によるレビュー申請を促す
   1. mainに切り替え、最新化
   2. スカッシュマージ（コミットせず）
   3. タスクファイル更新（status, completed_at, archive移動）
@@ -332,6 +342,7 @@ task-manager-agent:
   7. push、完了報告
 
   【その他タスクの場合（framework/project-wide）】
+  > NOTE: FXXX/PXXX は in-review 経由不要、直接完了可能
   > CRITICAL: 1タスク=1コミットを実現する
   1. タスクファイル読み込み
   2. status を "done" に更新

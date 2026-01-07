@@ -113,6 +113,33 @@ Edit(updated_at: "旧タイムスタンプ" -> "新タイムスタンプ")
 
 ### 4. タスク完了
 
+#### 前提条件チェック（game-dev のみ）（CRITICAL）
+
+**game-dev タスク（30XXX/B30XXX/R30XXX）は in-review 経由必須**
+
+```bash
+# タスクファイルの場所を確認
+TASK_FILE=$(find project/tasks -name "30XXX-*.md" 2>/dev/null)
+
+# in-review にあるか確認
+if [[ "${TASK_FILE}" == *"3_in-review"* ]]; then
+  echo "OK: タスクは in-review にあります。完了処理を続行します。"
+else
+  echo "ERROR: game-dev タスクは in-review を経由する必要があります。"
+  echo "impl-agent による実装完了 → in-review 移動を先に行ってください。"
+  exit 1  # 処理中断
+fi
+```
+
+> **チェック対象**:
+> - `30XXX-*.md` (game-dev)
+> - `B30XXX-*.md` (バグ修正)
+> - `R30XXX-*.md` (リファクタ)
+>
+> **チェック対象外** (in-review 経由不要):
+> - `FXXX-*.md` (framework)
+> - `PXXX-*.md` (project-wide)
+
 #### game-dev タスク（worktreeあり）
 
 > **CRITICAL: 実装コミットにタスク完了を含める**
@@ -120,7 +147,13 @@ Edit(updated_at: "旧タイムスタンプ" -> "新タイムスタンプ")
 > タスクファイルの更新（status, completed_at）は実装のスカッシュマージと同じコミットに含める。
 > 別コミット（`chore: タスク完了`）は作成しない。
 
+> **CRITICAL: 前提条件チェックを必ず通過すること**
+>
+> 上記の前提条件チェックが通過していない場合、完了処理を開始しないこと。
+
 ```bash
+# 0. 前提条件チェック（上記参照）- タスクが 3_in-review/ にあることを確認
+
 # 1. mainリポジトリに戻り、mainを最新化
 cd /path/to/main/repository
 git checkout main
@@ -160,19 +193,24 @@ git push origin main
 
 #### project-wide / framework タスク（worktreeなし）
 
+> **NOTE: in-review 経由不要 - 直接完了可能**
+>
+> FXXX/PXXX タスクは前提条件チェック（in-review 確認）をスキップし、
+> `2_in-progress/` から直接 `4_archive/` に移動して完了できる。
+
 > **CRITICAL: 1タスク=1コミットを実現する**
 >
 > 実装ファイルとタスクDONE処理を同じコミットにまとめる。
 > 実装中はステージングのみ（`git add`）、コミットはタスク完了時にまとめて行う。
 
 ```bash
-# 1. ファイルを archive/ に移動
-mv project/tasks/3_in-review/P001-*.md project/tasks/4_archive/
+# 1. ファイルを archive/ に移動（in-progress から直接）
+mv project/tasks/2_in-progress/P001-*.md project/tasks/4_archive/
 # または framework の場合:
-mv tasks/3_in-review/F001-*.md tasks/4_archive/
+mv tasks/2_in-progress/F001-*.md tasks/4_archive/
 
 # 2. status と completed_at を更新
-Edit(status: "in-review" -> "done")
+Edit(status: "in-progress" -> "done")
 Edit(completed_at: null -> "2025-12-29T16:00:00+09:00")
 
 # 3. 実装ファイル + タスクファイルをステージング
