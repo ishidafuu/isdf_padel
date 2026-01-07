@@ -174,6 +174,7 @@ mod tests {
                 shot_buffer_time: 0.05,
             },
             shadow: ShadowConfig::default(),
+            shot_attributes: ShotAttributesConfig::default(),
         }
     }
 

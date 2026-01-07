@@ -12,6 +12,7 @@ mod movement;
 mod point_judgment;
 mod scoring;
 mod serve;
+mod shot_attributes;
 mod shot_direction;
 mod shot_input;
 
@@ -26,5 +27,6 @@ pub use movement::*;
 pub use point_judgment::*;
 pub use scoring::*;
 pub use serve::*;
+pub use shot_attributes::*;
 pub use shot_direction::*;
 pub use shot_input::*;
