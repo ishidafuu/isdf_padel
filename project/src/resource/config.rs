@@ -270,6 +270,30 @@ fn default_shot_buffer_time() -> f32 {
     0.05
 }
 
+/// サーブサイド
+/// @spec 30903_serve_authority_spec.md#req-30903-003
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Deserialize)]
+pub enum ServeSide {
+    /// デュースサイド（右側）- ポイント合計が偶数
+    #[default]
+    Deuce,
+    /// アドバンテージサイド（左側）- ポイント合計が奇数
+    Ad,
+}
+
+impl ServeSide {
+    /// ポイント合計からサーブサイドを判定
+    /// @spec 30903_serve_authority_spec.md#req-30903-003
+    #[inline]
+    pub fn from_point_total(total: usize) -> Self {
+        if total % 2 == 0 {
+            ServeSide::Deuce
+        } else {
+            ServeSide::Ad
+        }
+    }
+}
+
 /// RONファイルからGameConfigをロード
 pub fn load_game_config(path: &str) -> Result<GameConfig, String> {
     let config_str =

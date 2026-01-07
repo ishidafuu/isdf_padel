@@ -2,13 +2,14 @@
 //! @spec 30701_point_spec.md
 //! @spec 30702_game_spec.md
 //! @spec 30703_set_spec.md
+//! @spec 30903_serve_authority_spec.md
 
 use bevy::prelude::*;
 
 use crate::core::{
     CourtSide, GameWonEvent, MatchWonEvent, PointScoredEvent, RallyEndEvent, SetWonEvent,
 };
-use crate::resource::{GameConfig, GameState, MatchScore};
+use crate::resource::{GameConfig, GameState, MatchScore, RallyState, ServeSide};
 
 /// スコアリングプラグイン
 /// @spec 30701_point_spec.md
@@ -36,6 +37,8 @@ impl Plugin for ScoringPlugin {
 
 /// ラリー終了イベントを処理してポイントを加算
 /// @spec 30701_point_spec.md#req-30701-002
+/// @spec 30903_serve_authority_spec.md#req-30903-002
+/// @spec 30903_serve_authority_spec.md#req-30903-003
 pub fn rally_end_system(
     mut rally_events: MessageReader<RallyEndEvent>,
     mut point_events: MessageWriter<PointScoredEvent>,
@@ -43,6 +46,7 @@ pub fn rally_end_system(
     mut set_events: MessageWriter<SetWonEvent>,
     mut match_events: MessageWriter<MatchWonEvent>,
     mut match_score: ResMut<MatchScore>,
+    mut rally_state: ResMut<RallyState>,
     config: Res<GameConfig>,
 ) {
     for event in rally_events.read() {
@@ -82,6 +86,9 @@ pub fn rally_end_system(
                 winner: scorer,
                 games_won,
             });
+
+            // @spec 30903_serve_authority_spec.md#req-30903-002: ゲーム終了時はデュースサイドから開始
+            rally_state.serve_side = ServeSide::Deuce;
 
             // セット勝利判定
             // @spec 30703_set_spec.md#req-30703-002
@@ -133,6 +140,17 @@ pub fn rally_end_system(
                 scorer,
                 new_point_value,
             });
+
+            // @spec 30903_serve_authority_spec.md#req-30903-003: サーブサイドを更新
+            let server_points = match_score.get_point_index(match_score.server);
+            let receiver_points = match_score.get_point_index(match_score.server.opponent());
+            rally_state.update_serve_side(server_points, receiver_points);
+
+            info!(
+                "Serve side: {:?} (total: {})",
+                rally_state.serve_side,
+                server_points + receiver_points
+            );
         }
     }
 }

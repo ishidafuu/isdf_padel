@@ -3,10 +3,12 @@
 //! @spec 30702_game_spec.md
 //! @spec 30703_set_spec.md
 //! @spec 30101_flow_spec.md
+//! @spec 30903_serve_authority_spec.md
 
 use bevy::prelude::*;
 
 use crate::core::CourtSide;
+use crate::resource::config::ServeSide;
 
 /// 試合フロー状態
 /// @spec 30101_flow_spec.md#MatchStateType
@@ -236,12 +238,16 @@ pub enum RallyPhase {
 
 /// ラリー状態リソース
 /// @spec 30901_point_judgment_spec.md
+/// @spec 30903_serve_authority_spec.md
 #[derive(Resource, Debug, Clone)]
 pub struct RallyState {
     /// 現在のラリーフェーズ
     pub phase: RallyPhase,
     /// 現在のサーバー
     pub server: CourtSide,
+    /// 現在のサーブサイド
+    /// @spec 30903_serve_authority_spec.md#req-30903-003
+    pub serve_side: ServeSide,
     /// サーブのファウル回数（0 or 1）
     pub fault_count: u32,
 }
@@ -251,6 +257,7 @@ impl Default for RallyState {
         Self {
             phase: RallyPhase::WaitingServe,
             server: CourtSide::Player1,
+            serve_side: ServeSide::Deuce,
             fault_count: 0,
         }
     }
@@ -258,12 +265,21 @@ impl Default for RallyState {
 
 impl RallyState {
     /// 新規ラリー状態を作成
+    /// @spec 30903_serve_authority_spec.md#req-30903-001
     pub fn new(server: CourtSide) -> Self {
         Self {
             phase: RallyPhase::WaitingServe,
             server,
+            serve_side: ServeSide::Deuce,
             fault_count: 0,
         }
+    }
+
+    /// サーブサイドを更新（ポイント合計から判定）
+    /// @spec 30903_serve_authority_spec.md#req-30903-003
+    pub fn update_serve_side(&mut self, server_points: usize, receiver_points: usize) {
+        let total = server_points + receiver_points;
+        self.serve_side = ServeSide::from_point_total(total);
     }
 
     /// サーブ開始
@@ -295,5 +311,87 @@ impl RallyState {
     /// ダブルフォルトか判定
     pub fn is_double_fault(&self) -> bool {
         self.fault_count >= 2
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ========================================
+    // 30903: サーブ権管理テスト
+    // ========================================
+
+    /// TST-30904-020: サーブ権初期化テスト
+    /// @spec 30903_serve_authority_spec.md#req-30903-001
+    #[test]
+    fn test_req_30903_001_serve_authority_init() {
+        let rally_state = RallyState::new(CourtSide::Player1);
+
+        // 初期サーバーはPlayer1
+        assert_eq!(rally_state.server, CourtSide::Player1);
+        // 初期サーブサイドはデュース
+        assert_eq!(rally_state.serve_side, ServeSide::Deuce);
+    }
+
+    /// TST-30904-021: サーブ権交代テスト（ゲーム終了時）
+    /// @spec 30903_serve_authority_spec.md#req-30903-002
+    #[test]
+    fn test_req_30903_002_server_switch_on_game_end() {
+        let mut match_score = MatchScore::new();
+
+        // 初期サーバーはPlayer1
+        assert_eq!(match_score.server, CourtSide::Player1);
+
+        // ゲーム獲得後はPlayer2がサーバー
+        match_score.win_game(CourtSide::Player1);
+        assert_eq!(match_score.server, CourtSide::Player2);
+
+        // 次のゲーム後はPlayer1がサーバー
+        match_score.win_game(CourtSide::Player2);
+        assert_eq!(match_score.server, CourtSide::Player1);
+    }
+
+    /// TST-30904-022: デュースサイド/アドサイド判定テスト
+    /// @spec 30903_serve_authority_spec.md#req-30903-003
+    #[test]
+    fn test_req_30903_003_serve_side_determination() {
+        // ポイント合計0（偶数）→ デュースサイド
+        assert_eq!(ServeSide::from_point_total(0), ServeSide::Deuce);
+
+        // ポイント合計1（奇数）→ アドサイド
+        assert_eq!(ServeSide::from_point_total(1), ServeSide::Ad);
+
+        // ポイント合計2（偶数）→ デュースサイド
+        assert_eq!(ServeSide::from_point_total(2), ServeSide::Deuce);
+
+        // ポイント合計3（奇数）→ アドサイド
+        assert_eq!(ServeSide::from_point_total(3), ServeSide::Ad);
+    }
+
+    /// TST-30904-023: RallyStateサーブサイド更新テスト
+    /// @spec 30903_serve_authority_spec.md#req-30903-003
+    #[test]
+    fn test_rally_state_update_serve_side() {
+        let mut rally_state = RallyState::new(CourtSide::Player1);
+
+        // 初期状態: 0-0 → デュース
+        assert_eq!(rally_state.serve_side, ServeSide::Deuce);
+
+        // サーバー1ポイント: 1-0 → アド（合計1）
+        rally_state.update_serve_side(1, 0);
+        assert_eq!(rally_state.serve_side, ServeSide::Ad);
+
+        // レシーバー1ポイント: 1-1 → デュース（合計2）
+        rally_state.update_serve_side(1, 1);
+        assert_eq!(rally_state.serve_side, ServeSide::Deuce);
+
+        // サーバー2ポイント: 2-1 → アド（合計3）
+        rally_state.update_serve_side(2, 1);
+        assert_eq!(rally_state.serve_side, ServeSide::Ad);
+
+        // サーバー3ポイント: 3-1 → デュース（合計4）
+        rally_state.update_serve_side(3, 1);
+        assert_eq!(rally_state.serve_side, ServeSide::Deuce);
     }
 }
