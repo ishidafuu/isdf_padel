@@ -2,14 +2,14 @@
 //! @spec 30102_serve_spec.md
 //!
 //! Serve状態でサーバーがショット入力をするとボールを生成しShotEventを発行する。
-//! ボールの速度設定は shot_direction_system が担当し、
+//! ボールの速度はサーブ実行時に直接設定する（commands.spawn() の遅延適用対策）。
 //! Rally状態への遷移は serve_to_rally_system が担当する。
 
 use bevy::prelude::*;
 
 use crate::components::{Ball, BallBundle, LogicalPosition, Player};
 use crate::core::{CourtSide, ShotEvent};
-use crate::resource::MatchScore;
+use crate::resource::{GameConfig, MatchScore};
 use crate::systems::{MovementInput, ShotInput};
 
 /// サーブ実行システム
@@ -19,6 +19,7 @@ use crate::systems::{MovementInput, ShotInput};
 /// Serve状態でサーバーがBボタンを押すとボールを生成しShotEventを発行する。
 pub fn serve_execute_system(
     mut commands: Commands,
+    config: Res<GameConfig>,
     shot_input: Res<ShotInput>,
     match_score: Res<MatchScore>,
     movement_input: Res<MovementInput>,
@@ -54,21 +55,6 @@ pub fn serve_execute_system(
         return;
     };
 
-    // @spec 30102_serve_spec.md#req-30102-002: ボールを生成（プレイヤーの足元 + (0, 0.5, 0)）
-    let ball_pos = logical_pos.value + Vec3::new(0.0, 0.5, 0.0);
-    let ball_velocity = Vec3::ZERO; // 初期速度は0、shot_direction_systemで設定される
-
-    // サーバー情報を LastShooter に設定（自己衝突回避のため）
-    info!(
-        "Serve: Creating ball with LastShooter = {:?}",
-        match_score.server
-    );
-    commands.spawn(BallBundle::with_shooter(ball_pos, ball_velocity, match_score.server));
-    info!(
-        "Serve: Ball spawned at {:?} by Player{}",
-        ball_pos, server_id
-    );
-
     // @spec 30102_serve_spec.md#req-30102-002: 入力方向を取得
     let raw_direction = match server_id {
         1 => movement_input.player1,
@@ -87,9 +73,38 @@ pub fn serve_execute_system(
         }
     };
 
+    // @spec 30102_serve_spec.md#req-30102-002: ボールを生成（プレイヤーの足元 + (0, 0.5, 0)）
+    let ball_pos = logical_pos.value + Vec3::new(0.0, 0.5, 0.0);
+
+    // サーブ時は通常ショットの速度と角度を使用
+    // commands.spawn() は遅延適用されるため、ここで直接速度を計算する
+    let speed = config.ball.normal_shot_speed;
+    let angle_rad = config.shot.normal_shot_angle.to_radians();
+    let cos_angle = angle_rad.cos();
+    let sin_angle = angle_rad.sin();
+
+    // Vec2(x, y) -> Vec3(x, 0, y) で XZ平面に変換
+    let horizontal_dir = Vec3::new(direction.x, 0.0, direction.y).normalize();
+    let ball_velocity = Vec3::new(
+        horizontal_dir.x * speed * cos_angle,
+        speed * sin_angle,
+        horizontal_dir.z * speed * cos_angle,
+    );
+
+    // サーバー情報を LastShooter に設定（自己衝突回避のため）
+    info!(
+        "Serve: Creating ball with LastShooter = {:?}",
+        match_score.server
+    );
+    commands.spawn(BallBundle::with_shooter(ball_pos, ball_velocity, match_score.server));
+    info!(
+        "Serve: Ball spawned at {:?} with velocity {:?} by Player{}",
+        ball_pos, ball_velocity, server_id
+    );
+
     // @spec 30102_serve_spec.md#req-30102-002: ShotEvent を発行
-    // shot_direction_system がボールの速度を設定し、
-    // serve_to_rally_system が Rally 状態に遷移する
+    // serve_to_rally_system が状態遷移を行う
+    // NOTE: ボール速度は上記で直接設定済み（commands.spawn の遅延適用対策）
     shot_event_writer.write(ShotEvent {
         player_id: server_id,
         direction,
