@@ -113,7 +113,10 @@ Edit(updated_at: "旧タイムスタンプ" -> "新タイムスタンプ")
 
 ### 4. タスク完了
 
-#### 前提条件チェック（game-dev のみ）（CRITICAL）
+#### 前提条件チェック（game-dev のみ）（MANDATORY）
+
+> **MANDATORY**: game-dev タスクの完了処理を開始する前に、**必ず** このチェックを実行すること。
+> チェックを通過しない限り、完了処理は開始しない。
 
 **game-dev タスク（30XXX/B30XXX/R30XXX）は in-review 経由必須**
 
@@ -121,22 +124,22 @@ Edit(updated_at: "旧タイムスタンプ" -> "新タイムスタンプ")
 # タスクファイルの場所を確認
 TASK_FILE=$(find project/tasks -name "30XXX-*.md" 2>/dev/null)
 
-# in-review にあるか確認
+# in-review にあるか確認（MANDATORY チェック）
 if [[ "${TASK_FILE}" == *"3_in-review"* ]]; then
   echo "OK: タスクは in-review にあります。完了処理を続行します。"
 else
   echo "ERROR: game-dev タスクは in-review を経由する必要があります。"
   echo "impl-agent による実装完了 → in-review 移動を先に行ってください。"
-  exit 1  # 処理中断
+  exit 1  # 処理を即座に中断（以降のステップは実行しない）
 fi
 ```
 
-> **チェック対象**:
+> **チェック対象（MANDATORY）**:
 > - `30XXX-*.md` (game-dev)
 > - `B30XXX-*.md` (バグ修正)
 > - `R30XXX-*.md` (リファクタ)
 >
-> **チェック対象外** (in-review 経由不要):
+> **チェック対象外** (in-review 経由不要、直接完了可能):
 > - `FXXX-*.md` (framework)
 > - `PXXX-*.md` (project-wide)
 
