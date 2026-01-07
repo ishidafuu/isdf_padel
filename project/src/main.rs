@@ -15,7 +15,7 @@ use core::{
 };
 use presentation::{
     despawn_ball_shadow_system, spawn_ball_shadow_system, sync_shadow_system,
-    sync_transform_system, WORLD_SCALE,
+    sync_transform_system, DebugUiPlugin, WORLD_SCALE,
 };
 use resource::config::{load_game_config, GameConfig};
 use resource::MatchFlowState;
@@ -49,6 +49,7 @@ fn main() {
         .add_plugins(PointJudgmentPlugin)
         .add_plugins(FaultJudgmentPlugin)
         .add_plugins(MatchFlowPlugin)
+        .add_plugins(DebugUiPlugin)
         .insert_resource(config)
         .init_resource::<MovementInput>()
         .init_resource::<JumpInput>()

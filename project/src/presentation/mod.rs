@@ -1,6 +1,10 @@
 //! Presentation層: Bevy Sprite、Transform、UI
 //! @spec 20001_layers.md#layer-5-presentation
 
+mod debug_ui;
+
+pub use debug_ui::DebugUiPlugin;
+
 use bevy::prelude::*;
 
 use crate::components::{Ball, LogicalPosition, Shadow};
