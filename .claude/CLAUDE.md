@@ -151,9 +151,23 @@ velocity.y += config.physics.gravity * time.delta_secs();
 **対象**: 物理パラメータ、移動パラメータ、サイズ、時間、ゲームバランス値など
 **配置**: `project/docs/8_data/` に定義 → RON ファイル（`.ron`）
 
-### 4. 即時コミット原則
+### 4. 1タスク=1コミット原則
 
-**作業が完了したら即時コミット**（仕様書更新、実装、修正、すべて）
+**1つのタスクは1つのコミットにまとめる**
+
+- **game-dev（30XXX）**: worktree でスカッシュマージ → 1コミット
+- **framework/project-wide（FXXX/PXXX）**: 実装 → git add（ステージングのみ）→ タスクDONE処理 → git add → まとめて1コミット
+
+**フロー（framework/project-wide）:**
+```
+実装作業 → git add（ステージングのみ、コミットしない）
+   ↓
+タスクDONE処理（status更新、archive移動）
+   ↓
+git add（タスクファイルも追加）
+   ↓
+まとめて1コミット
+```
 
 ### 5. フェーズ管理（MVP/バージョン管理）
 

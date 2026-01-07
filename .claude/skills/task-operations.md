@@ -126,13 +126,33 @@ git push origin main
 
 #### project-wide / framework タスク（worktreeなし）
 
+> **CRITICAL: 1タスク=1コミットを実現する**
+>
+> 実装ファイルとタスクDONE処理を同じコミットにまとめる。
+> 実装中はステージングのみ（`git add`）、コミットはタスク完了時にまとめて行う。
+
 ```bash
 # 1. ファイルを archive/ に移動
-mv project/tasks/3_in-review/30101-*.md project/tasks/4_archive/
+mv project/tasks/3_in-review/P001-*.md project/tasks/4_archive/
+# または framework の場合:
+mv tasks/3_in-review/F001-*.md tasks/4_archive/
 
 # 2. status と completed_at を更新
 Edit(status: "in-review" -> "done")
 Edit(completed_at: null -> "2025-12-29T16:00:00+09:00")
+
+# 3. 実装ファイル + タスクファイルをステージング
+git add --all
+
+# 4. まとめて1コミット（実装 + タスク完了）
+git commit -m "feat(F001): ドキュメント整合性確認
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+
+# 5. push
+git push origin main
 ```
 
 ### 5. タスクキャンセル

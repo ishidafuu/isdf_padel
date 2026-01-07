@@ -441,9 +441,29 @@ cat project/tasks/2_in-progress/30101-*.md
    - 必要に応じて test-agent にテスト設計を相談
 5. @spec/@test/@data コメントを付与
 6. コンパイル・テスト実行
-7. コミット
+7. 【タスクタイプ別】コミット処理
 8. PR作成（実装完了後、自動的に実行）
 ```
+
+### コミット処理（1タスク=1コミット原則）
+
+> **CRITICAL: 全タスクタイプで「1タスク=1コミット」を実現する**
+
+#### game-dev タスク（30XXX）
+- worktree で作業 → スカッシュマージ → 1コミット
+- 詳細: `task-operations.md` を参照
+
+#### framework / project-wide タスク（FXXX / PXXX）
+```bash
+# 実装完了後
+git add --all  # ステージングのみ（コミットしない）
+
+# タスクDONE処理後（task-manager-agent が実行）
+git add --all  # タスクファイルも追加
+git commit -m "feat(F001): ..."  # まとめて1コミット
+```
+
+**注意**: framework/project-wide タスクでは、実装完了時点ではコミットせず、タスクDONE処理と合わせて1コミットにする。
 
 ### PR作成
 

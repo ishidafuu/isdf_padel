@@ -331,12 +331,15 @@ task-manager-agent:
   6. worktree削除、ブランチ削除
   7. push、完了報告
 
-  【その他タスクの場合】
+  【その他タスクの場合（framework/project-wide）】
+  > CRITICAL: 1タスク=1コミットを実現する
   1. タスクファイル読み込み
   2. status を "done" に更新
   3. completed_at にタイムスタンプ設定
   4. ファイルを archive/ に移動
-  5. 完了を報告
+  5. 実装ファイル + タスクファイルをステージング（git add --all）
+  6. まとめて1コミット
+  7. push、完了を報告
 ```
 
 ### 3. タスク検索フロー
