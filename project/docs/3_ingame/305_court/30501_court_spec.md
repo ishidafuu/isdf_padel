@@ -86,6 +86,21 @@
 
 ---
 
+### REQ-30501-008: サービスライン描画
+**WHEN** コートが描画される
+**THE SYSTEM SHALL** サービスライン（サービスボックスの境界線）を描画する
+- サービスライン位置（1P側）: Z = `-config.Court.ServiceBoxDepth` (デフォルト: -1.5m)
+- サービスライン位置（2P側）: Z = `+config.Court.ServiceBoxDepth` (デフォルト: +1.5m)
+- センターサービスライン: X = 0（ネットからサービスラインまでの中央線）
+- 線の色: 白
+- 線の太さ: コート境界線と同様
+
+**データ**: [80101_game_constants.md](../../8_data/80101_game_constants.md#court-config)
+**テスト**: TST-30504-008
+**備考**: サービスボックスはサーブ着地判定（REQ-30902-001）で使用される
+
+---
+
 ## Extended Requirements (v0.2)
 
 ### REQ-30501-050: ネット衝突判定

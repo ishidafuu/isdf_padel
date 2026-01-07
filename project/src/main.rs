@@ -193,5 +193,50 @@ fn spawn_court(commands: &mut Commands, config: &GameConfig) {
         Transform::from_xyz(0.0, -half_display_height, 0.0),
     ));
 
+    // サービスライン描画
+    // @spec 30501_court_spec.md#req-30501-008
+    let service_line_x = config.court.service_box_depth * WORLD_SCALE;
+
+    // 1P側サービスライン（縦線）
+    commands.spawn((
+        Sprite {
+            color: Color::srgb(1.0, 1.0, 1.0),
+            custom_size: Some(Vec2::new(4.0, court_display_height)),
+            ..default()
+        },
+        Transform::from_xyz(-service_line_x, 0.0, 0.0),
+    ));
+
+    // 2P側サービスライン（縦線）
+    commands.spawn((
+        Sprite {
+            color: Color::srgb(1.0, 1.0, 1.0),
+            custom_size: Some(Vec2::new(4.0, court_display_height)),
+            ..default()
+        },
+        Transform::from_xyz(service_line_x, 0.0, 0.0),
+    ));
+
+    // センターサービスライン（ネットからサービスラインまでの中央線）
+    // 1P側センターライン
+    commands.spawn((
+        Sprite {
+            color: Color::srgb(1.0, 1.0, 1.0),
+            custom_size: Some(Vec2::new(service_line_x, 4.0)),
+            ..default()
+        },
+        Transform::from_xyz(-service_line_x / 2.0, 0.0, 0.0),
+    ));
+
+    // 2P側センターライン
+    commands.spawn((
+        Sprite {
+            color: Color::srgb(1.0, 1.0, 1.0),
+            custom_size: Some(Vec2::new(service_line_x, 4.0)),
+            ..default()
+        },
+        Transform::from_xyz(service_line_x / 2.0, 0.0, 0.0),
+    ));
+
     info!("Court spawned: {}x{} pixels (横向き)", court_display_width, court_display_height);
 }
