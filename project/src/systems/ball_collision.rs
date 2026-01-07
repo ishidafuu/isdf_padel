@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, KnockbackState, Player, Velocity};
+use crate::components::{Ball, KnockbackState, LastShooter, LogicalPosition, Player, Velocity};
 use crate::core::events::BallHitEvent;
 use crate::resource::config::GameConfig;
 
@@ -30,8 +30,8 @@ impl Plugin for BallCollisionPlugin {
 /// @spec 30403_collision_spec.md#req-30403-006
 pub fn ball_player_collision_system(
     config: Res<GameConfig>,
-    mut ball_query: Query<(Entity, &Transform, &mut Velocity), With<Ball>>,
-    player_query: Query<(Entity, &Transform, &KnockbackState), With<Player>>,
+    mut ball_query: Query<(Entity, &LogicalPosition, &mut Velocity, &LastShooter), With<Ball>>,
+    player_query: Query<(Entity, &LogicalPosition, &KnockbackState, &Player), With<Player>>,
     mut event_writer: MessageWriter<BallHitEvent>,
 ) {
     let ball_radius = config.ball.radius;
@@ -39,20 +39,29 @@ pub fn ball_player_collision_system(
     let z_tolerance = config.collision.z_tolerance;
     let collision_distance = ball_radius + character_radius;
 
-    for (ball_entity, ball_transform, mut ball_velocity) in ball_query.iter_mut() {
-        let ball_pos = ball_transform.translation;
+    for (ball_entity, ball_logical_pos, mut ball_velocity, last_shooter) in ball_query.iter_mut() {
+        let ball_pos = ball_logical_pos.value;
         let ball_vel = ball_velocity.value;
 
         // REQ-30403-006: 複数プレイヤー衝突時、最も近いプレイヤー優先
         let mut closest_collision: Option<(Entity, Vec3, f32)> = None;
 
-        for (player_entity, player_transform, knockback) in player_query.iter() {
+        for (player_entity, player_logical_pos, knockback, player) in player_query.iter() {
             // REQ-30403-003: 無敵状態のプレイヤーは衝突無視
             if knockback.is_invincible() {
                 continue;
             }
 
-            let player_pos = player_transform.translation;
+            // 最後に打ったプレイヤー自身との衝突は無視
+            if last_shooter.side == Some(player.court_side) {
+                info!(
+                    "Skipping collision: last_shooter={:?}, player={:?}",
+                    last_shooter.side, player.court_side
+                );
+                continue;
+            }
+
+            let player_pos = player_logical_pos.value;
 
             // REQ-30403-001: Z軸許容範囲チェック
             let z_diff = (ball_pos.z - player_pos.z).abs();

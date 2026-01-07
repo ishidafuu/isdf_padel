@@ -7,7 +7,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, Player};
+use crate::components::{Ball, LogicalPosition, Player};
 use crate::core::{CourtSide, MatchStartEvent, MatchWonEvent, RallyEndEvent, ShotEvent};
 use crate::resource::{GameConfig, GameState, MatchFlowState, MatchScore, RallyState};
 use crate::systems::serve_execute_system;
@@ -49,7 +49,7 @@ fn match_start_system(
     mut match_score: ResMut<MatchScore>,
     mut rally_state: ResMut<RallyState>,
     mut match_start_events: MessageWriter<MatchStartEvent>,
-    mut query: Query<(&Player, &mut Transform)>,
+    mut query: Query<(&Player, &mut LogicalPosition)>,
     config: Res<GameConfig>,
 ) {
     info!("Match starting...");
@@ -63,9 +63,10 @@ fn match_start_system(
     *rally_state = RallyState::new(CourtSide::Player1);
 
     // @spec 30101_flow_spec.md#req-30101-001: プレイヤーを配置する
-    for (player, mut transform) in query.iter_mut() {
+    // 論理座標を設定（表示座標は sync_transform_system で自動更新）
+    for (player, mut logical_pos) in query.iter_mut() {
         let pos = get_initial_position(player.id, &config);
-        transform.translation = pos;
+        logical_pos.value = pos;
         info!("Player {} positioned at {:?}", player.id, pos);
     }
 
@@ -149,7 +150,7 @@ fn point_end_to_next_system(
     mut next_state: ResMut<NextState<MatchFlowState>>,
     match_score: Res<MatchScore>,
     mut rally_state: ResMut<RallyState>,
-    mut query: Query<(&Player, &mut Transform)>,
+    mut query: Query<(&Player, &mut LogicalPosition)>,
     config: Res<GameConfig>,
 ) {
     // @spec 30101_flow_spec.md#req-30101-005: 勝利条件を満たす
@@ -162,9 +163,10 @@ fn point_end_to_next_system(
 
     // @spec 30101_flow_spec.md#req-30101-004: 試合が終了していない場合
     // @spec 30101_flow_spec.md#req-30101-004: プレイヤーを初期位置に戻す
-    for (player, mut transform) in query.iter_mut() {
+    // 論理座標を設定（表示座標は sync_transform_system で自動更新）
+    for (player, mut logical_pos) in query.iter_mut() {
         let pos = get_initial_position(player.id, &config);
-        transform.translation = pos;
+        logical_pos.value = pos;
     }
 
     // ラリー状態を次のサーブ待ちに更新

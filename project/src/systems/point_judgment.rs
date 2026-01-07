@@ -5,7 +5,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, BounceCount, LastShooter};
+use crate::components::{Ball, BounceCount, LastShooter, LogicalPosition};
 use crate::core::events::{BallOutOfBoundsEvent, GroundBounceEvent, NetHitEvent, RallyEndEvent, RallyEndReason, ShotExecutedEvent};
 use crate::core::CourtSide;
 use crate::resource::config::GameConfig;
@@ -140,7 +140,7 @@ pub fn let_judgment_system(
     mut net_events: MessageReader<NetHitEvent>,
     rally_state: Res<RallyState>,
     config: Res<GameConfig>,
-    query: Query<&Transform, With<Ball>>,
+    query: Query<&LogicalPosition, With<Ball>>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
     // サーブ中でなければスキップ
@@ -152,8 +152,8 @@ pub fn let_judgment_system(
 
     for event in net_events.read() {
         // ネットに触れた後のボール位置を確認
-        if let Ok(transform) = query.get(event.ball) {
-            let ball_z = transform.translation.z;
+        if let Ok(logical_pos) = query.get(event.ball) {
+            let ball_z = logical_pos.value.z;
 
             // @spec 30901_point_judgment_spec.md#req-30901-003
             // サーブ側からネットを超えて相手コートに入ったかを判定
@@ -209,7 +209,7 @@ pub fn net_fault_judgment_system(
     rally_state: Res<RallyState>,
     config: Res<GameConfig>,
     match_score: Res<MatchScore>,
-    query: Query<(&Transform, &LastShooter), With<Ball>>,
+    query: Query<(&LogicalPosition, &LastShooter), With<Ball>>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
     // ラリー中でなければスキップ（サーブ中はlet_judgment_systemで処理）
@@ -225,9 +225,9 @@ pub fn net_fault_judgment_system(
     let net_z = config.court.net_z;
 
     for event in net_events.read() {
-        if let Ok((transform, last_shooter)) = query.get(event.ball) {
+        if let Ok((logical_pos, last_shooter)) = query.get(event.ball) {
             if let Some(shooter) = last_shooter.side {
-                let ball_z = transform.translation.z;
+                let ball_z = logical_pos.value.z;
 
                 // @spec 30103_point_end_spec.md#req-30103-002
                 // 打ったボールがネットに当たった時点でショット元のコート側にあれば失点

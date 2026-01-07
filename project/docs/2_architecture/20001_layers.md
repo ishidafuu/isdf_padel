@@ -185,37 +185,80 @@ pub fn wall_reflection_system(
 
 ### Layer 5: Presentation（表現層）
 
-**責務**: Bevy Sprite、Transform、UI
+**責務**: Bevy Sprite、Transform、UI、影描画
 
 | 要素 | 役割 |
 |------|------|
 | SpriteBundle | Entity の描画 |
 | Transform | 位置・回転・スケール |
+| Shadow | 影コンポーネント |
 | UiBundle | UI表示 |
 
 **依存**: Systems
 
-**例**:
+#### 座標変換（論理座標 → 表示座標）
+
+**コート表示は90度回転**（左右の打ち合い形式）:
+
+| 論理座標 | 表示座標 | 説明 |
+|----------|----------|------|
+| X（左右移動） | 画面Y | 横移動が画面上下に対応 |
+| Y（高さ/ジャンプ） | 画面Y | 高さも画面上下に加算 |
+| Z（奥行き/コート前後） | 画面X | 打ち合い方向が画面左右 |
+
 ```rust
-// sync_transform_system.rs（Position を Bevy Transform に同期）
-pub fn sync_transform_system(
-    mut query: Query<(&Position, &mut Transform)>,
-) {
-    for (pos, mut transform) in &mut query {
-        // Position を Transform に反映
-        transform.translation.x = pos.x;
-        transform.translation.y = pos.y;
-        // Z は深度ソート用（小さい値が手前）
-        transform.translation.z = -pos.z * 0.01;
+// sync_transform_system（90度回転版）
+pub fn sync_transform_system(mut query: Query<(&LogicalPosition, &mut Transform)>) {
+    for (logical_pos, mut transform) in query.iter_mut() {
+        // 論理座標を表示座標に変換（90度回転：左右の打ち合い）
+        let display_x = logical_pos.value.z * WORLD_SCALE;  // 奥行き→画面左右
+        let display_y = logical_pos.value.x * WORLD_SCALE   // 横移動→画面上下
+                      + logical_pos.value.y * WORLD_SCALE;  // 高さ→画面上下
+        let display_z = 1.0 - logical_pos.value.x * 0.01;   // 奥行きレイヤー調整
+
+        transform.translation = Vec3::new(display_x, display_y, display_z);
     }
 }
+```
 
+#### 影システム
+
+Entity の地面投影（Y=0）に影を表示:
+
+```rust
+// Shadow コンポーネント
+#[derive(Component)]
+pub struct Shadow {
+    pub owner: Entity,  // 影の所有者
+}
+
+// sync_shadow_system（影の位置更新）
+pub fn sync_shadow_system(
+    owner_query: Query<&LogicalPosition>,
+    mut shadow_query: Query<(&Shadow, &mut Transform)>,
+) {
+    for (shadow, mut transform) in shadow_query.iter_mut() {
+        if let Ok(owner_pos) = owner_query.get(shadow.owner) {
+            // 影は地面（Y=0）に表示
+            let display_x = owner_pos.value.z * WORLD_SCALE;
+            let display_y = owner_pos.value.x * WORLD_SCALE; // Y=0なので高さ成分なし
+            let display_z = -1.0; // 影は最背面
+
+            transform.translation = Vec3::new(display_x, display_y, display_z);
+        }
+    }
+}
+```
+
+#### スポーン例
+
+```rust
 // spawn_player.rs
 pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Sprite::from_image(asset_server.load("player.png")),
         Transform::from_xyz(0.0, 0.0, 0.0),
-        Position { x: 0.0, y: 0.0, z: 3.0 },
+        LogicalPosition { value: Vec3::new(0.0, 0.0, -2.0) },
         Velocity::default(),
         CharacterCollider { radius: 0.5, z_tolerance: 0.3 },
         Controllable { is_controllable: true },

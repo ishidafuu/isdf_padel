@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, KnockbackState, Player, ShotState};
+use crate::components::{Ball, KnockbackState, LogicalPosition, Player, ShotState};
 use crate::core::events::ShotEvent;
 use crate::resource::config::GameConfig;
 use crate::systems::MovementInput;
@@ -20,13 +20,14 @@ pub struct ShotInput {
 
 /// ショット入力読み取りシステム
 /// @spec 30601_shot_input_spec.md#req-30601-001
+/// NOTE: テスト用に P1/P2 を同じキーで操作（F または Enter）
 pub fn read_shot_input_system(keyboard: Res<ButtonInput<KeyCode>>, mut input: ResMut<ShotInput>) {
-    // Player 1: F キー（Bボタン相当）
-    input.player1_pressed = keyboard.just_pressed(KeyCode::KeyF);
+    // 共通ショット入力: F または Enter
+    let shot_pressed = keyboard.just_pressed(KeyCode::KeyF) || keyboard.just_pressed(KeyCode::Enter);
 
-    // Player 2: Numpad1 または右Shiftキー（仮）
-    input.player2_pressed =
-        keyboard.just_pressed(KeyCode::Numpad1) || keyboard.just_pressed(KeyCode::ShiftRight);
+    // 両プレイヤーに同じ入力を設定
+    input.player1_pressed = shot_pressed;
+    input.player2_pressed = shot_pressed;
 }
 
 /// ショット入力処理システム
@@ -42,21 +43,21 @@ pub fn shot_input_system(
     movement_input: Res<MovementInput>,
     mut player_query: Query<(
         &Player,
-        &Transform,
+        &LogicalPosition,
         &mut ShotState,
         &KnockbackState,
     )>,
-    ball_query: Query<&Transform, With<Ball>>,
+    ball_query: Query<&LogicalPosition, With<Ball>>,
     mut event_writer: MessageWriter<ShotEvent>,
 ) {
     // ボールの位置を取得（存在しない場合はショット不可）
-    let ball_transform = match ball_query.iter().next() {
+    let ball_logical_pos = match ball_query.iter().next() {
         Some(t) => t,
         None => return, // ボールがない場合は何もしない
     };
-    let ball_pos = ball_transform.translation;
+    let ball_pos = ball_logical_pos.value;
 
-    for (player, player_transform, mut shot_state, knockback) in player_query.iter_mut() {
+    for (player, player_logical_pos, mut shot_state, knockback) in player_query.iter_mut() {
         // プレイヤーごとのショット入力を取得
         let shot_pressed = match player.id {
             1 => shot_input.player1_pressed,
@@ -86,7 +87,7 @@ pub fn shot_input_system(
             continue;
         }
 
-        let player_pos = player_transform.translation;
+        let player_pos = player_logical_pos.value;
 
         // REQ-30601-002: 距離判定
         let distance_2d = distance_2d(player_pos, ball_pos);

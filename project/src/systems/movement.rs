@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{KnockbackState, Player, Velocity};
+use crate::components::{KnockbackState, LogicalPosition, Player, Velocity};
 use crate::core::court::{CourtBounds, CourtSide};
 use crate::core::events::PlayerMoveEvent;
 use crate::resource::config::GameConfig;
@@ -21,38 +21,32 @@ pub struct MovementInput {
 /// 入力読み取りシステム
 /// @spec 30201_movement_spec.md#req-30201-001
 /// @spec 30201_movement_spec.md#req-30201-002
+/// NOTE: テスト用に P1/P2 を同じキーで操作（WASD または 矢印キー）
+/// 横向きコート: A/D=画面左右（打ち合い方向）、W/S=画面上下（横移動）
 pub fn read_input_system(keyboard: Res<ButtonInput<KeyCode>>, mut input: ResMut<MovementInput>) {
-    // Player 1: WASD
-    let mut p1_input = Vec2::ZERO;
-    if keyboard.pressed(KeyCode::KeyA) {
-        p1_input.x -= 1.0;
-    }
-    if keyboard.pressed(KeyCode::KeyD) {
-        p1_input.x += 1.0;
-    }
-    if keyboard.pressed(KeyCode::KeyW) {
-        p1_input.y += 1.0; // +Z方向（前進）
-    }
-    if keyboard.pressed(KeyCode::KeyS) {
-        p1_input.y -= 1.0; // -Z方向（後退）
-    }
-    input.player1 = p1_input;
+    // 共通入力: WASD + Arrow keys
+    // 横向きレイアウト用にマッピング変更
+    let mut shared_input = Vec2::ZERO;
 
-    // Player 2: Arrow keys
-    let mut p2_input = Vec2::ZERO;
-    if keyboard.pressed(KeyCode::ArrowLeft) {
-        p2_input.x -= 1.0;
+    // W/S → 論理X（画面上下）
+    if keyboard.pressed(KeyCode::KeyW) || keyboard.pressed(KeyCode::ArrowUp) {
+        shared_input.x += 1.0;
     }
-    if keyboard.pressed(KeyCode::ArrowRight) {
-        p2_input.x += 1.0;
+    if keyboard.pressed(KeyCode::KeyS) || keyboard.pressed(KeyCode::ArrowDown) {
+        shared_input.x -= 1.0;
     }
-    if keyboard.pressed(KeyCode::ArrowUp) {
-        p2_input.y += 1.0;
+
+    // A/D → 論理Z（画面左右＝打ち合い方向）
+    if keyboard.pressed(KeyCode::KeyA) || keyboard.pressed(KeyCode::ArrowLeft) {
+        shared_input.y -= 1.0; // -Z方向（左＝1P側）
     }
-    if keyboard.pressed(KeyCode::ArrowDown) {
-        p2_input.y -= 1.0;
+    if keyboard.pressed(KeyCode::KeyD) || keyboard.pressed(KeyCode::ArrowRight) {
+        shared_input.y += 1.0; // +Z方向（右＝2P側）
     }
-    input.player2 = p2_input;
+
+    // 両プレイヤーに同じ入力を設定
+    input.player1 = shared_input;
+    input.player2 = shared_input;
 }
 
 /// プレイヤー移動システム
@@ -66,13 +60,13 @@ pub fn movement_system(
     time: Res<Time>,
     config: Res<GameConfig>,
     input: Res<MovementInput>,
-    mut query: Query<(&Player, &mut Transform, &mut Velocity, &KnockbackState)>,
+    mut query: Query<(&Player, &mut LogicalPosition, &mut Velocity, &KnockbackState)>,
     mut event_writer: MessageWriter<PlayerMoveEvent>,
 ) {
     let bounds = CourtBounds::from_config(&config.court);
     let delta = time.delta_secs();
 
-    for (player, mut transform, mut velocity, knockback) in query.iter_mut() {
+    for (player, mut logical_pos, mut velocity, knockback) in query.iter_mut() {
         // REQ-30201-005: ふっとばし中は入力を無視
         if knockback.is_knockback_active() {
             continue;
@@ -121,8 +115,8 @@ pub fn movement_system(
 
         velocity.value = final_velocity;
 
-        // 位置更新
-        let old_position = transform.translation;
+        // 位置更新（論理座標を操作）
+        let old_position = logical_pos.value;
         let mut new_position = old_position + final_velocity * delta;
 
         // REQ-30201-004: 境界でのクランプ
@@ -133,7 +127,7 @@ pub fn movement_system(
         new_position.z = new_position.z.clamp(z_min, z_max);
 
         // 位置更新
-        transform.translation = new_position;
+        logical_pos.value = new_position;
 
         // REQ-30201-006: 位置が変化した場合のみイベント発行
         if new_position != old_position {

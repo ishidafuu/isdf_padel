@@ -3,11 +3,8 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, BounceCount, Player, Velocity};
-use crate::core::{
-    Court, CourtBounds, CourtSide, GroundBounceEvent, NetHitEvent, NetInfo, WallReflection,
-    WallReflectionEvent,
-};
+use crate::components::{LogicalPosition, Player, Velocity};
+use crate::core::{CourtBounds, CourtSide, NetHitEvent, NetInfo};
 use crate::resource::GameConfig;
 
 /// 境界システムプラグイン
@@ -15,16 +12,12 @@ pub struct BoundaryPlugin;
 
 impl Plugin for BoundaryPlugin {
     fn build(&self, app: &mut App) {
-        app.add_message::<WallReflectionEvent>()
-            .add_message::<NetHitEvent>()
-            .add_message::<GroundBounceEvent>()
-            .add_systems(
-                Update,
-                (
-                    player_boundary_system,
-                    ball_boundary_system,
-                ),
-            );
+        // イベント登録（他システムで使用される）
+        app.add_message::<NetHitEvent>();
+
+        // 注意: ball_boundary_system は無効化されました
+        // ボールの境界処理は BallTrajectoryPlugin（LogicalPosition使用）に統一
+        app.add_systems(Update, player_boundary_system);
     }
 }
 
@@ -39,13 +32,13 @@ impl Plugin for BoundaryPlugin {
 /// - ネット: 自コート側に制限
 pub fn player_boundary_system(
     config: Res<GameConfig>,
-    mut query: Query<(&Player, &mut Transform, &mut Velocity)>,
+    mut query: Query<(&Player, &mut LogicalPosition, &mut Velocity)>,
 ) {
     let bounds = CourtBounds::from_config(&config.court);
     let net = NetInfo::from_config(&config.court);
 
-    for (player, mut transform, mut velocity) in query.iter_mut() {
-        let pos = &mut transform.translation;
+    for (player, mut logical_pos, mut velocity) in query.iter_mut() {
+        let pos = &mut logical_pos.value;
 
         // BEH-30503-001: 左右壁制限
         if pos.x < bounds.left {
@@ -114,89 +107,12 @@ pub fn player_boundary_system(
     }
 }
 
-/// ボール境界システム
-/// @spec 30503_boundary_behavior.md#beh-30503-004
-/// @spec 30503_boundary_behavior.md#beh-30503-005
-/// @spec 30503_boundary_behavior.md#beh-30503-007
-///
-/// 境界チェック優先順位:
-/// 1. ネット接触（失点判定優先）
-/// 2. 地面接触（バウンド判定）
-/// 3. 壁接触（反射処理）
-/// 4. 天井接触（反射処理）
-pub fn ball_boundary_system(
-    config: Res<GameConfig>,
-    mut query: Query<(Entity, &mut Transform, &mut Velocity, Option<&mut BounceCount>), With<Ball>>,
-    mut wall_events: MessageWriter<WallReflectionEvent>,
-    mut net_events: MessageWriter<NetHitEvent>,
-    mut bounce_events: MessageWriter<GroundBounceEvent>,
-) {
-    let court = Court::from_config(&config.court);
-    let bounce_factor = config.ball.bounce_factor;
-    let net_tolerance = 0.1; // ネット接触判定の許容範囲
-
-    for (entity, mut transform, mut velocity, bounce_count) in query.iter_mut() {
-        let pos = transform.translation;
-        let vel = velocity.value;
-
-        // 優先順位1: ネット接触判定 (BEH-30503-005)
-        if court.net.is_collision(pos.y, pos.z, net_tolerance) && vel.length_squared() > f32::EPSILON
-        {
-            net_events.write(NetHitEvent {
-                ball: entity,
-                contact_point: pos,
-            });
-            // ネット接触時は停止
-            velocity.value = Vec3::ZERO;
-            continue;
-        }
-
-        // 優先順位2: 地面接触判定 (BEH-30503-006)
-        if pos.y <= court.bounds.ground && vel.y < 0.0 {
-            transform.translation.y = court.bounds.ground;
-            // 地面バウンド反射
-            velocity.value.y = -vel.y * bounce_factor;
-            velocity.value.x *= bounce_factor;
-            velocity.value.z *= bounce_factor;
-
-            let court_side = court.get_court_side(pos.z);
-
-            bounce_events.write(GroundBounceEvent {
-                ball: entity,
-                bounce_point: transform.translation,
-                court_side,
-            });
-
-            // BounceCountを更新
-            if let Some(mut bc) = bounce_count {
-                bc.record_bounce(court_side);
-            }
-            continue;
-        }
-
-        // 優先順位3,4: 壁・天井接触判定 (BEH-30503-004, BEH-30503-007)
-        if let Some(result) =
-            WallReflection::check_and_reflect(pos, vel, &court.bounds, bounce_factor)
-        {
-            // 位置を接触点に補正
-            transform.translation = result.contact_point;
-            // 反射後の速度を設定
-            velocity.value = result.reflected_velocity;
-
-            wall_events.write(WallReflectionEvent {
-                ball: entity,
-                wall_type: result.wall_type,
-                contact_point: result.contact_point,
-                incident_velocity: vel,
-                reflected_velocity: result.reflected_velocity,
-            });
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::components::BounceCount;
+    use crate::core::{Court, WallReflection};
 
     fn test_config() -> GameConfig {
         use crate::resource::config::*;

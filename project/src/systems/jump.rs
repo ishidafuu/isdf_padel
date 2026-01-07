@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{GroundedState, KnockbackState, Player, Velocity};
+use crate::components::{GroundedState, KnockbackState, LogicalPosition, Player, Velocity};
 use crate::core::events::{PlayerJumpEvent, PlayerLandEvent};
 use crate::resource::config::GameConfig;
 
@@ -19,16 +19,17 @@ pub struct JumpInput {
 
 /// ジャンプ入力読み取りシステム
 /// @spec 30202_jump_spec.md#req-30202-001
+/// NOTE: テスト用に P1/P2 を同じキーで操作（Space）
 pub fn read_jump_input_system(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut input: ResMut<JumpInput>,
 ) {
-    // Player 1: Space キー
-    input.player1_pressed = keyboard.just_pressed(KeyCode::Space);
+    // 共通ジャンプ入力: Space
+    let jump_pressed = keyboard.just_pressed(KeyCode::Space);
 
-    // Player 2: Numpad0 または Enter キー（仮）
-    input.player2_pressed = keyboard.just_pressed(KeyCode::Numpad0)
-        || keyboard.just_pressed(KeyCode::Enter);
+    // 両プレイヤーに同じ入力を設定
+    input.player1_pressed = jump_pressed;
+    input.player2_pressed = jump_pressed;
 }
 
 /// ジャンプ開始システム
@@ -108,18 +109,18 @@ pub fn gravity_system(
 /// @spec 30202_jump_spec.md#req-30202-002
 pub fn vertical_movement_system(
     time: Res<Time>,
-    mut query: Query<(&Velocity, &mut Transform, &GroundedState), With<Player>>,
+    mut query: Query<(&Velocity, &mut LogicalPosition, &GroundedState), With<Player>>,
 ) {
     let delta = time.delta_secs();
 
-    for (velocity, mut transform, grounded) in query.iter_mut() {
+    for (velocity, mut logical_pos, grounded) in query.iter_mut() {
         // 接地中かつY速度が0ならスキップ
         if grounded.is_grounded && velocity.value.y == 0.0 {
             continue;
         }
 
-        // Y座標を更新
-        transform.translation.y += velocity.value.y * delta;
+        // Y座標を更新（論理座標のY = 高さ）
+        logical_pos.value.y += velocity.value.y * delta;
     }
 }
 
@@ -127,26 +128,26 @@ pub fn vertical_movement_system(
 /// @spec 30202_jump_spec.md#req-30202-003
 /// @spec 30202_jump_spec.md#req-30202-008
 pub fn landing_system(
-    mut query: Query<(&Player, &mut Transform, &mut Velocity, &mut GroundedState)>,
+    mut query: Query<(&Player, &mut LogicalPosition, &mut Velocity, &mut GroundedState)>,
     mut event_writer: MessageWriter<PlayerLandEvent>,
 ) {
-    for (player, mut transform, mut velocity, mut grounded) in query.iter_mut() {
+    for (player, mut logical_pos, mut velocity, mut grounded) in query.iter_mut() {
         // すでに接地中ならスキップ
         if grounded.is_grounded {
             continue;
         }
 
-        // REQ-30202-003: 着地判定（Y座標が0以下）
-        if transform.translation.y <= 0.0 {
+        // REQ-30202-003: 着地判定（論理座標Y=高さが0以下）
+        if logical_pos.value.y <= 0.0 {
             // 着地処理
-            transform.translation.y = 0.0;
+            logical_pos.value.y = 0.0;
             velocity.value.y = 0.0;
             grounded.is_grounded = true;
 
             // REQ-30202-008: PlayerLandEvent の発行
             event_writer.write(PlayerLandEvent {
                 player_id: player.id,
-                land_position: transform.translation,
+                land_position: logical_pos.value,
             });
         }
     }
@@ -156,19 +157,19 @@ pub fn landing_system(
 /// @spec 30202_jump_spec.md#req-30202-005
 pub fn ceiling_collision_system(
     config: Res<GameConfig>,
-    mut query: Query<(&mut Transform, &mut Velocity, &GroundedState), With<Player>>,
+    mut query: Query<(&mut LogicalPosition, &mut Velocity, &GroundedState), With<Player>>,
 ) {
     let ceiling_height = config.court.ceiling_height;
 
-    for (mut transform, mut velocity, grounded) in query.iter_mut() {
+    for (mut logical_pos, mut velocity, grounded) in query.iter_mut() {
         // 接地中ならスキップ
         if grounded.is_grounded {
             continue;
         }
 
         // REQ-30202-005: 天井に到達 AND Y速度が正（上方向）
-        if transform.translation.y >= ceiling_height && velocity.value.y > 0.0 {
-            transform.translation.y = ceiling_height;
+        if logical_pos.value.y >= ceiling_height && velocity.value.y > 0.0 {
+            logical_pos.value.y = ceiling_height;
             velocity.value.y = 0.0;
         }
     }

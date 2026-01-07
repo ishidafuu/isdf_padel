@@ -4,7 +4,8 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, BounceCount, Velocity};
+use crate::components::{Ball, BounceCount, LastShooter, Velocity};
+use crate::core::CourtSide;
 use crate::core::events::{ShotEvent, ShotExecutedEvent};
 use crate::resource::config::GameConfig;
 
@@ -19,15 +20,23 @@ use crate::resource::config::GameConfig;
 pub fn shot_direction_system(
     config: Res<GameConfig>,
     mut shot_events: MessageReader<ShotEvent>,
-    mut ball_query: Query<(&mut Velocity, &mut BounceCount), With<Ball>>,
+    mut ball_query: Query<(&mut Velocity, &mut BounceCount, &mut LastShooter), With<Ball>>,
     mut shot_executed_writer: MessageWriter<ShotExecutedEvent>,
 ) {
     for event in shot_events.read() {
         // ボールを取得
-        let Ok((mut velocity, mut bounce_count)) = ball_query.single_mut() else {
+        let Ok((mut velocity, mut bounce_count, mut last_shooter)) = ball_query.single_mut() else {
             warn!("No ball found for shot direction calculation");
             continue;
         };
+
+        // 最後にショットを打ったプレイヤーを記録（自己衝突回避のため）
+        let shooter_side = if event.player_id == 1 {
+            CourtSide::Player1
+        } else {
+            CourtSide::Player2
+        };
+        last_shooter.record(shooter_side);
 
         // REQ-30602-001: 水平方向の計算
         let horizontal_dir = calculate_horizontal_direction(event.direction);
@@ -47,6 +56,10 @@ pub fn shot_direction_system(
         let shot_velocity = calculate_shot_velocity(horizontal_dir, speed, angle_deg);
 
         // REQ-30602-005: ボール速度の設定
+        info!(
+            "shot_direction: before={:?}, after={:?}, angle_deg={}",
+            velocity.value, shot_velocity, angle_deg
+        );
         velocity.value = shot_velocity;
 
         // バウンスカウントをリセット（新しいショット開始）

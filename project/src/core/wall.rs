@@ -37,13 +37,13 @@ impl WallReflection {
     /// * `bounce_factor` - バウンド係数（0.0〜1.0）
     ///
     /// # Returns
-    /// 反射後の速度
+    /// 反射後の速度（X成分のみ反転・減衰、他成分は維持）
     #[inline]
     pub fn reflect_side_wall(velocity: Vec3, bounce_factor: f32) -> Vec3 {
         Vec3::new(
             -velocity.x * bounce_factor,
-            velocity.y * bounce_factor,
-            velocity.z * bounce_factor,
+            velocity.y,  // 維持
+            velocity.z,  // 維持
         )
     }
 
@@ -55,12 +55,12 @@ impl WallReflection {
     /// * `bounce_factor` - バウンド係数（0.0〜1.0）
     ///
     /// # Returns
-    /// 反射後の速度
+    /// 反射後の速度（Z成分のみ反転・減衰、他成分は維持）
     #[inline]
     pub fn reflect_back_wall(velocity: Vec3, bounce_factor: f32) -> Vec3 {
         Vec3::new(
-            velocity.x * bounce_factor,
-            velocity.y * bounce_factor,
+            velocity.x,  // 維持
+            velocity.y,  // 維持
             -velocity.z * bounce_factor,
         )
     }
@@ -73,13 +73,13 @@ impl WallReflection {
     /// * `bounce_factor` - バウンド係数（0.0〜1.0）
     ///
     /// # Returns
-    /// 反射後の速度
+    /// 反射後の速度（Y成分のみ反転・減衰、他成分は維持）
     #[inline]
     pub fn reflect_ceiling(velocity: Vec3, bounce_factor: f32) -> Vec3 {
         Vec3::new(
-            velocity.x * bounce_factor,
+            velocity.x,  // 維持
             -velocity.y * bounce_factor,
-            velocity.z * bounce_factor,
+            velocity.z,  // 維持
         )
     }
 
@@ -203,10 +203,10 @@ mod tests {
 
         let reflected = WallReflection::reflect_side_wall(velocity, bounce_factor);
 
-        // X成分が反転し、全成分にバウンド係数が適用される
+        // X成分のみ反転・減衰、他成分は維持
         assert_eq!(reflected.x, -10.0 * 0.8);
-        assert_eq!(reflected.y, 5.0 * 0.8);
-        assert_eq!(reflected.z, 3.0 * 0.8);
+        assert_eq!(reflected.y, 5.0);  // 維持
+        assert_eq!(reflected.z, 3.0);  // 維持
     }
 
     /// TST-30504-008: 前後壁の反射
@@ -217,9 +217,9 @@ mod tests {
 
         let reflected = WallReflection::reflect_back_wall(velocity, bounce_factor);
 
-        // Z成分が反転し、全成分にバウンド係数が適用される
-        assert_eq!(reflected.x, 10.0 * 0.8);
-        assert_eq!(reflected.y, 5.0 * 0.8);
+        // Z成分のみ反転・減衰、他成分は維持
+        assert_eq!(reflected.x, 10.0);  // 維持
+        assert_eq!(reflected.y, 5.0);   // 維持
         assert_eq!(reflected.z, -3.0 * 0.8);
     }
 
@@ -231,10 +231,10 @@ mod tests {
 
         let reflected = WallReflection::reflect_ceiling(velocity, bounce_factor);
 
-        // Y成分が反転し、全成分にバウンド係数が適用される
-        assert_eq!(reflected.x, 10.0 * 0.8);
+        // Y成分のみ反転・減衰、他成分は維持
+        assert_eq!(reflected.x, 10.0);  // 維持
         assert_eq!(reflected.y, -5.0 * 0.8);
-        assert_eq!(reflected.z, 3.0 * 0.8);
+        assert_eq!(reflected.z, 3.0);   // 維持
     }
 
     /// 壁種別ごとの反射
@@ -243,25 +243,29 @@ mod tests {
         let velocity = Vec3::new(10.0, 5.0, 3.0);
         let bounce_factor = 0.8;
 
-        // 左壁
+        // 左壁（X成分のみ反転・減衰）
         let left = WallReflection::reflect(WallType::LeftWall, velocity, bounce_factor);
         assert_eq!(left.x, -8.0);
+        assert_eq!(left.y, 5.0);  // 維持
+        assert_eq!(left.z, 3.0);  // 維持
 
-        // 右壁
+        // 右壁（X成分のみ反転・減衰）
         let right = WallReflection::reflect(WallType::RightWall, velocity, bounce_factor);
         assert_eq!(right.x, -8.0);
 
-        // 後壁（1P側）
+        // 後壁（1P側）（Z成分のみ反転・減衰）
         let back_1p = WallReflection::reflect(WallType::BackWall1P, velocity, bounce_factor);
+        assert_eq!(back_1p.x, 10.0);  // 維持
         assert_eq!(back_1p.z, -2.4);
 
-        // 後壁（2P側）
+        // 後壁（2P側）（Z成分のみ反転・減衰）
         let back_2p = WallReflection::reflect(WallType::BackWall2P, velocity, bounce_factor);
         assert_eq!(back_2p.z, -2.4);
 
-        // 天井
+        // 天井（Y成分のみ反転・減衰）
         let ceiling = WallReflection::reflect(WallType::Ceiling, velocity, bounce_factor);
         assert_eq!(ceiling.y, -4.0);
+        assert_eq!(ceiling.z, 3.0);  // 維持
     }
 
     /// BEH-30502-004: 壁反射の優先順位

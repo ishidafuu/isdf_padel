@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{GroundedState, KnockbackState, Player, Velocity};
+use crate::components::{GroundedState, KnockbackState, LogicalPosition, Player, Velocity};
 use crate::core::court::CourtBounds;
 use crate::core::events::{BallHitEvent, PlayerKnockbackEvent};
 use crate::resource::config::GameConfig;
@@ -14,12 +14,12 @@ use crate::resource::config::GameConfig;
 pub fn knockback_start_system(
     config: Res<GameConfig>,
     mut ball_hit_events: MessageReader<BallHitEvent>,
-    mut query: Query<(Entity, &Player, &Transform, &mut KnockbackState)>,
+    mut query: Query<(Entity, &Player, &LogicalPosition, &mut KnockbackState)>,
     mut knockback_event_writer: MessageWriter<PlayerKnockbackEvent>,
 ) {
     for event in ball_hit_events.read() {
         // 被弾したプレイヤーを検索
-        for (entity, player, transform, mut knockback) in query.iter_mut() {
+        for (entity, player, logical_pos, mut knockback) in query.iter_mut() {
             if entity != event.target_id {
                 continue;
             }
@@ -32,7 +32,7 @@ pub fn knockback_start_system(
 
             // ふっとばし方向：ボール→プレイヤーの単位ベクトル
             // @spec 30203_knockback_spec.md#req-30203-001
-            let direction = (transform.translation - event.hit_point).normalize_or_zero();
+            let direction = (logical_pos.value - event.hit_point).normalize_or_zero();
 
             // ふっとばし速度：ボール速度 * SpeedMultiplier
             let knockback_speed = event.ball_velocity.length() * config.knockback.speed_multiplier;
@@ -71,7 +71,7 @@ pub fn knockback_movement_system(
     config: Res<GameConfig>,
     mut query: Query<(
         &Player,
-        &mut Transform,
+        &mut LogicalPosition,
         &mut KnockbackState,
         &mut Velocity,
         &GroundedState,
@@ -80,7 +80,7 @@ pub fn knockback_movement_system(
     let bounds = CourtBounds::from_config(&config.court);
     let delta = time.delta_secs();
 
-    for (player, mut transform, mut knockback, mut velocity, grounded) in query.iter_mut() {
+    for (player, mut logical_pos, mut knockback, mut velocity, grounded) in query.iter_mut() {
         if !knockback.is_knockback_active() {
             continue;
         }
@@ -93,7 +93,7 @@ pub fn knockback_movement_system(
         }
 
         // REQ-30203-002: ふっとばし移動
-        let mut new_position = transform.translation + knockback.velocity * delta;
+        let mut new_position = logical_pos.value + knockback.velocity * delta;
 
         // REQ-30203-003: 境界制限
         let old_x = new_position.x;
@@ -118,7 +118,7 @@ pub fn knockback_movement_system(
         }
 
         // 位置更新
-        transform.translation = new_position;
+        logical_pos.value = new_position;
 
         // Velocity コンポーネントにも反映（他システムとの整合性）
         velocity.value = knockback.velocity;

@@ -4,7 +4,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, Velocity};
+use crate::components::{Ball, LogicalPosition, Velocity};
 use crate::core::events::{BallOutOfBoundsEvent, GroundBounceEvent, WallReflectionEvent};
 use crate::core::{CourtBounds, WallReflection};
 use crate::resource::config::GameConfig;
@@ -38,15 +38,15 @@ impl Plugin for BallTrajectoryPlugin {
 pub fn ball_gravity_system(
     time: Res<Time>,
     config: Res<GameConfig>,
-    mut query: Query<(&mut Velocity, &Transform), With<Ball>>,
+    mut query: Query<(&mut Velocity, &LogicalPosition), With<Ball>>,
 ) {
     let delta = time.delta_secs();
     let gravity = config.physics.gravity;
 
-    for (mut velocity, transform) in query.iter_mut() {
+    for (mut velocity, logical_pos) in query.iter_mut() {
         // REQ-30401-001: ボールが空中にある場合のみ重力を適用
         // Y > 0 のときは空中とみなす
-        if transform.translation.y > 0.0 {
+        if logical_pos.value.y > 0.0 {
             // REQ-30401-004: 速度更新（重力適用）
             velocity.value.y += gravity * delta;
         }
@@ -57,13 +57,13 @@ pub fn ball_gravity_system(
 /// @spec 30401_trajectory_spec.md#req-30401-003
 pub fn ball_position_update_system(
     time: Res<Time>,
-    mut query: Query<(&Velocity, &mut Transform), With<Ball>>,
+    mut query: Query<(&Velocity, &mut LogicalPosition), With<Ball>>,
 ) {
     let delta = time.delta_secs();
 
-    for (velocity, mut transform) in query.iter_mut() {
+    for (velocity, mut logical_pos) in query.iter_mut() {
         // REQ-30401-003: Position += Velocity * deltaTime
-        transform.translation += velocity.value * delta;
+        logical_pos.value += velocity.value * delta;
     }
 }
 
@@ -72,14 +72,14 @@ pub fn ball_position_update_system(
 /// @spec 30402_reflection_spec.md#req-30402-002
 pub fn ball_ground_bounce_system(
     config: Res<GameConfig>,
-    mut query: Query<(Entity, &mut Velocity, &mut Transform), With<Ball>>,
+    mut query: Query<(Entity, &mut Velocity, &mut LogicalPosition), With<Ball>>,
     mut event_writer: MessageWriter<GroundBounceEvent>,
 ) {
     let bounce_factor = config.ball.bounce_factor;
     let net_z = config.court.net_z;
 
-    for (entity, mut velocity, mut transform) in query.iter_mut() {
-        let pos = transform.translation;
+    for (entity, mut velocity, mut logical_pos) in query.iter_mut() {
+        let pos = logical_pos.value;
 
         // REQ-30402-001: ボールが地面（Y <= 0）に接触し、下向きに移動中の場合
         if pos.y <= 0.0 && velocity.value.y < 0.0 {
@@ -87,7 +87,7 @@ pub fn ball_ground_bounce_system(
             velocity.value.y = -velocity.value.y * bounce_factor;
 
             // 位置を地面に補正（めり込み防止）
-            transform.translation.y = 0.0;
+            logical_pos.value.y = 0.0;
 
             // REQ-30402-002: GroundBounceEvent 発行
             let court_side = crate::core::determine_court_side(pos.z, net_z);
@@ -108,14 +108,14 @@ pub fn ball_ground_bounce_system(
 /// @spec 30402_reflection_spec.md#req-30402-007
 pub fn ball_wall_reflection_system(
     config: Res<GameConfig>,
-    mut query: Query<(Entity, &mut Velocity, &mut Transform), With<Ball>>,
+    mut query: Query<(Entity, &mut Velocity, &mut LogicalPosition), With<Ball>>,
     mut event_writer: MessageWriter<WallReflectionEvent>,
 ) {
     let bounds = CourtBounds::from_config(&config.court);
     let bounce_factor = config.ball.bounce_factor;
 
-    for (entity, mut velocity, mut transform) in query.iter_mut() {
-        let pos = transform.translation;
+    for (entity, mut velocity, mut logical_pos) in query.iter_mut() {
+        let pos = logical_pos.value;
         let vel = velocity.value;
 
         // 壁・天井との接触チェックと反射計算
@@ -124,9 +124,9 @@ pub fn ball_wall_reflection_system(
             velocity.value = result.reflected_velocity;
 
             // REQ-30402-007: 位置を境界内に補正（めり込み防止）
-            transform.translation.x = bounds.clamp_x(pos.x);
-            transform.translation.y = bounds.clamp_y(pos.y);
-            transform.translation.z = bounds.clamp_z(pos.z);
+            logical_pos.value.x = bounds.clamp_x(pos.x);
+            logical_pos.value.y = bounds.clamp_y(pos.y);
+            logical_pos.value.z = bounds.clamp_z(pos.z);
 
             // REQ-30402-004: WallReflectionEvent 発行
             event_writer.write(WallReflectionEvent {
@@ -145,14 +145,14 @@ pub fn ball_wall_reflection_system(
 /// @spec 30401_trajectory_spec.md#req-30401-006
 pub fn ball_out_of_bounds_system(
     config: Res<GameConfig>,
-    query: Query<(Entity, &Transform), With<Ball>>,
+    query: Query<(Entity, &LogicalPosition), With<Ball>>,
     mut event_writer: MessageWriter<BallOutOfBoundsEvent>,
 ) {
     let half_width = config.court.width / 2.0;
     let half_depth = config.court.depth / 2.0;
 
-    for (entity, transform) in query.iter() {
-        let pos = transform.translation;
+    for (entity, logical_pos) in query.iter() {
+        let pos = logical_pos.value;
 
         // REQ-30401-006: ボールが地面（Y < 0）に落下した場合
         if pos.y < 0.0 {
@@ -318,10 +318,10 @@ mod tests {
         assert!(result.is_some());
 
         let reflected = result.unwrap().reflected_velocity;
-        // X成分が反転し、バウンド係数が適用される
+        // X成分のみ反転・減衰、他成分は維持
         assert!((reflected.x - 8.0).abs() < 0.001); // -(-10.0) * 0.8 = 8.0
-        assert!((reflected.y - 4.0).abs() < 0.001); // 5.0 * 0.8 = 4.0
-        assert!((reflected.z - 2.4).abs() < 0.001); // 3.0 * 0.8 = 2.4
+        assert!((reflected.y - 5.0).abs() < 0.001); // 維持
+        assert!((reflected.z - 3.0).abs() < 0.001); // 維持
     }
 
     /// TST-30404-010: 天井反射テスト
@@ -351,10 +351,10 @@ mod tests {
         assert!(result.is_some());
 
         let reflected = result.unwrap().reflected_velocity;
-        // Y成分が反転し、バウンド係数が適用される
-        assert!((reflected.x - 4.0).abs() < 0.001); // 5.0 * 0.8 = 4.0
+        // Y成分のみ反転・減衰、他成分は維持
+        assert!((reflected.x - 5.0).abs() < 0.001); // 維持
         assert!((reflected.y - (-8.0)).abs() < 0.001); // -(10.0) * 0.8 = -8.0
-        assert!((reflected.z - 2.4).abs() < 0.001); // 3.0 * 0.8 = 2.4
+        assert!((reflected.z - 3.0).abs() < 0.001); // 維持
     }
 
     /// TST-30404-011: 奥壁反射テスト（Z軸）
@@ -384,9 +384,9 @@ mod tests {
         assert!(result.is_some());
 
         let reflected = result.unwrap().reflected_velocity;
-        // Z成分が反転し、バウンド係数が適用される
-        assert!((reflected.x - 4.0).abs() < 0.001); // 5.0 * 0.8 = 4.0
-        assert!((reflected.y - 2.4).abs() < 0.001); // 3.0 * 0.8 = 2.4
+        // Z成分のみ反転・減衰、他成分は維持
+        assert!((reflected.x - 5.0).abs() < 0.001); // 維持
+        assert!((reflected.y - 3.0).abs() < 0.001); // 維持
         assert!((reflected.z - 8.0).abs() < 0.001); // -(-10.0) * 0.8 = 8.0
     }
 

@@ -6,6 +6,29 @@ use bevy::prelude::*;
 
 use crate::core::CourtSide;
 
+/// 論理座標コンポーネント（ゲームロジック用）
+/// X: 左右, Y: 高さ（ジャンプ）, Z: 奥行き（コート前後）
+#[derive(Component, Debug, Clone, Copy, Default)]
+pub struct LogicalPosition {
+    pub value: Vec3,
+}
+
+impl LogicalPosition {
+    pub fn new(x: f32, y: f32, z: f32) -> Self {
+        Self {
+            value: Vec3::new(x, y, z),
+        }
+    }
+}
+
+/// 影マーカーコンポーネント
+/// 親エンティティの影を表示する
+#[derive(Component, Debug, Clone, Copy)]
+pub struct Shadow {
+    /// 影の所有者エンティティ
+    pub owner: Entity,
+}
+
 /// プレイヤーマーカーコンポーネント
 /// @spec 30200_player_overview.md
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -192,10 +215,12 @@ impl KnockbackState {
 #[derive(Bundle)]
 pub struct PlayerBundle {
     pub player: Player,
+    pub logical_position: LogicalPosition,
     pub velocity: Velocity,
     pub knockback: KnockbackState,
     pub grounded: GroundedState,
     pub shot_state: ShotState,
+    pub sprite: Sprite,
     pub transform: Transform,
 }
 
@@ -206,13 +231,25 @@ impl PlayerBundle {
         } else {
             CourtSide::Player2
         };
+        // Player1: 青、Player2: 赤
+        let color = if id == 1 {
+            Color::srgb(0.2, 0.4, 0.8)
+        } else {
+            Color::srgb(0.8, 0.2, 0.2)
+        };
         Self {
             player: Player { id, court_side },
+            logical_position: LogicalPosition { value: position },
             velocity: Velocity::default(),
             knockback: KnockbackState::default(),
             grounded: GroundedState::default(),
             shot_state: ShotState::default(),
-            transform: Transform::from_translation(position),
+            sprite: Sprite {
+                color,
+                custom_size: Some(Vec2::new(40.0, 60.0)),
+                ..default()
+            },
+            transform: Transform::default(),
         }
     }
 }
@@ -222,9 +259,11 @@ impl PlayerBundle {
 #[derive(Bundle)]
 pub struct BallBundle {
     pub ball: Ball,
+    pub logical_position: LogicalPosition,
     pub velocity: Velocity,
     pub bounce_count: BounceCount,
     pub last_shooter: LastShooter,
+    pub sprite: Sprite,
     pub transform: Transform,
 }
 
@@ -234,10 +273,16 @@ impl BallBundle {
     pub fn new(position: Vec3, velocity: Vec3) -> Self {
         Self {
             ball: Ball,
+            logical_position: LogicalPosition { value: position },
             velocity: Velocity { value: velocity },
             bounce_count: BounceCount::default(),
             last_shooter: LastShooter::default(),
-            transform: Transform::from_translation(position),
+            sprite: Sprite {
+                color: Color::srgb(0.9, 0.9, 0.2), // 黄色
+                custom_size: Some(Vec2::new(20.0, 20.0)),
+                ..default()
+            },
+            transform: Transform::default(),
         }
     }
 
@@ -246,10 +291,16 @@ impl BallBundle {
     pub fn with_shooter(position: Vec3, velocity: Vec3, shooter: CourtSide) -> Self {
         Self {
             ball: Ball,
+            logical_position: LogicalPosition { value: position },
             velocity: Velocity { value: velocity },
             bounce_count: BounceCount::default(),
             last_shooter: LastShooter { side: Some(shooter) },
-            transform: Transform::from_translation(position),
+            sprite: Sprite {
+                color: Color::srgb(0.9, 0.9, 0.2), // 黄色
+                custom_size: Some(Vec2::new(20.0, 20.0)),
+                ..default()
+            },
+            transform: Transform::default(),
         }
     }
 }

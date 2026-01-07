@@ -7,7 +7,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, BallBundle, Player};
+use crate::components::{Ball, BallBundle, LogicalPosition, Player};
 use crate::core::{CourtSide, ShotEvent};
 use crate::resource::MatchScore;
 use crate::systems::{MovementInput, ShotInput};
@@ -22,7 +22,7 @@ pub fn serve_execute_system(
     shot_input: Res<ShotInput>,
     match_score: Res<MatchScore>,
     movement_input: Res<MovementInput>,
-    player_query: Query<(&Player, &Transform)>,
+    player_query: Query<(&Player, &LogicalPosition)>,
     ball_query: Query<Entity, With<Ball>>,
     mut shot_event_writer: MessageWriter<ShotEvent>,
 ) {
@@ -49,16 +49,21 @@ pub fn serve_execute_system(
     }
 
     // サーバーのプレイヤーを取得
-    let Some((_, transform)) = player_query.iter().find(|(p, _)| p.id == server_id) else {
+    let Some((_, logical_pos)) = player_query.iter().find(|(p, _)| p.id == server_id) else {
         warn!("Server player {} not found", server_id);
         return;
     };
 
     // @spec 30102_serve_spec.md#req-30102-002: ボールを生成（プレイヤーの足元 + (0, 0.5, 0)）
-    let ball_pos = transform.translation + Vec3::new(0.0, 0.5, 0.0);
+    let ball_pos = logical_pos.value + Vec3::new(0.0, 0.5, 0.0);
     let ball_velocity = Vec3::ZERO; // 初期速度は0、shot_direction_systemで設定される
 
-    commands.spawn(BallBundle::new(ball_pos, ball_velocity));
+    // サーバー情報を LastShooter に設定（自己衝突回避のため）
+    info!(
+        "Serve: Creating ball with LastShooter = {:?}",
+        match_score.server
+    );
+    commands.spawn(BallBundle::with_shooter(ball_pos, ball_velocity, match_score.server));
     info!(
         "Serve: Ball spawned at {:?} by Player{}",
         ball_pos, server_id
@@ -88,7 +93,7 @@ pub fn serve_execute_system(
     shot_event_writer.write(ShotEvent {
         player_id: server_id,
         direction,
-        jump_height: transform.translation.y,
+        jump_height: logical_pos.value.y,
     });
 
     info!(
