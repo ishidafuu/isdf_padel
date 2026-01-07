@@ -298,6 +298,22 @@ completed_at: null
 
 [プランの実装内容をチェックリスト形式で記載]
 
+## 完了チェックリスト
+
+[タスクタイプに応じて以下から選択]
+
+### game-dev/bugfix/refactor の場合:
+> このタスクは in-review 経由必須
+
+- [ ] ビルド成功（`cargo build`）
+- [ ] テスト全PASS（`cargo test`）
+- [ ] in-review に移動済み
+- [ ] レビュー完了
+
+### framework/project-wide の場合:
+- [ ] 変更内容の検証完了
+- [ ] ドキュメント整合性確認（frameworkのみ）
+
 ## メモ
 
 [必要に応じて追記]
@@ -321,6 +337,7 @@ completed_at: null
 - **プランファイルは削除しない** - `plan_file` フィールドで参照を保持
 - **初期ステータスは todo** - プラン作成は完了しているため、planning ではなく todo
 - **プラン全文を埋め込む** - 情報欠損を防ぐため、プランの全内容を Detailed Implementation Plan セクションに含める
+- **完了チェックリストはタスクタイプに応じて選択** - game-dev/bugfix/refactorはin-review必須版、framework/project-wideは簡易版を使用
 
 ### Phase 6: 完了報告
 

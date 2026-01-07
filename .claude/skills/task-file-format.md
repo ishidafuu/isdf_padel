@@ -157,6 +157,15 @@ completed_at: null                   # 完了日時（完了時のみ）
 
 > プランファイルから埋め込まれた詳細計画
 
+## 完了チェックリスト
+
+> game-dev/bugfix/refactor タスクは in-review 経由必須
+
+- [ ] ビルド成功
+- [ ] テスト全PASS
+- [ ] in-review に移動済み（game-dev/bugfix/refactor のみ）
+- [ ] レビュー完了
+
 ## メモ
 
 - 重要な決定事項
@@ -192,6 +201,38 @@ completed_at: null                   # 完了日時（完了時のみ）
 2. review-agent によるレビュー依頼
 3. 問題があれば修正、問題なければPR作成
 ```
+
+### 完了チェックリスト セクション
+
+タスク種別に応じた完了前チェック項目。
+
+**game-dev/bugfix/refactor用（in-review必須）:**
+```markdown
+## 完了チェックリスト
+
+> このタスクは in-review 経由必須
+
+- [ ] ビルド成功（`cargo build`）
+- [ ] テスト全PASS（`cargo test`）
+- [ ] in-review に移動済み
+- [ ] レビュー完了
+```
+
+**framework/project-wide用:**
+```markdown
+## 完了チェックリスト
+
+- [ ] 変更内容の検証完了
+- [ ] ドキュメント整合性確認（frameworkのみ）
+```
+
+| タスク種別 | in-review必須 | チェック項目 |
+|-----------|--------------|-------------|
+| game-dev（30XXX） | ✅ | ビルド、テスト、in-review、レビュー |
+| bugfix（B30XXX-NNN） | ✅ | ビルド、テスト、in-review、レビュー |
+| refactor（R30XXX-NNN） | ✅ | ビルド、テスト、in-review、レビュー |
+| project-wide（PXXX） | ❌ | 変更検証 |
+| framework（FXXX） | ❌ | 変更検証、ドキュメント整合性 |
 
 ---
 
