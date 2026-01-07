@@ -17,6 +17,7 @@ pub const WORLD_SCALE: f32 = 100.0;
 /// 論理座標を表示用Transformに同期するシステム
 /// 論理座標系: X=横移動, Y=高さ（ジャンプ）, Z=奥行き（コート前後＝打ち合い方向）
 /// 表示座標系: X=打ち合い方向（左右）, Y=横移動+高さ（上下）, Z=レイヤー深度
+/// @spec REQ-30801-005
 pub fn sync_transform_system(mut query: Query<(&LogicalPosition, &mut Transform)>) {
     for (logical_pos, mut transform) in query.iter_mut() {
         // 論理座標を表示座標に変換（90度回転：左右の打ち合い）
@@ -33,6 +34,7 @@ pub fn sync_transform_system(mut query: Query<(&LogicalPosition, &mut Transform)
 
 /// 影の位置を更新するシステム
 /// 影は所有者の足元（地面）に表示される
+/// @spec REQ-30801-003
 pub fn sync_shadow_system(
     config: Res<GameConfig>,
     owner_query: Query<&LogicalPosition>,
@@ -59,6 +61,7 @@ pub fn sync_shadow_system(
 }
 
 /// ボール生成時に影をスポーンするシステム
+/// @spec REQ-30801-002
 pub fn spawn_ball_shadow_system(
     mut commands: Commands,
     config: Res<GameConfig>,
@@ -88,6 +91,7 @@ pub fn spawn_ball_shadow_system(
 
 /// プレイヤーに影をスポーンするシステム
 /// HasShadowを持たないプレイヤーに対して影を生成する
+/// @spec REQ-30801-001
 pub fn spawn_player_shadow_system(
     mut commands: Commands,
     config: Res<GameConfig>,
@@ -112,6 +116,7 @@ pub fn spawn_player_shadow_system(
 
 /// ボール消滅時にボールの影を削除するシステム
 /// プレイヤーの影は削除しない
+/// @spec REQ-30801-004
 pub fn despawn_ball_shadow_system(
     mut commands: Commands,
     ball_query: Query<Entity, With<Ball>>,

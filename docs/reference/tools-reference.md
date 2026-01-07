@@ -34,7 +34,8 @@ agents/
 ├── data-agent.md             # データテーブル管理
 ├── setup-agent.md            # プロジェクト初期化
 ├── legacy-analyzer-agent.md  # レガシーコード解析
-└── game-reference-agent.md   # ゲーム参照資料管理
+├── game-reference-agent.md   # ゲーム参照資料管理
+└── audit-agent.md            # 定期コード監査
 ```
 
 ### エージェント一覧
@@ -58,6 +59,7 @@ agents/
 | 🔧 | setup-agent | プロジェクト初期化 | フォルダ構成 | [定義](../../.claude/agents/setup-agent.md) |
 | 🔬 | legacy-analyzer-agent | レガシーコード解析 | 9_reference/901_*/*.md | [定義](../../.claude/agents/legacy-analyzer-agent.md) |
 | 🎮 | game-reference-agent | 参照ゲーム仕様観察 | 9_reference/901_*/*.md | [定義](../../.claude/agents/game-reference-agent.md) |
+| 🔍 | audit-agent | 定期コード監査 | 診断レポート | [定義](../../.claude/agents/audit-agent.md) |
 
 **注**: 各エージェントの詳細は上記の「定義」リンクまたは [エージェントガイド](../concepts/agents.md) を参照。
 
@@ -305,6 +307,7 @@ argument-hint: [--all | --file <番号>]
 | parallel-sessions.md | 並列セッション実行ガイド | 全エージェント |
 | deep-investigation.md | 技術質問への詳細回答 | 全エージェント（調査時） |
 | ntfy-notification.md | ntfy経由リモート通知 | 全エージェント（フック実行） |
+| code-audit.md | コード監査手順・チェック項目 | audit-agent |
 
 ### ears.md（EARS記法）
 
