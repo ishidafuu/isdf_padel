@@ -23,6 +23,15 @@ class TaskInfo(TypedDict):
     blocks: list[str]
 
 
+class BugInfo(TypedDict):
+    id: str
+    title: str
+    severity: str  # critical / major / minor
+    discovered: str
+    related_feature: str
+    status: str
+
+
 def parse_frontmatter(file_path: Path) -> TaskInfo | None:
     """YAML Frontmatter を抽出してパース"""
     try:
@@ -72,6 +81,52 @@ def parse_frontmatter(file_path: Path) -> TaskInfo | None:
     )
 
 
+def parse_bug_frontmatter(file_path: Path) -> BugInfo | None:
+    """バグファイルの YAML Frontmatter を抽出してパース"""
+    try:
+        content = file_path.read_text(encoding="utf-8")
+    except Exception:
+        return None
+
+    # Frontmatter を抽出（--- で囲まれた部分）
+    match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
+    if not match:
+        return None
+
+    frontmatter = match.group(1)
+
+    # 簡易 YAML パース
+    def parse_value(val: str) -> str:
+        val = val.strip()
+        if val.startswith('"') and val.endswith('"'):
+            return val[1:-1]
+        return val
+
+    data: dict[str, str] = {}
+    for line in frontmatter.split("\n"):
+        if ":" in line:
+            key, val = line.split(":", 1)
+            data[key.strip()] = parse_value(val)
+
+    # 必須フィールドチェック
+    if "status" not in data:
+        return None
+
+    # ID をファイル名から抽出（BUG-001-xxx.md → BUG-001）
+    filename = file_path.stem
+    id_match = re.match(r"^(BUG-\d+)", filename)
+    bug_id = id_match.group(1) if id_match else filename
+
+    return BugInfo(
+        id=bug_id,
+        title=str(data.get("title", "")),
+        severity=str(data.get("severity", "minor")),
+        discovered=str(data.get("discovered", "")),
+        related_feature=str(data.get("related_feature", "")),
+        status=str(data.get("status", "")),
+    )
+
+
 def get_priority_order(priority: str) -> int:
     """優先度のソート順を返す（小さいほど高優先）"""
     return {"high": 0, "medium": 1, "low": 2}.get(priority, 1)
@@ -80,6 +135,11 @@ def get_priority_order(priority: str) -> int:
 def get_priority_icon(priority: str) -> str:
     """優先度アイコンを返す"""
     return {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(priority, "🟡")
+
+
+def get_severity_icon(severity: str) -> str:
+    """深刻度アイコンを返す"""
+    return {"critical": "🔴", "major": "🟠", "minor": "🟡"}.get(severity, "🟡")
 
 
 def main() -> None:
@@ -97,6 +157,18 @@ def main() -> None:
     archive_files = list(tasks_dir.glob("4_archive/*.md"))
     in_progress_files = list(tasks_dir.glob("2_in-progress/*.md"))
     in_review_files = list(tasks_dir.glob("3_in-review/*.md"))
+
+    # バックログファイルを収集（テンプレートを除外）
+    backlog_files = [
+        f for f in tasks_dir.glob("0_backlog/*.md") if not f.name.startswith("_")
+    ]
+
+    # reviewed バグを抽出
+    reviewed_bugs: list[BugInfo] = []
+    for f in backlog_files:
+        bug = parse_bug_frontmatter(f)
+        if bug and bug["status"] == "reviewed":
+            reviewed_bugs.append(bug)
 
     # 完了済みタスクID（status: "done" のみ）
     done_ids: set[str] = set()
@@ -169,6 +241,20 @@ def main() -> None:
     display_tasks = ready_tasks
     if args.limit > 0:
         display_tasks = ready_tasks[: args.limit]
+
+    # バグセクション出力
+    if reviewed_bugs:
+        print("🐛 精査済みバグ（タスク化待ち）:")
+        print()
+        for bug in reviewed_bugs:
+            icon = get_severity_icon(bug["severity"])
+            print(f"{icon} [{bug['id']}] {bug['title']}")
+            print(
+                f"   └─ 深刻度: {bug['severity']} | 関連: {bug['related_feature']} | 発見: {bug['discovered']}"
+            )
+            print()
+        print("---")
+        print()
 
     print(f"次に着手可能なタスク ({len(ready_tasks)}件):")
     print()
