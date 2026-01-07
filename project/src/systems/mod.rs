@@ -10,6 +10,7 @@ mod match_flow;
 mod movement;
 mod point_judgment;
 mod scoring;
+mod serve;
 mod shot_direction;
 mod shot_input;
 
@@ -22,5 +23,6 @@ pub use match_flow::*;
 pub use movement::*;
 pub use point_judgment::*;
 pub use scoring::*;
+pub use serve::*;
 pub use shot_direction::*;
 pub use shot_input::*;

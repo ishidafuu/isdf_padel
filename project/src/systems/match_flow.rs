@@ -1,14 +1,16 @@
 //! 試合フローシステム
 //! @spec 30101_flow_spec.md
+//! @spec 30102_serve_spec.md
 //!
 //! 試合全体の状態遷移とフロー管理を行う。
 //! MatchStart → Serve → Rally → PointEnd → Serve/MatchEnd
 
 use bevy::prelude::*;
 
-use crate::components::Player;
+use crate::components::{Ball, Player};
 use crate::core::{CourtSide, MatchStartEvent, MatchWonEvent, RallyEndEvent, ShotEvent};
 use crate::resource::{GameConfig, GameState, MatchFlowState, MatchScore, RallyState};
+use crate::systems::serve_execute_system;
 
 /// 試合フロープラグイン
 /// @spec 30101_flow_spec.md
@@ -19,9 +21,12 @@ impl Plugin for MatchFlowPlugin {
         app.init_state::<MatchFlowState>()
             .add_message::<MatchStartEvent>()
             .add_systems(OnEnter(MatchFlowState::MatchStart), match_start_system)
+            // @spec 30102_serve_spec.md: サーブ実行システム（Serve状態でのみ動作）
             .add_systems(
                 Update,
-                serve_to_rally_system.run_if(in_state(MatchFlowState::Serve)),
+                (serve_execute_system, serve_to_rally_system)
+                    .chain()
+                    .run_if(in_state(MatchFlowState::Serve)),
             )
             .add_systems(
                 Update,
@@ -124,10 +129,16 @@ fn rally_to_point_end_system(
 
 /// ポイント終了状態に入ったときの処理
 /// @spec 30101_flow_spec.md#req-30101-003
-fn point_end_enter_system() {
+fn point_end_enter_system(mut commands: Commands, ball_query: Query<Entity, With<Ball>>) {
     // @spec 30101_flow_spec.md#req-30101-003: PointEndEvent を発行する
     // NOTE: 現在は RallyEndEvent が PointEnd の役割を果たしている
     info!("Point ended. Preparing for next serve...");
+
+    // ボールを削除（次のサーブで新しいボールを生成するため）
+    for ball_entity in ball_query.iter() {
+        commands.entity(ball_entity).despawn();
+        info!("Ball despawned for next serve");
+    }
 }
 
 /// ポイント終了から次の状態への遷移システム
