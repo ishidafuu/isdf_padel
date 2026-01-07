@@ -176,19 +176,34 @@ ls -t "$HOME/.claude/plans"/*.md 2>/dev/null | head -1
    game-dev
    ```
 
-2. **Level 2: パス解析** - プラン内に記載されたファイルパスから判定
+2. **Level 1b: バグ修正/リファクタキーワード検出** - プラン内のキーワードから判定
+   - "バグ修正", "bug fix", "不具合", "修正" → bugfix
+   - "リファクタ", "refactor", "最適化", "改善", "リファクタリング" → refactor
+   - 元タスクID（30XXX）の記載を検出 → `related_task` に設定
+
+3. **Level 2: パス解析** - プラン内に記載されたファイルパスから判定
    - `project/docs/3_ingame/`, `project/src/` → game-dev
    - `.claude/agents/`, `.claude/commands/`, `.claude/skills/` → framework
    - `CI/CD`, `infrastructure`, `.github/workflows/` → project-wide
 
-3. **Level 3: ユーザー確認** - 判定できない場合は AskUserQuestion で確認
+4. **Level 3: ユーザー確認** - 判定できない場合は AskUserQuestion で確認
    ```
    タスクタイプを判定できませんでした。
    このタスクはどのタイプですか？
 
    - framework: フレームワーク開発（.claude/, docs/）
    - game-dev: ゲーム開発（project/docs/, project/src/）
+   - bugfix: バグ修正（既存機能の不具合修正）
+   - refactor: リファクタリング（既存機能の改善・最適化）
    - project-wide: プロジェクト横断（CI/CD、インフラ）
+   ```
+
+5. **Level 3b: ユーザー確認（bugfix/refactorの場合）** - 元タスクIDの確認
+   ```
+   バグ修正/リファクタタスクです。
+   元の機能タスクID（30XXX）を指定してください。
+
+   例: 30101（ジャンプ機能）、30201（敵キャラクター）
    ```
 
 ### Phase 3: タスクID採番
@@ -200,6 +215,8 @@ Skill ツールで `id-next` を実行してIDを取得する。
 # タスクタイプに応じて引数を指定
 Skill(skill="id-next", args="FXXX")    # framework
 Skill(skill="id-next", args="30XXX")   # game-dev
+Skill(skill="id-next", args="B30101")  # bugfix（元タスクID指定）
+Skill(skill="id-next", args="R30101")  # refactor（元タスクID指定）
 Skill(skill="id-next", args="PXXX")    # project-wide
 ```
 
@@ -217,6 +234,8 @@ Skill(skill="id-next", args="PXXX")    # project-wide
 **ID形式**:
 - framework: `FXXX`（例: F012）
 - game-dev: `30XXX`（例: 30101）
+- bugfix: `B30XXX-NNN`（例: B30101-001）
+- refactor: `R30XXX-NNN`（例: R30101-001）
 - project-wide: `PXXX`（例: P003）
 
 ### Phase 4: 配置先決定
@@ -226,7 +245,7 @@ if task_type == "framework":
     配置先 = "tasks/1_todo/"
     設定ファイル = "tasks/.taskrc.yaml"
 
-elif task_type == "game-dev":
+elif task_type in ["game-dev", "bugfix", "refactor"]:
     配置先 = "project/tasks/1_todo/"
     設定ファイル = "project/tasks/.taskrc.yaml"
 
@@ -242,9 +261,10 @@ elif task_type == "project-wide":
 ---
 id: "F005"
 title: "[プランのタイトルから抽出]"
-type: "framework"  # or "game-dev" or "project-wide"
+type: "framework"  # or "game-dev", "bugfix", "refactor", "project-wide"
 status: "todo"  # 初期ステータスは todo
 priority: "medium"  # プランから抽出、デフォルトは medium
+related_task: null  # 元機能タスクID（bugfix/refactorのみ必須、例: "30101"）
 spec_ids: []
 blocked_by: []
 blocks: []
@@ -348,6 +368,34 @@ worktree: 有効（task-manager-agent が作成）
 - 敵キャラクター追加
 - UI要素の実装
 
+### bugfix タスク
+
+```markdown
+配置先: project/tasks/1_todo/B30XXX-NNN-*.md
+対象: project/docs/, project/src/, project/tests/
+worktree: 有効（task-manager-agent が作成）
+related_task: 必須（元の機能タスクID）
+```
+
+**例**:
+- B30101-001: 着地判定のバグ修正
+- B30201-001: 敵の当たり判定バグ修正
+- B30301-002: UI表示のバグ修正
+
+### refactor タスク
+
+```markdown
+配置先: project/tasks/1_todo/R30XXX-NNN-*.md
+対象: project/docs/, project/src/, project/tests/
+worktree: 有効（task-manager-agent が作成）
+related_task: 必須（元の機能タスクID）
+```
+
+**例**:
+- R30101-001: ジャンプ処理の最適化
+- R30201-001: 敵AIロジックのリファクタリング
+- R30301-001: UIコンポーネントの共通化
+
 ### project-wide タスク
 
 ```markdown
@@ -401,7 +449,7 @@ worktree: 無効（task-manager-agent が判定）
 ---
 ## Task Type
 
-framework  # or game-dev or project-wide
+framework  # or game-dev, bugfix, refactor, project-wide
 ---
 
 方法2: ユーザー確認（AskUserQuestion）

@@ -18,6 +18,8 @@
 | タスクタイプ | ID形式 | 配置場所 | worktree |
 |------------|-------|---------|----------|
 | game-dev | `30XXX` | `project/tasks/` | ✅ 有効 |
+| bugfix | `B30XXX-NNN` | `project/tasks/` | ✅ 有効 |
+| refactor | `R30XXX-NNN` | `project/tasks/` | ✅ 有効 |
 | project-wide | `PXXX` | `project/tasks/` | ❌ 無効 |
 | framework | `FXXX` | `tasks/` | ❌ 無効 |
 
@@ -49,7 +51,9 @@ project/tasks/                   # ゲーム開発・プロジェクト横断タ
 30101-ジャンプ機能実装.md
 P001-CI-CD構築.md
 F001-エージェント更新.md
-30101-1-ジャンプ機能-仕様書.md  # 子タスク
+B30101-001-着地判定バグ修正.md    # バグ修正タスク
+R30101-001-ジャンプ処理最適化.md  # リファクタタスク
+30101-1-ジャンプ機能-仕様書.md    # 子タスク
 ```
 
 ---
@@ -60,14 +64,15 @@ F001-エージェント更新.md
 ---
 id: "30101"                          # タスクID（必須）
 title: "ジャンプ機能実装"             # タイトル（必須）
-type: "game-dev"                     # タスクタイプ（必須）: game-dev, project-wide, framework
+type: "game-dev"                     # タスクタイプ（必須）: game-dev, bugfix, refactor, project-wide, framework
 status: "todo"                       # ステータス（必須）: todo, in-progress, in-review, done, cancelled, planning
 priority: "medium"                   # 優先度（必須）: high, medium, low
+related_task: null                   # 元機能タスクID（bugfix/refactorのみ、必須）
 spec_ids: ["30201"]                  # 関連仕様書ID（任意）
 blocked_by: []                       # ブロック元タスクID（任意）
 blocks: []                           # ブロック先タスクID（任意）
-branch_name: null                    # Gitブランチ名（game-devのみ）
-worktree_path: null                  # worktreeパス（game-devのみ）
+branch_name: null                    # Gitブランチ名（game-dev/bugfix/refactorのみ）
+worktree_path: null                  # worktreeパス（game-dev/bugfix/refactorのみ）
 plan_file: "~/.claude/plans/xxx.md"  # プランファイルパス（任意）
 tags: ["player", "physics"]          # タグ（任意）
 parent_task_id: null                 # 親タスクID（子タスクのみ）
@@ -81,16 +86,17 @@ completed_at: null                   # 完了日時（完了時のみ）
 
 | フィールド | 型 | 必須 | 説明 |
 |-----------|-----|-----|------|
-| `id` | string | ✅ | タスクID（30101, P001, F001, 30101-1） |
+| `id` | string | ✅ | タスクID（30101, B30101-001, R30101-001, P001, F001, 30101-1） |
 | `title` | string | ✅ | タスクタイトル |
-| `type` | string | ✅ | game-dev, project-wide, framework |
+| `type` | string | ✅ | game-dev, bugfix, refactor, project-wide, framework |
 | `status` | string | ✅ | todo, in-progress, in-review, done, cancelled, planning |
 | `priority` | string | ✅ | high, medium, low |
+| `related_task` | string | △ | 元機能タスクID（bugfix/refactorのみ必須） |
 | `spec_ids` | array | - | 関連する仕様書のID |
 | `blocked_by` | array | - | このタスクをブロックしているタスクID |
 | `blocks` | array | - | このタスクがブロックしているタスクID |
-| `branch_name` | string | - | Gitブランチ名（game-devのみ） |
-| `worktree_path` | string | - | worktreeパス（game-devのみ） |
+| `branch_name` | string | - | Gitブランチ名（game-dev/bugfix/refactorのみ） |
+| `worktree_path` | string | - | worktreeパス（game-dev/bugfix/refactorのみ） |
 | `plan_file` | string | - | プランファイルのパス |
 | `tags` | array | - | タグ（検索用） |
 | `parent_task_id` | string | - | 親タスクのID（子タスクのみ） |
@@ -186,6 +192,66 @@ completed_at: null                   # 完了日時（完了時のみ）
 2. review-agent によるレビュー依頼
 3. 問題があれば修正、問題なければPR作成
 ```
+
+---
+
+## バグ修正/リファクタタスク
+
+### Frontmatter例（bugfix）
+
+```yaml
+---
+id: "B30101-001"
+title: "着地判定バグ修正"
+type: "bugfix"
+status: "todo"
+priority: "high"
+related_task: "30101"                # 元の機能タスクID（必須）
+spec_ids: ["30101"]
+blocked_by: []
+blocks: []
+branch_name: null
+worktree_path: null
+plan_file: "~/.claude/plans/xxx.md"
+tags: ["player", "physics", "bugfix"]
+parent_task_id: null
+created_at: "2025-12-29T10:00:00"
+updated_at: "2025-12-29T10:00:00"
+completed_at: null
+---
+```
+
+### Frontmatter例（refactor）
+
+```yaml
+---
+id: "R30101-001"
+title: "ジャンプ処理最適化"
+type: "refactor"
+status: "todo"
+priority: "medium"
+related_task: "30101"                # 元の機能タスクID（必須）
+spec_ids: ["30101"]
+blocked_by: []
+blocks: []
+branch_name: null
+worktree_path: null
+plan_file: "~/.claude/plans/xxx.md"
+tags: ["player", "physics", "refactor", "performance"]
+parent_task_id: null
+created_at: "2025-12-29T10:00:00"
+updated_at: "2025-12-29T10:00:00"
+completed_at: null
+---
+```
+
+### 利点
+
+| 利点 | 説明 |
+|------|------|
+| **ID枯渇防止** | 機能ID（30XXX）を消費しない |
+| **関連性明確化** | `related_task` で元機能と紐付け |
+| **統計・分析** | どの機能にバグが多いか、リファクタ頻度などを追跡可能 |
 
 ---
 

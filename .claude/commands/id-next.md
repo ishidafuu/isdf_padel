@@ -43,6 +43,14 @@ argument-hint: <種別>-<ファイル番号>
 /id-next PXXX         # → P003（プロジェクト横断タスク、既存がP001-P002の場合）
 ```
 
+### バグ修正/リファクタID採番
+
+```
+/id-next B30101       # → B30101-001（既存がない場合）
+/id-next B30101       # → B30101-002（既存がB30101-001の場合）
+/id-next R30201       # → R30201-001（リファクタタスク）
+```
+
 ## 指示
 
 引数（`$ARGUMENTS`）に応じて、次のIDを計算します。
@@ -91,6 +99,24 @@ argument-hint: <種別>-<ファイル番号>
 - F011
 ```
 
+### バグ修正/リファクタID採番の場合
+
+引数が `B30XXX` または `R30XXX` のような形式の場合:
+
+1. 元のタスクID（30XXX等）を特定
+2. 既存の B30XXX-* または R30XXX-* を検索（`project/tasks/**/*.md`）
+3. 最大の連番 + 1 を計算（なければ 001 から開始）
+4. 以下の形式で出力:
+
+```
+次のID: B30101-002
+
+既存ID:
+- B30101-001
+```
+
+**検索対象**: `project/tasks/**/*.md` でファイル名が `B` または `R` で始まるもの
+
 ## ID形式
 
 ### 仕様書ID形式
@@ -132,6 +158,8 @@ argument-hint: <種別>-<ファイル番号>
 |--------|--------|---------|
 | framework | FXXX | tasks/ |
 | game-dev | 30XXX | project/tasks/ |
+| bugfix | B30XXX-NNN | project/tasks/ |
+| refactor | R30XXX-NNN | project/tasks/ |
 | project-wide | PXXX | project/tasks/ |
 
 ## 注意事項
