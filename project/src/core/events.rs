@@ -5,6 +5,7 @@
 //! @spec 30202_jump_spec.md
 //! @spec 30401_trajectory_spec.md
 //! @spec 30601_shot_input_spec.md
+//! @spec 30602_shot_direction_spec.md
 
 use bevy::prelude::*;
 
@@ -171,4 +172,16 @@ pub struct ShotEvent {
     pub direction: Vec2,
     /// ジャンプ中の高さ（Position.Y）
     pub jump_height: f32,
+}
+
+/// ショット実行完了イベント
+/// @spec 30602_shot_direction_spec.md#req-30602-007
+#[derive(Event, Message, Debug, Clone)]
+pub struct ShotExecutedEvent {
+    /// プレイヤーID
+    pub player_id: u8,
+    /// 打球速度ベクトル
+    pub shot_velocity: Vec3,
+    /// ジャンプショットかどうか
+    pub is_jump_shot: bool,
 }

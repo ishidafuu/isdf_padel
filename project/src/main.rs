@@ -11,15 +11,15 @@ use bevy::prelude::*;
 use components::PlayerBundle;
 use core::{
     BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent,
-    ShotEvent,
+    ShotEvent, ShotExecutedEvent,
 };
 use resource::config::{load_game_config, GameConfig};
 use systems::{
     ceiling_collision_system, gravity_system, jump_system, knockback_movement_system,
     knockback_start_system, knockback_timer_system, landing_system, movement_system,
     read_input_system, read_jump_input_system, read_shot_input_system, shot_cooldown_system,
-    shot_input_system, vertical_movement_system, BallCollisionPlugin, BallTrajectoryPlugin,
-    BoundaryPlugin, JumpInput, MovementInput, ShotInput,
+    shot_direction_system, shot_input_system, vertical_movement_system, BallCollisionPlugin,
+    BallTrajectoryPlugin, BoundaryPlugin, JumpInput, MovementInput, ShotInput,
 };
 
 fn main() {
@@ -49,6 +49,7 @@ fn main() {
         .add_message::<BallHitEvent>()
         .add_message::<PlayerKnockbackEvent>()
         .add_message::<ShotEvent>()
+        .add_message::<ShotExecutedEvent>()
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -61,8 +62,8 @@ fn main() {
                 (jump_system, gravity_system, vertical_movement_system).chain(),
                 // 水平移動（ふっとばし中はスキップ）
                 movement_system,
-                // ショット入力処理・クールダウン
-                (shot_input_system, shot_cooldown_system),
+                // ショット入力処理・方向計算・クールダウン
+                (shot_input_system, shot_direction_system, shot_cooldown_system),
                 // ふっとばし移動・タイマー
                 (knockback_movement_system, knockback_timer_system),
                 // 境界チェック
