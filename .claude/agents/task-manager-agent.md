@@ -353,6 +353,74 @@ task-manager-agent:
   3. タスク一覧を整形して表示
 ```
 
+### 4. タスク状態遷移フロー（game-dev のみ）（CRITICAL）
+
+**game-dev タスク（30XXX）は必ず in-review を経由する**
+
+> ❌ FXXX/PXXX タスクはこのセクションをスキップ（in-review 不要）
+
+#### A. レビュー開始（in-progress → in-review）
+
+**責務: impl-agent**
+
+impl-agent が実装・テスト完了後に実行:
+
+```bash
+# 1. タスクファイルを移動
+mv project/tasks/2_in-progress/30XXX-*.md project/tasks/3_in-review/
+
+# 2. Frontmatter 更新
+Edit(status: "in-progress" -> "in-review")
+```
+
+#### B. レビュー完了 → タスク完了（in-review → done）
+
+**責務: task-manager-agent**（review-agent からの引き継ぎ後）
+
+```bash
+# 1. mainに切り替え、最新化
+cd /path/to/main/repository
+git checkout main
+git pull origin main
+
+# 2. スカッシュマージ（--no-commit でステージングのみ）
+git merge --squash task/30XXX-feature
+
+# 3. タスクファイルを archive/ に移動
+mv project/tasks/3_in-review/30XXX-*.md project/tasks/4_archive/
+
+# 4. Frontmatter 更新
+Edit(status: "in-review" -> "done")
+Edit(completed_at: null -> "2025-12-29T16:00:00+09:00")
+Edit(branch_name: "task/30XXX-feature" -> null)
+Edit(worktree_path: "../isdf_padel-30XXX" -> null)
+
+# 5. タスクファイルもステージング
+git add project/tasks/4_archive/30XXX-*.md
+
+# 6. まとめてコミット（実装 + タスク完了）
+git commit -m "feat(30XXX): 機能実装"
+
+# 7. worktree削除、ブランチ削除
+git worktree remove ../isdf_padel-30XXX
+git branch -D task/30XXX-feature
+
+# 8. push
+git push origin main
+```
+
+#### C. 差し戻し（in-review → in-progress）
+
+**責務: task-manager-agent**（review-agent からの要請時）
+
+```bash
+# 1. タスクファイルを戻す
+mv project/tasks/3_in-review/30XXX-*.md project/tasks/2_in-progress/
+
+# 2. Frontmatter 更新
+Edit(status: "in-review" -> "in-progress")
+```
+
 ## タスクタイプ別の扱い
 
 ### game-dev タスク

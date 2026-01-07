@@ -84,6 +84,63 @@ Task ID: 30101
 
 ---
 
+## 前提条件（CRITICAL）
+
+**game-dev タスク（30XXX）のみ適用**
+
+review-agent が呼び出される前に、タスクは `3_in-review/` に移動済みであること。
+
+### タスク状態遷移の責務
+
+| 遷移 | 責務 |
+|------|------|
+| `in-progress` → `in-review` | impl-agent 完了時に実行 |
+| `in-review` → `done` | review-agent 完了後に task-manager-agent が実行 |
+
+### 前提条件の確認
+
+```bash
+# タスクファイルが 3_in-review/ にあることを確認
+ls project/tasks/3_in-review/30XXX-*.md
+```
+
+**前提条件を満たさない場合:**
+```
+⚠️ 前提条件エラー
+
+タスクファイルが 3_in-review/ に存在しません。
+impl-agent で in-review への遷移を先に実行してください。
+```
+
+---
+
+## レビュー完了後の処理（CRITICAL）
+
+**game-dev タスク（30XXX）のみ適用**
+
+### 問題なしの場合
+
+1. task-manager-agent でタスク完了処理を実行
+2. タスクファイルを `4_archive/` に移動
+3. スカッシュマージ・コミット
+
+### 問題ありの場合
+
+1. 問題点をレポート
+2. タスクを impl-agent に差し戻し:
+
+```bash
+# タスクファイルを戻す
+mv project/tasks/3_in-review/30XXX-*.md project/tasks/2_in-progress/
+
+# Frontmatter 更新
+Edit(status: "in-review" -> "in-progress")
+```
+
+3. impl-agent で修正後、再度 in-review に遷移
+
+---
+
 ## コマンドの使い方
 
 このエージェントは以下のコマンドを**自動的に使用**します。レビュー開始時に必ず実行してください。

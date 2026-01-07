@@ -77,6 +77,40 @@ Edit(updated_at: "旧タイムスタンプ" -> "新タイムスタンプ")
 Edit(spec_ids: ["30201"] -> ["30201", "30202"])
 ```
 
+### 3.5. レビュー開始（in-progress → in-review）（game-dev のみ）
+
+**game-dev タスク（30XXX）のみ適用**
+
+> ❌ FXXX/PXXX タスクはこのセクションをスキップ（in-review 不要、直接 done へ）
+
+**責務: impl-agent**
+
+impl-agent が実装・テスト完了後に実行:
+
+```bash
+# 1. タスクファイルを移動
+mv project/tasks/2_in-progress/30XXX-*.md project/tasks/3_in-review/
+
+# 2. Frontmatter 更新
+Edit(status: "in-progress" -> "in-review")
+Edit(updated_at: "旧タイムスタンプ" -> "新タイムスタンプ")
+```
+
+**注意**: game-dev タスクは実装完了 → 直接 done は禁止。必ず in-review を経由する。
+
+### 3.6. 差し戻し（in-review → in-progress）（game-dev のみ）
+
+**責務: task-manager-agent**（review-agent からの要請時）
+
+```bash
+# 1. タスクファイルを戻す
+mv project/tasks/3_in-review/30XXX-*.md project/tasks/2_in-progress/
+
+# 2. Frontmatter 更新
+Edit(status: "in-review" -> "in-progress")
+Edit(updated_at: "旧タイムスタンプ" -> "新タイムスタンプ")
+```
+
 ### 4. タスク完了
 
 #### game-dev タスク（worktreeあり）

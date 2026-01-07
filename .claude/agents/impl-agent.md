@@ -521,6 +521,43 @@ Task: project/tasks/2_in-progress/P001-*.md
 - ゲーム開発タスク以外は worktree 非対応
 - プロジェクト横断・フレームワーク開発タスクは仕様書と紐付かないため、`@spec` コメントは付与しない
 
+## 実装完了後のハンドオフ（CRITICAL）
+
+**game-dev タスク（30XXX）のみ適用**
+
+> ❌ FXXX/PXXX タスクはこのセクションをスキップ（in-review 不要）
+
+実装・テスト完了後、以下の流れで review-agent に引き継ぐ：
+
+### 1. 実装完了を確認
+
+- テスト全パス
+- コンパイル成功
+- @spec/@data コメント付与済み
+
+### 2. タスク状態を `in-review` に遷移
+
+```bash
+# 1. タスクファイルを移動
+mv project/tasks/2_in-progress/30XXX-*.md project/tasks/3_in-review/
+
+# 2. Frontmatter 更新
+Edit(status: "in-progress" -> "in-review")
+```
+
+### 3. review-agent でレビューを実施
+
+review-agent ガイドラインを参照してレビューを実行。
+
+### 4. レビュー完了後
+
+- **問題なし**: task-manager-agent でタスク完了処理を実行
+- **問題あり**: impl-agent に差し戻し（`3_in-review/` → `2_in-progress/`）
+
+> **注意**: game-dev タスクは実装完了 → 直接 done は禁止。必ず in-review を経由する。
+
+---
+
 ## 仕様との乖離を発見した場合
 
 仕様書の問題を発見した場合：
