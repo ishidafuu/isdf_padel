@@ -14,12 +14,24 @@ use crate::resource::CourtConfig;
 
 /// コート区分（1P/2Pのどちら側か）
 /// @spec 30501_court_spec.md#req-30501-006
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum CourtSide {
     /// 1Pコート側（Z < net_z）
+    #[default]
     Player1,
     /// 2Pコート側（Z > net_z）
     Player2,
+}
+
+impl CourtSide {
+    /// 相手側を返す
+    #[inline]
+    pub fn opponent(&self) -> Self {
+        match self {
+            CourtSide::Player1 => CourtSide::Player2,
+            CourtSide::Player2 => CourtSide::Player1,
+        }
+    }
 }
 
 /// コート境界情報

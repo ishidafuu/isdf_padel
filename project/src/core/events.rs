@@ -185,3 +185,63 @@ pub struct ShotExecutedEvent {
     /// ジャンプショットかどうか
     pub is_jump_shot: bool,
 }
+
+/// ラリー終了イベント（ポイント獲得のトリガー）
+/// @spec 30701_point_spec.md#req-30701-002
+#[derive(Event, Message, Debug, Clone)]
+pub struct RallyEndEvent {
+    /// ポイントを獲得したプレイヤー側
+    pub winner: super::court::CourtSide,
+    /// 終了理由
+    pub reason: RallyEndReason,
+}
+
+/// ラリー終了理由
+/// @spec 30701_point_spec.md
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RallyEndReason {
+    /// ツーバウンド
+    DoubleBounce,
+    /// アウト
+    Out,
+    /// ネットタッチ
+    NetFault,
+}
+
+/// ポイント獲得イベント
+/// @spec 30701_point_spec.md#req-30701-002
+#[derive(Event, Message, Debug, Clone)]
+pub struct PointScoredEvent {
+    /// ポイントを獲得したプレイヤー側
+    pub scorer: super::court::CourtSide,
+    /// 獲得後のポイント値（表示用）
+    pub new_point_value: u32,
+}
+
+/// ゲーム勝利イベント
+/// @spec 30701_point_spec.md#req-30701-003
+#[derive(Event, Message, Debug, Clone)]
+pub struct GameWonEvent {
+    /// 勝利したプレイヤー側
+    pub winner: super::court::CourtSide,
+    /// 勝利後のゲーム数
+    pub games_won: u32,
+}
+
+/// セット勝利イベント
+/// @spec 30701_point_spec.md
+#[derive(Event, Message, Debug, Clone)]
+pub struct SetWonEvent {
+    /// 勝利したプレイヤー側
+    pub winner: super::court::CourtSide,
+    /// 勝利後のセット数
+    pub sets_won: u32,
+}
+
+/// マッチ勝利イベント
+/// @spec 30701_point_spec.md
+#[derive(Event, Message, Debug, Clone)]
+pub struct MatchWonEvent {
+    /// 勝利したプレイヤー側
+    pub winner: super::court::CourtSide,
+}

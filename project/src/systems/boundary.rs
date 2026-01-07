@@ -247,9 +247,9 @@ mod tests {
                 jump_threshold: 0.5,
             },
             scoring: ScoringConfig {
-                game_point: 4,
-                set_game: 6,
-                match_set: 1,
+                point_values: vec![0, 15, 30, 40],
+                games_to_win_set: 6,
+                sets_to_win_match: 1,
             },
             input: InputConfig {
                 jump_buffer_time: 0.1,

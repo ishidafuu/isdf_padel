@@ -225,23 +225,28 @@ fn default_jump_threshold() -> f32 {
 
 /// スコアリングパラメータ
 /// @data 80101_game_constants.md#scoring-config
+/// @data 80701_point_config.md
 #[derive(Deserialize, Clone, Debug)]
 pub struct ScoringConfig {
-    #[serde(default = "default_game_point")]
-    pub game_point: i32,
-    #[serde(default = "default_set_game")]
-    pub set_game: i32,
-    #[serde(default = "default_match_set")]
-    pub match_set: i32,
+    /// ポイント進行値 [0, 15, 30, 40]
+    /// @spec 30701_point_spec.md#req-30701-001
+    #[serde(default = "default_point_values")]
+    pub point_values: Vec<u32>,
+    /// 勝利に必要なゲーム数
+    #[serde(default = "default_games_to_win_set")]
+    pub games_to_win_set: u32,
+    /// 勝利に必要なセット数
+    #[serde(default = "default_sets_to_win_match")]
+    pub sets_to_win_match: u32,
 }
 
-fn default_game_point() -> i32 {
-    4
+fn default_point_values() -> Vec<u32> {
+    vec![0, 15, 30, 40]
 }
-fn default_set_game() -> i32 {
+fn default_games_to_win_set() -> u32 {
     6
 }
-fn default_match_set() -> i32 {
+fn default_sets_to_win_match() -> u32 {
     1
 }
 

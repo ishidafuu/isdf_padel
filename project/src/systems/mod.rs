@@ -7,6 +7,7 @@ mod boundary;
 mod jump;
 mod knockback;
 mod movement;
+mod scoring;
 mod shot_direction;
 mod shot_input;
 
@@ -16,5 +17,6 @@ pub use boundary::*;
 pub use jump::*;
 pub use knockback::*;
 pub use movement::*;
+pub use scoring::*;
 pub use shot_direction::*;
 pub use shot_input::*;
