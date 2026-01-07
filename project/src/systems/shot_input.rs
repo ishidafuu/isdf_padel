@@ -20,12 +20,9 @@ pub struct ShotInput {
 
 /// ショット入力読み取りシステム
 /// @spec 30601_shot_input_spec.md#req-30601-001
-/// NOTE: テスト用に P1/P2 を同じキーで操作（F または Enter）
+/// 共通: V（距離判定でボールに近い方のみ有効）
 pub fn read_shot_input_system(keyboard: Res<ButtonInput<KeyCode>>, mut input: ResMut<ShotInput>) {
-    // 共通ショット入力: F または Enter
-    let shot_pressed = keyboard.just_pressed(KeyCode::KeyF) || keyboard.just_pressed(KeyCode::Enter);
-
-    // 両プレイヤーに同じ入力を設定
+    let shot_pressed = keyboard.just_pressed(KeyCode::KeyV);
     input.player1_pressed = shot_pressed;
     input.player2_pressed = shot_pressed;
 }

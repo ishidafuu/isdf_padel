@@ -19,15 +19,12 @@ pub struct JumpInput {
 
 /// ジャンプ入力読み取りシステム
 /// @spec 30202_jump_spec.md#req-30202-001
-/// NOTE: テスト用に P1/P2 を同じキーで操作（Space）
+/// 共通: B
 pub fn read_jump_input_system(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut input: ResMut<JumpInput>,
 ) {
-    // 共通ジャンプ入力: Space
-    let jump_pressed = keyboard.just_pressed(KeyCode::Space);
-
-    // 両プレイヤーに同じ入力を設定
+    let jump_pressed = keyboard.just_pressed(KeyCode::KeyB);
     input.player1_pressed = jump_pressed;
     input.player2_pressed = jump_pressed;
 }
