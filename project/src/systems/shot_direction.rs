@@ -1,5 +1,6 @@
 //! ショット方向計算システム
 //! @spec 30602_shot_direction_spec.md
+//! @spec 30603_jump_shot_spec.md
 
 use bevy::prelude::*;
 
@@ -32,6 +33,9 @@ pub fn shot_direction_system(
         let horizontal_dir = calculate_horizontal_direction(event.direction);
 
         // REQ-30602-002, REQ-30602-003: ジャンプショット判定と速度決定
+        // REQ-30603-001: ジャンプ判定（Position.Y > JumpThreshold）
+        // REQ-30603-002: ジャンプショット速度増加（power_shot_speed）
+        // REQ-30603-003: ジャンプショット角度変化（jump_shot_angle）
         let is_jump_shot = event.jump_height > config.shot.jump_threshold;
         let (speed, angle_deg) = if is_jump_shot {
             (config.ball.power_shot_speed, config.shot.jump_shot_angle)
