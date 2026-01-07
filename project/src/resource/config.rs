@@ -1,12 +1,15 @@
 //! ゲーム設定
 //! @data 80101_game_constants.md
 
-use bevy::prelude::*;
+use bevy::{
+    asset::{io::Reader, AssetLoader, LoadContext},
+    prelude::*,
+};
 use serde::Deserialize;
 
 /// ゲーム全体の設定
 /// @data 80101_game_constants.md#gameconfig-構造
-#[derive(Resource, Deserialize, Clone, Debug)]
+#[derive(Asset, TypePath, Resource, Deserialize, Clone, Debug)]
 pub struct GameConfig {
     pub physics: PhysicsConfig,
     pub court: CourtConfig,
@@ -365,4 +368,48 @@ pub fn load_game_config(path: &str) -> Result<GameConfig, String> {
     let config_str =
         std::fs::read_to_string(path).map_err(|e| format!("Failed to read config file: {}", e))?;
     ron::from_str(&config_str).map_err(|e| format!("Failed to parse config: {}", e))
+}
+
+// ============================================================================
+// ホットリロード対応
+// @spec 30026: GameConfig ホットリロード対応
+// ============================================================================
+
+/// GameConfig のハンドルを保持するリソース
+#[derive(Resource)]
+pub struct GameConfigHandle(pub Handle<GameConfig>);
+
+/// GameConfig の RON ファイルをロードするカスタム AssetLoader
+#[derive(Default)]
+pub struct GameConfigLoader;
+
+/// GameConfigLoader のエラー型
+#[derive(Debug, thiserror::Error)]
+pub enum GameConfigLoaderError {
+    #[error("Failed to read file: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("Failed to parse RON: {0}")]
+    Ron(#[from] ron::error::SpannedError),
+}
+
+impl AssetLoader for GameConfigLoader {
+    type Asset = GameConfig;
+    type Settings = ();
+    type Error = GameConfigLoaderError;
+
+    async fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        _load_context: &mut LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        let mut bytes = Vec::new();
+        reader.read_to_end(&mut bytes).await?;
+        let config: GameConfig = ron::de::from_bytes(&bytes)?;
+        Ok(config)
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["ron"]
+    }
 }

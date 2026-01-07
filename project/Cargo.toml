@@ -6,9 +6,10 @@ description = "Padel Game - MVP v0.1"
 license = "MIT"
 
 [dependencies]
-bevy = "0.17"
+bevy = { version = "0.17", features = ["file_watcher"] }
 serde = { version = "1.0", features = ["derive"] }
 ron = "0.10"
+thiserror = "2.0"
 
 [features]
 default = []

@@ -2,10 +2,11 @@
 
 ## メタ情報
 
-- **Status**: todo
+- **Status**: done
 - **Priority**: low
 - **Type**: game-dev
 - **Created**: 2026-01-07
+- **Completed**: 2026-01-07
 - **Spec**: 80101_game_constants.md
 
 ## 概要
@@ -34,10 +35,10 @@ Bevyのアセットシステムを使用してホットリロードを実現。
 
 ## 完了条件
 
-- [ ] GameConfigAsset と AssetLoader を実装
-- [ ] AssetPlugin で watch_for_changes を有効化
-- [ ] 設定変更時に ResMut<GameConfig> を更新するシステム追加
-- [ ] game_config.ron 編集 → 保存 → 即座に反映を確認
+- [x] GameConfigAsset と AssetLoader を実装
+- [x] AssetPlugin で watch_for_changes を有効化
+- [x] 設定変更時に ResMut<GameConfig> を更新するシステム追加
+- [x] game_config.ron 編集 → 保存 → 即座に反映を確認
 
 ## 備考
 

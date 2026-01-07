@@ -7,7 +7,7 @@ mod presentation;
 mod resource;
 mod systems;
 
-use bevy::prelude::*;
+use bevy::{asset::AssetPlugin, prelude::*};
 use components::PlayerBundle;
 use core::{
     BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent,
@@ -17,7 +17,7 @@ use presentation::{
     despawn_ball_shadow_system, spawn_ball_shadow_system, spawn_player_shadow_system,
     sync_shadow_system, sync_transform_system, DebugUiPlugin, WORLD_SCALE,
 };
-use resource::config::{load_game_config, GameConfig};
+use resource::config::{load_game_config, GameConfig, GameConfigHandle, GameConfigLoader};
 use resource::MatchFlowState;
 use systems::{
     ceiling_collision_system, gravity_system, jump_system, knockback_movement_system,
@@ -29,19 +29,31 @@ use systems::{
 };
 
 fn main() {
-    // GameConfig をロード
+    // GameConfig をロード（初回起動用、アセットシステム起動前に同期的に読み込み）
     let config = load_game_config("assets/config/game_config.ron")
         .expect("Failed to load game config");
 
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Padel Game - MVP v0.1".into(),
-                resolution: (1280, 720).into(),
-                ..default()
-            }),
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Padel Game - MVP v0.1".into(),
+                        resolution: (1280, 720).into(),
+                        ..default()
+                    }),
+                    ..default()
+                })
+                // ホットリロード有効化
+                // @spec 30026: GameConfig ホットリロード対応
+                .set(AssetPlugin {
+                    watch_for_changes_override: Some(true),
+                    ..default()
+                }),
+        )
+        // GameConfig の Asset 登録
+        .init_asset::<GameConfig>()
+        .init_asset_loader::<GameConfigLoader>()
         .add_plugins(BoundaryPlugin)
         .add_plugins(BallTrajectoryPlugin)
         .add_plugins(BallCollisionPlugin)
@@ -61,10 +73,12 @@ fn main() {
         .add_message::<PlayerKnockbackEvent>()
         .add_message::<ShotEvent>()
         .add_message::<ShotExecutedEvent>()
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (setup, load_config_asset))
         .add_systems(
             Update,
             (
+                // 設定ホットリロード
+                update_config_on_change,
                 // 入力読み取り
                 (read_input_system, read_jump_input_system, read_shot_input_system),
                 // ふっとばし開始（BallHitEvent を処理）
@@ -239,4 +253,38 @@ fn spawn_court(commands: &mut Commands, config: &GameConfig) {
     ));
 
     info!("Court spawned: {}x{} pixels (横向き)", court_display_width, court_display_height);
+}
+
+// ============================================================================
+// ホットリロード対応
+// @spec 30026: GameConfig ホットリロード対応
+// ============================================================================
+
+/// GameConfig をロードしてハンドルを保持
+fn load_config_asset(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let handle: Handle<GameConfig> = asset_server.load("config/game_config.ron");
+    commands.insert_resource(GameConfigHandle(handle));
+    info!("GameConfig loading started (hot-reload enabled)");
+}
+
+/// 設定ファイル変更時に GameConfig リソースを更新
+#[allow(deprecated)] // EventReader は Bevy 0.17 で MessageReader にリネーム予定
+fn update_config_on_change(
+    mut events: EventReader<AssetEvent<GameConfig>>,
+    assets: Res<Assets<GameConfig>>,
+    handle: Option<Res<GameConfigHandle>>,
+    mut config: ResMut<GameConfig>,
+) {
+    let Some(handle) = handle else { return };
+
+    for event in events.read() {
+        if let AssetEvent::Modified { id } = event {
+            if handle.0.id() == *id {
+                if let Some(new_config) = assets.get(*id) {
+                    *config = new_config.clone();
+                    info!("GameConfig hot-reloaded!");
+                }
+            }
+        }
+    }
 }
