@@ -145,6 +145,7 @@ mod tests {
                 power_shot_speed: 15.0,
                 bounce_factor: 0.8,
                 radius: 0.2,
+                min_bounce_velocity: 1.0,
             },
             collision: CollisionConfig {
                 character_radius: 0.5,
@@ -172,6 +173,7 @@ mod tests {
                 jump_buffer_time: 0.1,
                 shot_buffer_time: 0.05,
             },
+            shadow: ShadowConfig::default(),
         }
     }
 

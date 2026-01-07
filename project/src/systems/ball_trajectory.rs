@@ -76,15 +76,19 @@ pub fn ball_ground_bounce_system(
     mut event_writer: MessageWriter<GroundBounceEvent>,
 ) {
     let bounce_factor = config.ball.bounce_factor;
+    let min_bounce_velocity = config.ball.min_bounce_velocity;
     let net_z = config.court.net_z;
 
     for (entity, mut velocity, mut logical_pos) in query.iter_mut() {
         let pos = logical_pos.value;
 
-        // REQ-30402-001: ボールが地面（Y <= 0）に接触し、下向きに移動中の場合
-        if pos.y <= 0.0 && velocity.value.y < 0.0 {
+        // REQ-30402-001: ボールが地面（Y <= 0）に接触し、下向きまたは静止中の場合
+        // Y速度が0の場合もバウンドさせる（プレイヤー衝突で水平に跳ね返った場合対応）
+        if pos.y <= 0.0 && velocity.value.y <= 0.0 {
             // 速度Y成分を反転し、バウンド係数を適用
-            velocity.value.y = -velocity.value.y * bounce_factor;
+            let bounced_y = -velocity.value.y * bounce_factor;
+            // 最小バウンド速度を保証（Y速度が0でも軽く跳ねる）
+            velocity.value.y = bounced_y.max(min_bounce_velocity);
 
             // 位置を地面に補正（めり込み防止）
             logical_pos.value.y = 0.0;

@@ -15,9 +15,9 @@ GameConfig(
         service_box_depth: 5.0,
     ),
     player: PlayerConfig(
-        move_speed: 5.0,
-        move_speed_z: 6.0,
-        max_speed: 10.0,
+        move_speed: 3.0,
+        move_speed_z: 3.5,
+        max_speed: 6.0,
         jump_force: 3.0,
         friction: 0.9,
         air_control_factor: 0.5,
@@ -25,10 +25,11 @@ GameConfig(
         z_max: 6.0,
     ),
     ball: BallConfig(
-        normal_shot_speed: 8.0,
-        power_shot_speed: 12.0,
+        normal_shot_speed: 4.5,
+        power_shot_speed: 7.0,
         bounce_factor: 0.7,
         radius: 0.2,
+        min_bounce_velocity: 1.0,
     ),
     collision: CollisionConfig(
         character_radius: 0.5,
@@ -40,10 +41,10 @@ GameConfig(
         invincibility_time: 1.0,
     ),
     shot: ShotConfig(
-        max_distance: 1.5,
+        max_distance: 0.9,
         max_height_diff: 2.0,
         cooldown_time: 0.5,
-        normal_shot_angle: 15.0,
+        normal_shot_angle: 30.0,
         jump_shot_angle: 10.0,
         jump_threshold: 0.5,
     ),
@@ -55,5 +56,14 @@ GameConfig(
     input: InputConfig(
         jump_buffer_time: 0.1,
         shot_buffer_time: 0.05,
+    ),
+    shadow: ShadowConfig(
+        player_size: (50.0, 20.0),
+        player_alpha: 0.6,
+        player_y_offset: 30.0,
+        ball_size: (25.0, 10.0),
+        ball_alpha: 0.5,
+        ball_y_offset: 0.0,
+        z_layer: -0.5,
     ),
 )
