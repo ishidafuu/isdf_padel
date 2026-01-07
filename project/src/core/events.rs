@@ -198,14 +198,20 @@ pub struct RallyEndEvent {
 
 /// ラリー終了理由
 /// @spec 30701_point_spec.md
+/// @spec 30103_point_end_spec.md
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RallyEndReason {
     /// ツーバウンド
+    /// @spec 30103_point_end_spec.md#req-30103-001
     DoubleBounce,
-    /// アウト
+    /// アウト（パデルでは通常発生しない、安全弁）
     Out,
-    /// ネットタッチ
+    /// ネットタッチ（ボールがネットに当たり相手コートに届かなかった）
+    /// @spec 30103_point_end_spec.md#req-30103-002
     NetFault,
+    /// 自コート打球（打った打球が自コートに落ちた）
+    /// @spec 30103_point_end_spec.md#req-30103-003
+    OwnCourtHit,
 }
 
 /// ポイント獲得イベント

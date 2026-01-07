@@ -5,8 +5,8 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, BounceCount};
-use crate::core::events::{BallOutOfBoundsEvent, GroundBounceEvent, NetHitEvent, RallyEndEvent, RallyEndReason};
+use crate::components::{Ball, BounceCount, LastShooter};
+use crate::core::events::{BallOutOfBoundsEvent, GroundBounceEvent, NetHitEvent, RallyEndEvent, RallyEndReason, ShotExecutedEvent};
 use crate::core::CourtSide;
 use crate::resource::config::GameConfig;
 use crate::resource::{GameState, MatchScore, RallyState, RallyPhase};
@@ -21,10 +21,13 @@ impl Plugin for PointJudgmentPlugin {
             .add_systems(
                 Update,
                 (
+                    update_last_shooter_system,
                     bounce_count_update_system,
                     double_bounce_judgment_system,
                     out_of_bounds_judgment_system,
                     let_judgment_system,
+                    net_fault_judgment_system,
+                    own_court_hit_judgment_system,
                 )
                     .chain(),
             );
@@ -177,6 +180,125 @@ pub fn let_judgment_system(
     }
 }
 
+/// 最後のショット元更新システム
+/// @spec 30103_point_end_spec.md#req-30103-003
+/// ShotExecutedEvent を受信して LastShooter を更新
+pub fn update_last_shooter_system(
+    mut shot_events: MessageReader<ShotExecutedEvent>,
+    mut query: Query<&mut LastShooter, With<Ball>>,
+) {
+    for event in shot_events.read() {
+        // プレイヤーIDからCourtSideを決定
+        let shooter = match event.player_id {
+            1 => CourtSide::Player1,
+            _ => CourtSide::Player2,
+        };
+
+        for mut last_shooter in query.iter_mut() {
+            last_shooter.record(shooter);
+            info!("Ball shot by {:?}", shooter);
+        }
+    }
+}
+
+/// ネット失点判定システム（ラリー中）
+/// @spec 30103_point_end_spec.md#req-30103-002
+/// ラリー中にネットに当たった後、自コートに落ちた場合は失点
+pub fn net_fault_judgment_system(
+    mut net_events: MessageReader<NetHitEvent>,
+    rally_state: Res<RallyState>,
+    config: Res<GameConfig>,
+    match_score: Res<MatchScore>,
+    query: Query<(&Transform, &LastShooter), With<Ball>>,
+    mut rally_events: MessageWriter<RallyEndEvent>,
+) {
+    // ラリー中でなければスキップ（サーブ中はlet_judgment_systemで処理）
+    if rally_state.phase != RallyPhase::Rally {
+        return;
+    }
+
+    // ゲーム進行中でなければスキップ
+    if match_score.game_state != GameState::Playing {
+        return;
+    }
+
+    let net_z = config.court.net_z;
+
+    for event in net_events.read() {
+        if let Ok((transform, last_shooter)) = query.get(event.ball) {
+            if let Some(shooter) = last_shooter.side {
+                let ball_z = transform.translation.z;
+
+                // @spec 30103_point_end_spec.md#req-30103-002
+                // 打ったボールがネットに当たった時点でショット元のコート側にあれば失点
+                let in_shooter_court = match shooter {
+                    CourtSide::Player1 => ball_z < net_z, // 1Pが打った → ネット手前（1P側）
+                    CourtSide::Player2 => ball_z > net_z, // 2Pが打った → ネット手前（2P側）
+                };
+
+                if in_shooter_court {
+                    // ネットに当たって相手コートに届かなかった → 失点
+                    let winner = shooter.opponent();
+
+                    info!(
+                        "Net fault! {:?} hit the net and ball stayed on their side. {:?} wins.",
+                        shooter, winner
+                    );
+
+                    rally_events.write(RallyEndEvent {
+                        winner,
+                        reason: RallyEndReason::NetFault,
+                    });
+                }
+            }
+        }
+    }
+}
+
+/// 自コート打球失点判定システム
+/// @spec 30103_point_end_spec.md#req-30103-003
+/// 打った打球が自コートに落ちた場合は失点
+pub fn own_court_hit_judgment_system(
+    mut bounce_events: MessageReader<GroundBounceEvent>,
+    rally_state: Res<RallyState>,
+    match_score: Res<MatchScore>,
+    query: Query<(&BounceCount, &LastShooter), With<Ball>>,
+    mut rally_events: MessageWriter<RallyEndEvent>,
+) {
+    // ラリー中でなければスキップ
+    if rally_state.phase != RallyPhase::Rally {
+        return;
+    }
+
+    // ゲーム進行中でなければスキップ
+    if match_score.game_state != GameState::Playing {
+        return;
+    }
+
+    for event in bounce_events.read() {
+        if let Ok((bounce_count, last_shooter)) = query.get(event.ball) {
+            if let Some(shooter) = last_shooter.side {
+                // @spec 30103_point_end_spec.md#req-30103-003
+                // 最初のバウンドで、バウンドしたコート側が打った側と同じ場合
+                // つまり、ネットを超える前に自コートでバウンドした
+                if bounce_count.count == 1 && event.court_side == shooter {
+                    let winner = shooter.opponent();
+
+                    info!(
+                        "Own court hit! {:?} hit ball landed on their own court. {:?} wins.",
+                        shooter, winner
+                    );
+
+                    rally_events.write(RallyEndEvent {
+                        winner,
+                        reason: RallyEndReason::OwnCourtHit,
+                    });
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -256,5 +378,62 @@ mod tests {
         assert_eq!(bounds.right, 5.0);
         assert_eq!(bounds.back_1p, -3.0);
         assert_eq!(bounds.back_2p, 3.0);
+    }
+
+    /// TST-30104-010: ツーバウンド失点テスト
+    /// @spec 30103_point_end_spec.md#req-30103-001
+    #[test]
+    fn test_req_30103_001_two_bounce_loss() {
+        let mut bounce_count = BounceCount::default();
+
+        // 1P側で2回バウンド → 1P失点（2P得点）
+        bounce_count.record_bounce(CourtSide::Player1);
+        bounce_count.record_bounce(CourtSide::Player1);
+
+        assert!(bounce_count.count >= 2);
+        assert_eq!(bounce_count.last_court_side, Some(CourtSide::Player1));
+        // 勝者は相手側
+        let winner = bounce_count.last_court_side.unwrap().opponent();
+        assert_eq!(winner, CourtSide::Player2);
+    }
+
+    /// TST-30104-012: 自コート打球失点テスト
+    /// @spec 30103_point_end_spec.md#req-30103-003
+    #[test]
+    fn test_req_30103_003_own_court_hit() {
+        let mut last_shooter = LastShooter::default();
+        let mut bounce_count = BounceCount::default();
+
+        // 1Pがショット
+        last_shooter.record(CourtSide::Player1);
+        assert_eq!(last_shooter.side, Some(CourtSide::Player1));
+
+        // 1Pコートでバウンド（自コート打球）
+        bounce_count.record_bounce(CourtSide::Player1);
+
+        // 条件: 最初のバウンドで、バウンドしたコート側が打った側と同じ
+        assert_eq!(bounce_count.count, 1);
+        assert_eq!(last_shooter.side, bounce_count.last_court_side);
+
+        // 1Pの自コート打球 → 1P失点（2P得点）
+        let winner = last_shooter.side.unwrap().opponent();
+        assert_eq!(winner, CourtSide::Player2);
+    }
+
+    /// TST-30104-013: PointEndEvent発行確認テスト
+    /// @spec 30103_point_end_spec.md#req-30103-004
+    #[test]
+    fn test_req_30103_004_rally_end_reason() {
+        // RallyEndReasonに必要な理由が含まれているか確認
+        let reasons = vec![
+            RallyEndReason::DoubleBounce,
+            RallyEndReason::NetFault,
+            RallyEndReason::OwnCourtHit,
+        ];
+
+        // すべての理由が異なることを確認
+        assert_ne!(reasons[0], reasons[1]);
+        assert_ne!(reasons[1], reasons[2]);
+        assert_ne!(reasons[0], reasons[2]);
     }
 }

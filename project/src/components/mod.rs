@@ -52,6 +52,26 @@ pub struct BounceCount {
     pub last_court_side: Option<CourtSide>,
 }
 
+/// 最後にショットを打ったプレイヤー追跡コンポーネント
+/// @spec 30103_point_end_spec.md#req-30103-003
+#[derive(Component, Debug, Clone, Copy, Default)]
+pub struct LastShooter {
+    /// 最後にショットを打ったプレイヤー側
+    pub side: Option<CourtSide>,
+}
+
+impl LastShooter {
+    /// ショット元を記録
+    pub fn record(&mut self, shooter: CourtSide) {
+        self.side = Some(shooter);
+    }
+
+    /// リセット
+    pub fn reset(&mut self) {
+        self.side = None;
+    }
+}
+
 impl BounceCount {
     /// バウンスを記録
     pub fn record_bounce(&mut self, court_side: CourtSide) {
@@ -204,6 +224,7 @@ pub struct BallBundle {
     pub ball: Ball,
     pub velocity: Velocity,
     pub bounce_count: BounceCount,
+    pub last_shooter: LastShooter,
     pub transform: Transform,
 }
 
@@ -215,6 +236,19 @@ impl BallBundle {
             ball: Ball,
             velocity: Velocity { value: velocity },
             bounce_count: BounceCount::default(),
+            last_shooter: LastShooter::default(),
+            transform: Transform::from_translation(position),
+        }
+    }
+
+    /// ショット元を指定してボールを生成
+    /// @spec 30103_point_end_spec.md#req-30103-003
+    pub fn with_shooter(position: Vec3, velocity: Vec3, shooter: CourtSide) -> Self {
+        Self {
+            ball: Ball,
+            velocity: Velocity { value: velocity },
+            bounce_count: BounceCount::default(),
+            last_shooter: LastShooter { side: Some(shooter) },
             transform: Transform::from_translation(position),
         }
     }
