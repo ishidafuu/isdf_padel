@@ -196,3 +196,82 @@ impl MatchScore {
         }
     }
 }
+
+/// ラリーフェーズ
+/// @spec 30901_point_judgment_spec.md#req-30901-003
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum RallyPhase {
+    /// サーブ待機中
+    #[default]
+    WaitingServe,
+    /// サーブ中（ボールが打たれた後、最初の着地まで）
+    Serving,
+    /// ラリー中（サーブが有効に入った後）
+    Rally,
+    /// ポイント終了（次のサーブ待ち）
+    PointEnded,
+}
+
+/// ラリー状態リソース
+/// @spec 30901_point_judgment_spec.md
+#[derive(Resource, Debug, Clone)]
+pub struct RallyState {
+    /// 現在のラリーフェーズ
+    pub phase: RallyPhase,
+    /// 現在のサーバー
+    pub server: CourtSide,
+    /// サーブのファウル回数（0 or 1）
+    pub fault_count: u32,
+}
+
+impl Default for RallyState {
+    fn default() -> Self {
+        Self {
+            phase: RallyPhase::WaitingServe,
+            server: CourtSide::Player1,
+            fault_count: 0,
+        }
+    }
+}
+
+impl RallyState {
+    /// 新規ラリー状態を作成
+    pub fn new(server: CourtSide) -> Self {
+        Self {
+            phase: RallyPhase::WaitingServe,
+            server,
+            fault_count: 0,
+        }
+    }
+
+    /// サーブ開始
+    pub fn start_serve(&mut self) {
+        self.phase = RallyPhase::Serving;
+    }
+
+    /// ラリー開始（サーブが有効に入った）
+    pub fn start_rally(&mut self) {
+        self.phase = RallyPhase::Rally;
+    }
+
+    /// ポイント終了
+    pub fn end_point(&mut self) {
+        self.phase = RallyPhase::PointEnded;
+        self.fault_count = 0;
+    }
+
+    /// 次のサーブへ（サーバー変更なし）
+    pub fn next_serve(&mut self) {
+        self.phase = RallyPhase::WaitingServe;
+    }
+
+    /// ファウル記録
+    pub fn record_fault(&mut self) {
+        self.fault_count += 1;
+    }
+
+    /// ダブルフォルトか判定
+    pub fn is_double_fault(&self) -> bool {
+        self.fault_count >= 2
+    }
+}
