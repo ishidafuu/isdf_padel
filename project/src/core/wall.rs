@@ -1,5 +1,5 @@
 //! 壁反射ロジック
-//! @spec 30502_wall_design.md
+//! @spec 30503_boundary_behavior.md
 //!
 //! ## 座標系
 //! - X軸: 打ち合い方向（前後壁 = バックライン）
@@ -10,7 +10,7 @@
 //! - 入射角 = 反射角（法線に対して）
 //! - BounceFactor による速度減衰
 //!
-//! ## 優先順位 (BEH-30502-004)
+//! ## 優先順位 (BEH-30503-007)
 //! 左右壁（Z） → 前後壁（X） → 天井（Y）
 
 use bevy::prelude::*;
@@ -30,12 +30,12 @@ pub struct WallReflectionResult {
 }
 
 /// 壁反射システム
-/// @spec 30502_wall_design.md
+/// @spec 30503_boundary_behavior.md#beh-30503-004
 pub struct WallReflection;
 
 impl WallReflection {
     /// 左右壁の反射（速度Z成分反転、コート幅方向）
-    /// @spec 30502_wall_design.md#beh-30502-001
+    /// @spec 30503_boundary_behavior.md#beh-30503-004
     ///
     /// # Arguments
     /// * `velocity` - 入射速度
@@ -53,7 +53,7 @@ impl WallReflection {
     }
 
     /// 前後壁の反射（速度X成分反転、打ち合い方向）
-    /// @spec 30502_wall_design.md#beh-30502-002
+    /// @spec 30503_boundary_behavior.md#beh-30503-004
     ///
     /// # Arguments
     /// * `velocity` - 入射速度
@@ -71,7 +71,7 @@ impl WallReflection {
     }
 
     /// 天井の反射（速度Y成分反転）
-    /// @spec 30502_wall_design.md#beh-30502-003
+    /// @spec 30503_boundary_behavior.md#beh-30503-004
     ///
     /// # Arguments
     /// * `velocity` - 入射速度
@@ -89,9 +89,7 @@ impl WallReflection {
     }
 
     /// 壁種別に応じた反射計算
-    /// @spec 30502_wall_design.md#beh-30502-001
-    /// @spec 30502_wall_design.md#beh-30502-002
-    /// @spec 30502_wall_design.md#beh-30502-003
+    /// @spec 30503_boundary_behavior.md#beh-30503-004
     ///
     /// # Arguments
     /// * `wall_type` - 壁の種類
@@ -114,7 +112,7 @@ impl WallReflection {
     }
 
     /// 位置が壁に接触しているかチェックし、接触していれば反射結果を返す
-    /// @spec 30502_wall_design.md#beh-30502-004
+    /// @spec 30503_boundary_behavior.md#beh-30503-007
     ///
     /// # Arguments
     /// * `position` - 現在位置
@@ -197,7 +195,7 @@ mod tests {
 
     /// TST-30504-007: 左右壁の反射（Z成分反転）
     #[test]
-    fn test_beh_30502_001_side_wall_reflection() {
+    fn test_beh_30503_004_side_wall_reflection() {
         let velocity = Vec3::new(10.0, 5.0, 3.0);
         let bounce_factor = 0.8;
 
@@ -211,7 +209,7 @@ mod tests {
 
     /// TST-30504-008: 前後壁の反射（X成分反転）
     #[test]
-    fn test_beh_30502_002_back_wall_reflection() {
+    fn test_beh_30503_004_back_wall_reflection() {
         let velocity = Vec3::new(10.0, 5.0, 3.0);
         let bounce_factor = 0.8;
 
@@ -225,7 +223,7 @@ mod tests {
 
     /// TST-30504-009: 天井の反射
     #[test]
-    fn test_beh_30502_003_ceiling_reflection() {
+    fn test_beh_30503_004_ceiling_reflection() {
         let velocity = Vec3::new(10.0, 5.0, 3.0);
         let bounce_factor = 0.8;
 
@@ -268,9 +266,9 @@ mod tests {
         assert_eq!(ceiling.z, 3.0);  // 維持
     }
 
-    /// BEH-30502-004: 壁反射の優先順位
+    /// BEH-30503-007: 壁反射の優先順位
     #[test]
-    fn test_beh_30502_004_reflection_priority() {
+    fn test_beh_30503_007_reflection_priority() {
         let bounds = test_bounds();
         let bounce_factor = 0.8;
 

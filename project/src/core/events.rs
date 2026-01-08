@@ -1,6 +1,6 @@
 //! イベント定義
 //! @spec 20005_event_system.md
-//! @spec 30502_wall_design.md
+//! @spec 30503_boundary_behavior.md
 //! @spec 30201_movement_spec.md
 //! @spec 30202_jump_spec.md
 //! @spec 30401_trajectory_spec.md
@@ -86,7 +86,7 @@ pub struct PlayerKnockbackEvent {
 }
 
 /// 壁の種類
-/// @spec 30502_wall_design.md#des-30502-002
+/// @spec 30503_boundary_behavior.md#beh-30503-004
 /// 新座標系: LeftWall/RightWall = Z方向（コート幅）, BackWall = X方向（打ち合い方向）
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum WallType {
@@ -104,7 +104,7 @@ pub enum WallType {
 
 impl WallType {
     /// 壁の法線ベクトルを返す
-    /// @spec 30502_wall_design.md#des-30502-001
+    /// @spec 30503_boundary_behavior.md#beh-30503-004
     /// 新座標系: LeftWall/RightWall = Z方向, BackWall = X方向
     #[allow(dead_code)]
     #[inline]
@@ -134,8 +134,7 @@ impl WallType {
 }
 
 /// 壁反射イベント
-/// @spec 30502_wall_design.md#des-30502-003
-/// @spec 30502_wall_design.md#beh-30502-005
+/// @spec 30503_boundary_behavior.md#beh-30503-004
 /// NOTE: デバッグ・ログ出力用のイベント。読み取りハンドラは将来実装予定。
 #[derive(Message, Debug, Clone)]
 pub struct WallReflectionEvent {
