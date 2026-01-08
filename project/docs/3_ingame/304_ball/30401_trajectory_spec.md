@@ -90,13 +90,60 @@
 
 ---
 
-## Future Requirements (v0.3+)
+## v0.3 Requirements (Spin Trajectory Effects)
 
-### REQ-30401-100: 軌道エフェクト
+### REQ-30401-100: スピンによる重力変動
+**WHEN** ボールにスピンが設定されている（BallSpin.value ≠ 0）
+**THE SYSTEM SHALL** スピン値に応じて実効重力を変動させる
+- 計算式: `effective_gravity = base_gravity * (1.0 + spin * gravity_spin_factor)`
+- トップスピン（spin > 0）: 重力増加 → 早く落ちる
+- スライス（spin < 0）: 重力減少 → 浮く
+- gravity_spin_factor: `config.spin_physics.gravity_spin_factor` (デフォルト: 0.3)
+
+**計算例**（base_gravity = -4.0, factor = 0.3）:
+| spin値 | 実効重力 | 効果 |
+|--------|---------|------|
+| +1.0（最大トップ）| -5.2 m/s² | 早く落ちる |
+| 0（ニュートラル）| -4.0 m/s² | 変化なし |
+| -1.0（最大スライス）| -2.8 m/s² | 浮く |
+
+**データ**: [80101_game_constants.md](../../8_data/80101_game_constants.md#spin-physics-config)
+**テスト**: TST-30404-100
+
+---
+
+### REQ-30401-101: スピン時間減衰
+**WHEN** ボールが飛行中
+**THE SYSTEM SHALL** スピン効果を時間経過で減衰させる
+- 計算式: `ball_spin.value *= (1.0 - spin_decay_rate * deltaTime).max(0.0)`
+- spin_decay_rate: `config.spin_physics.spin_decay_rate` (デフォルト: 0.5)
+- 1秒あたり50%減衰（2秒後に元の25%）
+
+**データ**: [80101_game_constants.md](../../8_data/80101_game_constants.md#spin-physics-config)
+**テスト**: TST-30404-101
+
+---
+
+### REQ-30401-102: スピンによる空気抵抗
+**WHEN** ボールにスピンが設定されている
+**THE SYSTEM SHALL** スピン絶対値に応じて空気抵抗を増加させる
+- 計算式: `drag = base_air_drag + spin.abs() * spin_drag_factor`
+- 速度減衰: `velocity *= (1.0 - drag * deltaTime).max(0.9)`
+- base_air_drag: `config.spin_physics.base_air_drag` (デフォルト: 0.0)
+- spin_drag_factor: `config.spin_physics.spin_drag_factor` (デフォルト: 0.3)
+
+**データ**: [80101_game_constants.md](../../8_data/80101_game_constants.md#spin-physics-config)
+**テスト**: TST-30404-102
+
+---
+
+## Future Requirements (v0.4+)
+
+### REQ-30401-150: 軌道エフェクト
 **WHEN** ボールが飛んでいる
 **THE SYSTEM SHALL** 軌跡エフェクトを表示する
 
-**テスト**: TST-30404-100
+**テスト**: TST-30404-150
 
 ---
 
@@ -111,7 +158,7 @@
 
 ### 不変条件
 - ボールは常に1つのみ存在（複数ボール禁止）
-- 重力は常に一定値（途中変更禁止）
+- ベース重力は一定（スピンによる変動は許容）
 
 ---
 

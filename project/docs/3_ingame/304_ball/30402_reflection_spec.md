@@ -96,13 +96,39 @@
 
 ---
 
-## Future Requirements (v0.3+)
+## v0.3 Requirements (Spin Bounce Effects)
 
-### REQ-30402-100: 反射エフェクト
+### REQ-30402-100: スピンによるバウンド挙動変化
+**WHEN** ボールがスピン状態（BallSpin.value ≠ 0）で地面にバウンドする
+**THE SYSTEM SHALL** スピン値に応じてバウンド挙動を変化させる
+- 水平方向（X, Z）: `velocity *= base_bounce * (1.0 + spin * bounce_spin_horizontal_factor)`
+- 垂直方向（Y）: `velocity.y = -velocity.y * base_bounce * (1.0 - spin * bounce_spin_vertical_factor)`
+- bounce_spin_horizontal_factor: `config.spin_physics.bounce_spin_horizontal_factor` (デフォルト: 0.3)
+- bounce_spin_vertical_factor: `config.spin_physics.bounce_spin_vertical_factor` (デフォルト: 0.2)
+
+**計算例**（base_bounce = 0.7, h_factor = 0.3, v_factor = 0.2）:
+| spin値 | 水平維持率 | 垂直維持率 | 挙動 |
+|--------|----------|----------|------|
+| +1.0（トップ）| 91% (0.7 × 1.3) | 56% (0.7 × 0.8) | 低く伸びる |
+| 0（ニュートラル）| 70% (0.7 × 1.0) | 70% (0.7 × 1.0) | 通常 |
+| -1.0（スライス）| 49% (0.7 × 0.7) | 84% (0.7 × 1.2) | 高く止まる |
+
+**挙動説明**:
+- **トップスピン（spin > 0）**: 水平方向維持率上昇、垂直方向低下 → 低く伸びるバウンド
+- **スライス（spin < 0）**: 水平方向維持率低下、垂直方向上昇 → 高く止まるバウンド
+
+**データ**: [80101_game_constants.md](../../8_data/80101_game_constants.md#spin-physics-config)
+**テスト**: TST-30404-103
+
+---
+
+## Future Requirements (v0.4+)
+
+### REQ-30402-150: 反射エフェクト
 **WHEN** ボールが壁に反射する
 **THE SYSTEM SHALL** 反射エフェクトを表示する
 
-**テスト**: TST-30404-100
+**テスト**: TST-30404-150
 
 ---
 

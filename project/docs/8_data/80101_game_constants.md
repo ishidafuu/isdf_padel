@@ -567,6 +567,98 @@ let ball_color = lerp_color(
 
 ---
 
+## Spin Physics Config
+
+スピン物理パラメータ（v0.3追加）
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| gravity_spin_factor | f32 | 0.3 | 重力変動割合（±30%） |
+| bounce_spin_horizontal_factor | f32 | 0.3 | 水平バウンド変動割合（±30%） |
+| bounce_spin_vertical_factor | f32 | 0.2 | 垂直バウンド変動割合（±20%） |
+| base_air_drag | f32 | 0.0 | ベース空気抵抗 |
+| spin_drag_factor | f32 | 0.3 | スピンによる追加空気抵抗係数 |
+| spin_decay_rate | f32 | 0.5 | スピン時間減衰率（1秒あたり） |
+
+```rust
+/// スピン物理パラメータ
+/// @data REQ-30401-100, REQ-30401-101, REQ-30401-102, REQ-30402-100
+#[derive(Deserialize, Clone, Debug)]
+pub struct SpinPhysicsConfig {
+    /// 重力に対するスピンの影響度（±30%時 = 0.3）
+    #[serde(default = "default_gravity_spin_factor")]
+    pub gravity_spin_factor: f32,
+
+    /// バウンド時の水平方向へのスピンの影響度
+    #[serde(default = "default_bounce_spin_horizontal_factor")]
+    pub bounce_spin_horizontal_factor: f32,
+
+    /// バウンド時の垂直方向へのスピンの影響度
+    #[serde(default = "default_bounce_spin_vertical_factor")]
+    pub bounce_spin_vertical_factor: f32,
+
+    /// ベース空気抵抗（スピンなしでも適用）
+    #[serde(default = "default_base_air_drag")]
+    pub base_air_drag: f32,
+
+    /// スピンによる追加空気抵抗係数
+    #[serde(default = "default_spin_drag_factor")]
+    pub spin_drag_factor: f32,
+
+    /// スピン時間減衰率（1秒あたり）
+    #[serde(default = "default_spin_decay_rate")]
+    pub spin_decay_rate: f32,
+}
+
+fn default_gravity_spin_factor() -> f32 { 0.3 }
+fn default_bounce_spin_horizontal_factor() -> f32 { 0.3 }
+fn default_bounce_spin_vertical_factor() -> f32 { 0.2 }
+fn default_base_air_drag() -> f32 { 0.0 }
+fn default_spin_drag_factor() -> f32 { 0.3 }
+fn default_spin_decay_rate() -> f32 { 0.5 }
+```
+
+**使用例**:
+```rust
+// 重力変動（REQ-30401-100）
+let effective_gravity = config.physics.gravity
+    * (1.0 + ball_spin.value * config.spin_physics.gravity_spin_factor);
+
+// スピン時間減衰（REQ-30401-101）
+ball_spin.value *= (1.0 - config.spin_physics.spin_decay_rate * delta).max(0.0);
+
+// 空気抵抗（REQ-30401-102）
+let drag = config.spin_physics.base_air_drag
+    + ball_spin.value.abs() * config.spin_physics.spin_drag_factor;
+velocity *= (1.0 - drag * delta).max(0.9);
+
+// バウンド挙動（REQ-30402-100）
+let h_factor = config.spin_physics.bounce_spin_horizontal_factor;
+let v_factor = config.spin_physics.bounce_spin_vertical_factor;
+let h_bounce = config.ball.bounce_factor * (1.0 + ball_spin.value * h_factor);
+let v_bounce = config.ball.bounce_factor * (1.0 - ball_spin.value * v_factor);
+```
+
+**RONファイル追加**:
+```ron
+spin_physics: SpinPhysicsConfig(
+    gravity_spin_factor: 0.3,
+    bounce_spin_horizontal_factor: 0.3,
+    bounce_spin_vertical_factor: 0.2,
+    base_air_drag: 0.0,
+    spin_drag_factor: 0.3,
+    spin_decay_rate: 0.5,
+),
+```
+
+**関連仕様**:
+- [30401_trajectory_spec.md](../3_ingame/304_ball/30401_trajectory_spec.md#req-30401-100) - スピンによる重力変動
+- [30401_trajectory_spec.md](../3_ingame/304_ball/30401_trajectory_spec.md#req-30401-101) - スピン時間減衰
+- [30401_trajectory_spec.md](../3_ingame/304_ball/30401_trajectory_spec.md#req-30401-102) - スピンによる空気抵抗
+- [30402_reflection_spec.md](../3_ingame/304_ball/30402_reflection_spec.md#req-30402-100) - スピンによるバウンド挙動変化
+
+---
+
 ## 次のステップ
 
 1. ✅ データ定義（このドキュメント）
