@@ -4,6 +4,7 @@
 use bevy::prelude::*;
 
 use crate::components::{GroundedState, KnockbackState, LogicalPosition, Player, Velocity};
+use crate::core::court::CourtSide;
 use crate::core::events::{BallHitEvent, PlayerKnockbackEvent};
 use crate::resource::config::GameConfig;
 
@@ -112,7 +113,7 @@ pub fn knockback_movement_system(
         }
 
         // Z軸境界（プレイヤーごと）
-        let (z_min, z_max) = get_player_z_bounds(player.id, &config);
+        let (z_min, z_max) = get_player_z_bounds(player.court_side, &config);
         let old_z = new_position.z;
         new_position.z = new_position.z.clamp(z_min, z_max);
         if new_position.z != old_z {
@@ -165,11 +166,10 @@ pub fn knockback_timer_system(time: Res<Time>, mut query: Query<(&Player, &mut K
 }
 
 /// プレイヤーごとのZ軸境界を取得
-fn get_player_z_bounds(player_id: u8, config: &GameConfig) -> (f32, f32) {
-    match player_id {
-        1 => (config.player.z_min, 0.0),
-        2 => (0.0, config.player.z_max),
-        _ => (config.player.z_min, config.player.z_max),
+fn get_player_z_bounds(court_side: CourtSide, config: &GameConfig) -> (f32, f32) {
+    match court_side {
+        CourtSide::Player1 => (config.player.z_min, 0.0),
+        CourtSide::Player2 => (0.0, config.player.z_max),
     }
 }
 

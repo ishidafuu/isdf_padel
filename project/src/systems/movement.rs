@@ -5,6 +5,7 @@
 use bevy::prelude::*;
 
 use crate::components::{AiController, InputState, KnockbackState, LogicalPosition, Player, Velocity};
+use crate::core::court::CourtSide;
 use crate::core::events::PlayerMoveEvent;
 use crate::resource::config::GameConfig;
 
@@ -87,7 +88,7 @@ pub fn movement_system(
         new_position.x = bounds.clamp_x(new_position.x);
 
         // プレイヤーの自コート境界（Z軸）
-        let (z_min, z_max) = get_player_z_bounds(player.id, &config);
+        let (z_min, z_max) = get_player_z_bounds(player.court_side, &config);
         new_position.z = new_position.z.clamp(z_min, z_max);
 
         // 位置更新
@@ -106,14 +107,13 @@ pub fn movement_system(
 
 /// プレイヤーごとのZ軸境界を取得
 /// @spec 30201_movement_spec.md#req-30201-002
-fn get_player_z_bounds(player_id: u8, config: &GameConfig) -> (f32, f32) {
+fn get_player_z_bounds(court_side: CourtSide, config: &GameConfig) -> (f32, f32) {
     let net_z = config.court.net_z;
-    match player_id {
+    match court_side {
         // Player 1: 1Pコート側（-Z側）
-        1 => (config.player.z_min, net_z),
+        CourtSide::Player1 => (config.player.z_min, net_z),
         // Player 2: 2Pコート側（+Z側）
-        2 => (net_z, config.player.z_max),
-        _ => (config.player.z_min, config.player.z_max),
+        CourtSide::Player2 => (net_z, config.player.z_max),
     }
 }
 

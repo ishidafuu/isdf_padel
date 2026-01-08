@@ -4,6 +4,7 @@
 use bevy::prelude::*;
 
 use crate::components::{AiController, Ball, KnockbackState, LogicalPosition, Player, Velocity};
+use crate::core::court::CourtSide;
 use crate::resource::config::GameConfig;
 
 use super::court_factory::create_court_bounds;
@@ -49,8 +50,8 @@ pub fn ai_movement_system(
         // REQ-30301-005: ボールが自分側にあるかチェック
         // Player 2 (AI) は +Z 側なので、ボールが +Z 側にあるか
         let ball_on_my_side = match player.court_side {
-            crate::core::CourtSide::Player1 => ball_pos.z < 0.0,
-            crate::core::CourtSide::Player2 => ball_pos.z > 0.0,
+            CourtSide::Player1 => ball_pos.z < 0.0,
+            CourtSide::Player2 => ball_pos.z > 0.0,
         };
 
         // ターゲット位置を決定
@@ -101,7 +102,7 @@ pub fn ai_movement_system(
         new_position.x = bounds.clamp_x(new_position.x);
 
         // プレイヤーの自コート境界（Z軸）
-        let (z_min, z_max) = get_ai_z_bounds(player.id, &config);
+        let (z_min, z_max) = get_ai_z_bounds(player.court_side, &config);
         new_position.z = new_position.z.clamp(z_min, z_max);
 
         logical_pos.value = new_position;
@@ -110,13 +111,12 @@ pub fn ai_movement_system(
 
 /// AIプレイヤーのZ軸境界を取得
 /// @spec 30301_ai_movement_spec.md#req-30301-004
-fn get_ai_z_bounds(player_id: u8, config: &GameConfig) -> (f32, f32) {
-    match player_id {
+fn get_ai_z_bounds(court_side: CourtSide, config: &GameConfig) -> (f32, f32) {
+    match court_side {
         // Player 1: 1Pコート側（-Z側）
-        1 => (config.player.z_min, 0.0),
+        CourtSide::Player1 => (config.player.z_min, 0.0),
         // Player 2: 2Pコート側（+Z側）
-        2 => (0.0, config.player.z_max),
-        _ => (config.player.z_min, config.player.z_max),
+        CourtSide::Player2 => (0.0, config.player.z_max),
     }
 }
 

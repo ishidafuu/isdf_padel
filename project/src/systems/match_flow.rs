@@ -65,7 +65,7 @@ fn match_start_system(
     // @spec 30101_flow_spec.md#req-30101-001: プレイヤーを配置する
     // 論理座標を設定（表示座標は sync_transform_system で自動更新）
     for (player, mut logical_pos) in query.iter_mut() {
-        let pos = get_initial_position(player.id, &config);
+        let pos = get_initial_position(player.court_side, &config);
         logical_pos.value = pos;
         info!("Player {} positioned at {:?}", player.id, pos);
     }
@@ -93,13 +93,8 @@ fn serve_to_rally_system(
 ) {
     // @spec 30101_flow_spec.md#req-30101-002: サーブが打たれる（ShotEvent受信）
     for event in shot_events.read() {
-        // サーバーのショットのみを検出
-        let server_id = match match_score.server {
-            CourtSide::Player1 => 1,
-            CourtSide::Player2 => 2,
-        };
-
-        if event.player_id == server_id {
+        // サーバーのショットのみを検出（CourtSideで直接比較）
+        if event.court_side == match_score.server {
             // @spec 30902_fault_spec.md: Servingフェーズに遷移（サービスボックス判定待ち）
             rally_state.start_serve();
             info!(
@@ -165,7 +160,7 @@ fn point_end_to_next_system(
     // @spec 30101_flow_spec.md#req-30101-004: プレイヤーを初期位置に戻す
     // 論理座標を設定（表示座標は sync_transform_system で自動更新）
     for (player, mut logical_pos) in query.iter_mut() {
-        let pos = get_initial_position(player.id, &config);
+        let pos = get_initial_position(player.court_side, &config);
         logical_pos.value = pos;
     }
 
@@ -193,13 +188,12 @@ fn match_end_system(match_score: Res<MatchScore>, mut match_end_events: MessageW
 
 /// プレイヤーの初期位置を取得
 /// @spec 30101_flow_spec.md#req-30101-001
-fn get_initial_position(player_id: u8, config: &GameConfig) -> Vec3 {
-    match player_id {
+fn get_initial_position(court_side: CourtSide, config: &GameConfig) -> Vec3 {
+    match court_side {
         // @spec 30101_flow_spec.md#req-30101-001: Player1: 1Pコート側
-        1 => Vec3::new(0.0, 0.0, config.player.z_min + 1.0),
+        CourtSide::Player1 => Vec3::new(0.0, 0.0, config.player.z_min + 1.0),
         // @spec 30101_flow_spec.md#req-30101-001: Player2: 2Pコート側
-        2 => Vec3::new(0.0, 0.0, config.player.z_max - 1.0),
-        _ => Vec3::ZERO,
+        CourtSide::Player2 => Vec3::new(0.0, 0.0, config.player.z_max - 1.0),
     }
 }
 

@@ -29,17 +29,12 @@ pub fn serve_execute_system(
         return;
     }
 
-    // @spec 30102_serve_spec.md#req-30102-001: サーバーを特定
-    let server_id = match match_score.server {
-        CourtSide::Player1 => 1,
-        CourtSide::Player2 => 2,
-    };
-
-    // サーバーのプレイヤーを取得（InputStateからショット入力をチェック）
-    let Some((_, logical_pos, input_state)) =
-        player_query.iter().find(|(p, _, _)| p.id == server_id)
+    // @spec 30102_serve_spec.md#req-30102-001: サーバーを特定（CourtSideで直接検索）
+    let Some((player, logical_pos, input_state)) = player_query
+        .iter()
+        .find(|(p, _, _)| p.court_side == match_score.server)
     else {
-        warn!("Server player {} not found", server_id);
+        warn!("Server player {:?} not found", match_score.server);
         return;
     };
 
@@ -55,10 +50,9 @@ pub fn serve_execute_system(
     let direction = if raw_direction.length() > 0.0 {
         raw_direction.normalize()
     } else {
-        match server_id {
-            1 => Vec2::new(0.0, config.serve.p1_default_direction_z),  // Player1: +Z方向（2Pコートへ）
-            2 => Vec2::new(0.0, config.serve.p2_default_direction_z), // Player2: -Z方向（1Pコートへ）
-            _ => Vec2::ZERO,
+        match match_score.server {
+            CourtSide::Player1 => Vec2::new(0.0, config.serve.p1_default_direction_z), // Player1: +Z方向（2Pコートへ）
+            CourtSide::Player2 => Vec2::new(0.0, config.serve.p2_default_direction_z), // Player2: -Z方向（1Pコートへ）
         }
     };
 
@@ -89,14 +83,14 @@ pub fn serve_execute_system(
     commands.spawn(BallBundle::with_shooter(ball_pos, ball_velocity, match_score.server));
     info!(
         "Serve: Ball spawned at {:?} with velocity {:?} by Player{}",
-        ball_pos, ball_velocity, server_id
+        ball_pos, ball_velocity, player.id
     );
 
     // @spec 30102_serve_spec.md#req-30102-002: ShotEvent を発行
     // serve_to_rally_system が状態遷移を行う
     // NOTE: ボール速度は上記で直接設定済み（commands.spawn の遅延適用対策）
     shot_event_writer.write(ShotEvent {
-        player_id: server_id,
+        player_id: player.id,
         court_side: match_score.server,
         direction,
         jump_height: logical_pos.value.y,
@@ -104,7 +98,7 @@ pub fn serve_execute_system(
 
     info!(
         "Serve: ShotEvent emitted for Player{}, direction: {:?}",
-        server_id, direction
+        player.id, direction
     );
 }
 

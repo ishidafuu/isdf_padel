@@ -2,7 +2,7 @@
 id: "P003-006"
 title: "player.id参照箇所の整理"
 type: "project-wide"
-status: "todo"
+status: "done"
 priority: "low"
 related_task: "P003"
 spec_ids: []
@@ -14,8 +14,8 @@ plan_file: null
 tags: ["refactor", "cleanup", "ECS"]
 parent_task_id: "P003"
 created_at: "2026-01-08T13:52:00"
-updated_at: "2026-01-08T13:52:00"
-completed_at: null
+updated_at: "2026-01-08T17:00:00"
+completed_at: "2026-01-08T17:00:00"
 ---
 
 # Task P003-006: player.id参照箇所の整理
@@ -92,10 +92,10 @@ match player.id { 1 => CourtSide::Player1, _ => CourtSide::Player2 }
 
 ## Acceptance Criteria
 
-- [ ] player.id による分岐を player.court_side に置換
-- [ ] ヘルパー関数のシグネチャを CourtSide ベースに変更
-- [ ] 不要な id ↔ CourtSide 変換を削除
-- [ ] テスト通過
+- [x] player.id による分岐を player.court_side に置換
+- [x] ヘルパー関数のシグネチャを CourtSide ベースに変更
+- [x] 不要な id ↔ CourtSide 変換を削除
+- [x] テスト通過
 
 ## Dependencies
 
