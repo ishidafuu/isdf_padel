@@ -104,8 +104,10 @@ pub enum GameState {
     #[default]
     Playing,
     /// ゲーム勝利（勝者のCourtSide）
+    #[allow(dead_code)]
     GameWon(CourtSide),
     /// セット勝利（勝者のCourtSide）
+    #[allow(dead_code)]
     SetWon(CourtSide),
     /// マッチ勝利（勝者のCourtSide）
     MatchWon(CourtSide),
@@ -151,6 +153,7 @@ impl MatchScore {
 
     /// ゲーム勝利判定（40から得点で勝利、相手が40未満）
     /// @spec 30701_point_spec.md#req-30701-003
+    #[allow(dead_code)]
     pub fn check_game_win(&self, scorer: CourtSide, win_index: usize) -> bool {
         let scorer_index = self.get_point_index(scorer);
         let opponent_index = self.get_point_index(scorer.opponent());

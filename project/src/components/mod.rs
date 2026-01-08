@@ -14,6 +14,7 @@ pub struct LogicalPosition {
 }
 
 impl LogicalPosition {
+    #[allow(dead_code)]
     pub fn new(x: f32, y: f32, z: f32) -> Self {
         Self {
             value: Vec3::new(x, y, z),
@@ -97,12 +98,14 @@ pub struct Velocity {
 }
 
 impl Velocity {
+    #[allow(dead_code)]
     pub fn new(x: f32, y: f32, z: f32) -> Self {
         Self {
             value: Vec3::new(x, y, z),
         }
     }
 
+    #[allow(dead_code)]
     #[inline]
     pub fn is_moving(&self) -> bool {
         self.value.length_squared() > f32::EPSILON
@@ -134,6 +137,7 @@ impl LastShooter {
     }
 
     /// リセット
+    #[allow(dead_code)]
     pub fn reset(&mut self) {
         self.side = None;
     }
@@ -411,6 +415,7 @@ pub struct BallBundle {
 impl BallBundle {
     /// 通常ショット用ボールを生成
     /// @spec 30401_trajectory_spec.md#req-30401-002
+    #[allow(dead_code)]
     pub fn new(position: Vec3, velocity: Vec3) -> Self {
         Self {
             ball: Ball,
