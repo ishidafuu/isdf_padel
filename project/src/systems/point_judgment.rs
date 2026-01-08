@@ -472,7 +472,10 @@ mod tests {
         assert!(bounce_count.count >= 2);
         assert_eq!(bounce_count.last_court_side, Some(CourtSide::Player1));
         // 勝者は相手側
-        let winner = bounce_count.last_court_side.unwrap().opponent();
+        let winner = bounce_count
+            .last_court_side
+            .expect("last_court_side should be set after record_bounce")
+            .opponent();
         assert_eq!(winner, CourtSide::Player2);
     }
 
@@ -495,7 +498,10 @@ mod tests {
         assert_eq!(last_shooter.side, bounce_count.last_court_side);
 
         // 1Pの自コート打球 → 1P失点（2P得点）
-        let winner = last_shooter.side.unwrap().opponent();
+        let winner = last_shooter
+            .side
+            .expect("last_shooter.side should be set after record")
+            .opponent();
         assert_eq!(winner, CourtSide::Player2);
     }
 
@@ -527,7 +533,10 @@ mod tests {
         assert_eq!(last_shooter.side, Some(CourtSide::Player1));
 
         // 壁に当たった → 1P失点（2P得点）
-        let winner = last_shooter.side.unwrap().opponent();
+        let winner = last_shooter
+            .side
+            .expect("last_shooter.side should be set after record")
+            .opponent();
         assert_eq!(winner, CourtSide::Player2);
     }
 
@@ -560,7 +569,10 @@ mod tests {
         last_shooter.record(CourtSide::Player1);
 
         // 1Pがサイドアウト → 1P失点（2P得点）
-        let winner = last_shooter.side.unwrap().opponent();
+        let winner = last_shooter
+            .side
+            .expect("last_shooter.side should be set after record")
+            .opponent();
         assert_eq!(winner, CourtSide::Player2);
     }
 
@@ -584,7 +596,10 @@ mod tests {
         last_shooter.record(CourtSide::Player2);
 
         // 2Pがベースラインアウト → 2P失点（1P得点）
-        let winner = last_shooter.side.unwrap().opponent();
+        let winner = last_shooter
+            .side
+            .expect("last_shooter.side should be set after record")
+            .opponent();
         assert_eq!(winner, CourtSide::Player1);
     }
 
