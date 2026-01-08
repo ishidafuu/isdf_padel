@@ -75,7 +75,7 @@ pub fn ai_movement_system(
         }
 
         // ホームポジション復帰時も、近づいたら停止
-        if !ball_on_my_side && distance_xz <= 0.3 {
+        if !ball_on_my_side && distance_xz <= config.ai.home_return_stop_distance {
             velocity.value.x = 0.0;
             velocity.value.z = 0.0;
             continue;

@@ -170,6 +170,9 @@ pub struct BallConfig {
     /// 最小バウンド速度（Y速度が0の場合に適用）
     #[serde(default = "default_min_bounce_velocity")]
     pub min_bounce_velocity: f32,
+    /// 壁反射係数（壁バウンド時の速度減衰）
+    #[serde(default = "default_wall_bounce_factor")]
+    pub wall_bounce_factor: f32,
 }
 
 fn default_normal_shot_speed() -> f32 {
@@ -186,6 +189,9 @@ fn default_ball_radius() -> f32 {
 }
 fn default_min_bounce_velocity() -> f32 {
     1.0
+}
+fn default_wall_bounce_factor() -> f32 {
+    0.8
 }
 
 /// 当たり判定パラメータ
@@ -526,6 +532,10 @@ pub struct AiConfig {
     /// @spec 30302_ai_shot_spec.md#req-30302-004
     #[serde(default = "default_ai_shot_cooldown")]
     pub shot_cooldown: f32,
+    /// ホーム復帰時の停止距離（m）
+    /// @spec 30301_ai_movement_spec.md#req-30301-005
+    #[serde(default = "default_ai_home_return_stop_distance")]
+    pub home_return_stop_distance: f32,
 }
 
 impl Default for AiConfig {
@@ -535,6 +545,7 @@ impl Default for AiConfig {
             home_position_x: default_ai_home_x(),
             home_position_z: default_ai_home_z(),
             shot_cooldown: default_ai_shot_cooldown(),
+            home_return_stop_distance: default_ai_home_return_stop_distance(),
         }
     }
 }
@@ -551,6 +562,9 @@ fn default_ai_home_z() -> f32 {
 /// @spec 30302_ai_shot_spec.md#req-30302-002
 fn default_ai_shot_cooldown() -> f32 {
     0.5 // デフォルト: 0.5秒
+}
+fn default_ai_home_return_stop_distance() -> f32 {
+    0.3
 }
 
 /// 視覚フィードバックパラメータ

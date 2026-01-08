@@ -291,6 +291,7 @@ mod tests {
                 bounce_factor: 0.8,
                 radius: 0.2,
                 min_bounce_velocity: 1.0,
+                wall_bounce_factor: 0.8,
             },
             collision: crate::resource::config::CollisionConfig {
                 character_radius: 0.5,

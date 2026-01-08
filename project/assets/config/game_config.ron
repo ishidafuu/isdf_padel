@@ -30,6 +30,7 @@ GameConfig(
         bounce_factor: 0.7,
         radius: 0.2,
         min_bounce_velocity: 1.0,
+        wall_bounce_factor: 0.8,
     ),
     collision: CollisionConfig(
         character_radius: 0.5,
@@ -82,5 +83,6 @@ GameConfig(
         home_position_x: 0.0,
         home_position_z: 5.0,
         shot_cooldown: 0.5,
+        home_return_stop_distance: 0.3,
     ),
 )

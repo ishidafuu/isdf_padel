@@ -118,7 +118,7 @@ pub fn ball_wall_reflection_system(
     mut event_writer: MessageWriter<WallReflectionEvent>,
 ) {
     let bounds = create_court_bounds(&config.court);
-    let bounce_factor = config.ball.bounce_factor;
+    let bounce_factor = config.ball.wall_bounce_factor;
 
     for (entity, mut velocity, mut logical_pos) in query.iter_mut() {
         let pos = logical_pos.value;
