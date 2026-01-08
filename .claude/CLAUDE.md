@@ -152,48 +152,55 @@ velocity.y += config.physics.gravity * time.delta_secs();
 **対象**: 物理パラメータ、移動パラメータ、サイズ、時間、ゲームバランス値など
 **配置**: `project/docs/8_data/` に定義 → RON ファイル（`.ron`）
 
-### 4. プレイヤー固定参照禁止原則（CRITICAL）
+### 4. ECS設計原則（CRITICAL）
 
-**NEVER hardcode player identifiers like `player1_`, `player2_`, or fixed player IDs.**
+**ゲームオブジェクトの状態は必ずエンティティ/コンポーネントで管理する。固定識別子は絶対に使わない。**
+
+#### 禁止パターン
 
 ```rust
-// ❌ 絶対に禁止
+// ❌ 固定識別子をフィールド名に埋め込む
 pub struct ShotButtonState {
-    pub player1_holding: bool,
+    pub player1_holding: bool,  // player1_ という固定識別子
     pub player2_holding: bool,
 }
 
-// ❌ 絶対に禁止
-match player.id {
-    1 => ...,
-    2 => ...,
-}
+// ❌ 固定識別子で分岐する
+match player.id { 1 => ..., 2 => ... }
 
-// ✅ 必須: エンティティ/コンポーネントベース
+// ❌ ゲームオブジェクトの状態をリソースで管理
+#[derive(Resource)]
+pub struct PlayerStates { ... }  // 複数プレイヤーの状態をリソースに
+```
+
+#### 正しいパターン
+
+```rust
+// ✅ 状態はエンティティごとのコンポーネント
 #[derive(Component)]
-pub struct InputState {
-    pub holding: bool,
-    pub hold_time: f32,
-}
+pub struct InputState { pub holding: bool, pub hold_time: f32 }
 
-// ✅ 必須: マーカーコンポーネントで制御種別を区別
+// ✅ 振る舞いの違いはマーカーコンポーネントで区別
 #[derive(Component)]
 pub struct HumanControlled { pub device_id: usize }
 
 #[derive(Component)]
 pub struct AiControlled;
+
+// ✅ リソースは「グローバルに1つだけ存在するもの」にのみ使用
+#[derive(Resource)]
+pub struct GameConfig { ... }  // 設定値（1つだけ）
 ```
 
-**理由**:
-- ダブルス対応（4人以上）が不可能になる
-- AI/人間の動的切り替えが不可能になる
-- プレイヤー数の変更が困難になる
-- 入力デバイス割り当ての柔軟性がなくなる
+#### 判断基準
 
-**設計原則**:
-- 状態はエンティティごとのコンポーネントで管理
-- 制御種別（人間/AI）はマーカーコンポーネントで区別
-- リソースは「グローバルに1つしかないもの」にのみ使用
+| 対象 | 管理方法 |
+|------|---------|
+| ゲームオブジェクトの状態（位置、入力、HP等） | **Component** |
+| 振る舞いの種別（人間/AI、敵/味方等） | **Marker Component** |
+| グローバルに1つだけ存在するもの（設定、時間等） | **Resource** |
+
+**違反時の問題**: エンティティ数の変更不可、動的な振る舞い切替不可、テスト困難
 
 ### 5. 1タスク=1コミット原則
 
