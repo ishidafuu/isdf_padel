@@ -204,20 +204,22 @@ fn apply_direction_offset(horizontal_dir: Vec3, offset_deg: f32) -> Vec3 {
 
 /// 水平方向を計算
 /// @spec 30602_shot_direction_spec.md#req-30602-001
-/// Z軸方向（前後）: コートサイドに応じて常に相手コート方向に固定
-/// X軸方向（左右）: 入力で調整可能
+/// 新座標系: X=打ち合い方向, Z=コート幅
+/// X軸方向（打ち合い）: コートサイドに応じて常に相手コート方向に固定
+/// Z軸方向（左右）: 入力で調整可能
 #[inline]
 fn calculate_horizontal_direction(direction: Vec2, court_side: CourtSide) -> Vec3 {
-    // Z軸方向: コートサイドに応じて固定（常に相手コートへ）
-    // Player1側（Z < net_z）にいる場合: +Z方向（相手コート）
-    // Player2側（Z > net_z）にいる場合: -Z方向（相手コート）
-    let z_direction = match court_side {
+    // X軸方向: コートサイドに応じて固定（常に相手コートへ）
+    // Player1側（X < net_x）にいる場合: +X方向（相手コート）
+    // Player2側（X > net_x）にいる場合: -X方向（相手コート）
+    let x_direction = match court_side {
         CourtSide::Player1 => 1.0,
         CourtSide::Player2 => -1.0,
     };
 
-    // X軸方向: 入力値をそのまま使用（左右の打ち分け）
-    let x_direction = direction.x;
+    // Z軸方向: 入力X値を使用（コート幅方向の打ち分け）
+    // shot_input.rs から direction.x に横入力（左右）が入る
+    let z_direction = direction.x;
 
     // 正規化して返す
     Vec3::new(x_direction, 0.0, z_direction).normalize()
@@ -243,53 +245,57 @@ mod tests {
     use super::*;
 
     /// TST-30604-007: 水平方向計算テスト（Player1側コート、入力なし）
+    /// 新座標系: X=打ち合い方向（固定）, Z=コート幅（入力）
     #[test]
     fn test_calculate_horizontal_direction_player1_side_no_input() {
-        // Player1側コート: 入力なし -> +Z方向（相手コート）
+        // Player1側コート: 入力なし -> +X方向（相手コート方向のみ）
         let direction = Vec2::new(0.0, 0.0);
         let result = calculate_horizontal_direction(direction, CourtSide::Player1);
 
-        assert!((result.x - 0.0).abs() < 0.001);
+        assert!((result.x - 1.0).abs() < 0.001);  // +X方向（2Pコートへ）
         assert!((result.y - 0.0).abs() < 0.001);
-        assert!((result.z - 1.0).abs() < 0.001);
+        assert!((result.z - 0.0).abs() < 0.001);  // 横方向なし
     }
 
     /// TST-30604-007: 水平方向計算テスト（Player2側コート、入力なし）
+    /// 新座標系: X=打ち合い方向（固定）, Z=コート幅（入力）
     #[test]
     fn test_calculate_horizontal_direction_player2_side_no_input() {
-        // Player2側コート: 入力なし -> -Z方向（相手コート）
+        // Player2側コート: 入力なし -> -X方向（相手コート方向のみ）
         let direction = Vec2::new(0.0, 0.0);
         let result = calculate_horizontal_direction(direction, CourtSide::Player2);
 
-        assert!((result.x - 0.0).abs() < 0.001);
+        assert!((result.x - -1.0).abs() < 0.001); // -X方向（1Pコートへ）
         assert!((result.y - 0.0).abs() < 0.001);
-        assert!((result.z - -1.0).abs() < 0.001);
+        assert!((result.z - 0.0).abs() < 0.001);  // 横方向なし
     }
 
     /// TST-30604-007: 水平方向計算テスト（Player1側コート、右入力）
+    /// 新座標系: X=打ち合い方向（固定）, Z=コート幅（入力）
     #[test]
     fn test_calculate_horizontal_direction_player1_side_right() {
-        // Player1側コート: 右入力 -> 右前方向
-        let direction = Vec2::new(1.0, 0.0);
+        // Player1側コート: 右入力(+Z) -> 右前方向
+        let direction = Vec2::new(1.0, 0.0);  // X入力 → Z方向
         let result = calculate_horizontal_direction(direction, CourtSide::Player1);
 
         let expected = 1.0 / 2.0_f32.sqrt();
-        assert!((result.x - expected).abs() < 0.001);
+        assert!((result.x - expected).abs() < 0.001);  // +X方向
         assert!((result.y - 0.0).abs() < 0.001);
-        assert!((result.z - expected).abs() < 0.001);
+        assert!((result.z - expected).abs() < 0.001);  // +Z方向（右）
     }
 
     /// TST-30604-007: 水平方向計算テスト（Player2側コート、右入力）
+    /// 新座標系: X=打ち合い方向（固定）, Z=コート幅（入力）
     #[test]
     fn test_calculate_horizontal_direction_player2_side_right() {
-        // Player2側コート: 右入力 -> 右後方向（-Z）
-        let direction = Vec2::new(1.0, 0.0);
+        // Player2側コート: 右入力(+Z) -> 右後方向
+        let direction = Vec2::new(1.0, 0.0);  // X入力 → Z方向
         let result = calculate_horizontal_direction(direction, CourtSide::Player2);
 
         let expected = 1.0 / 2.0_f32.sqrt();
-        assert!((result.x - expected).abs() < 0.001);
+        assert!((result.x - -expected).abs() < 0.001); // -X方向（1Pコートへ）
         assert!((result.y - 0.0).abs() < 0.001);
-        assert!((result.z - -expected).abs() < 0.001);
+        assert!((result.z - expected).abs() < 0.001);  // +Z方向（右）
     }
 
     /// TST-30604-008: 通常ショット速度テスト

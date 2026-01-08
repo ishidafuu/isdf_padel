@@ -37,13 +37,13 @@ impl Plugin for FaultJudgmentPlugin {
 /// @spec 30902_fault_spec.md#req-30902-001
 #[derive(Debug, Clone, Copy)]
 pub struct ServiceBox {
-    /// X軸の最小値
+    /// X軸の最小値（ネット側、打ち合い方向）
     pub x_min: f32,
-    /// X軸の最大値
+    /// X軸の最大値（サービスライン側、打ち合い方向）
     pub x_max: f32,
-    /// Z軸の最小値（ネット側）
+    /// Z軸の最小値（コート幅方向）
     pub z_min: f32,
-    /// Z軸の最大値（サービスライン側）
+    /// Z軸の最大値（コート幅方向）
     pub z_max: f32,
 }
 
@@ -59,63 +59,64 @@ impl ServiceBox {
 /// サーバー側とサーブサイドからサービスボックスを取得
 /// @spec 30902_fault_spec.md#req-30902-001
 ///
-/// - 1Pがサーブする場合: 2Pコート側（Z > 0）にサーブ
-///   - デュース側: 右半分（X > 0）
-///   - アド側: 左半分（X < 0）
-/// - 2Pがサーブする場合: 1Pコート側（Z < 0）にサーブ
-///   - デュース側: 左半分（X < 0）
-///   - アド側: 右半分（X > 0）
+/// 論理座標系: X=打ち合い方向, Y=高さ, Z=コート幅
+/// - 1Pがサーブする場合: 2Pコート側（X > 0）にサーブ
+///   - デュース側: 奥半分（Z > 0）
+///   - アド側: 手前半分（Z < 0）
+/// - 2Pがサーブする場合: 1Pコート側（X < 0）にサーブ
+///   - デュース側: 手前半分（Z < 0）
+///   - アド側: 奥半分（Z > 0）
 pub fn get_service_box(
     server: CourtSide,
     serve_side: ServeSide,
     config: &GameConfig,
 ) -> ServiceBox {
     let half_width = config.court.width / 2.0;
-    let net_z = config.court.net_z;
+    let net_x = config.court.net_x;
     let service_box_depth = config.court.service_box_depth;
 
     match server {
         CourtSide::Player1 => {
-            // 1Pがサーブ → 2Pコート側（Z > 0）
-            let z_min = net_z;
-            let z_max = net_z + service_box_depth;
+            // 1Pがサーブ → 2Pコート側（X > 0）
+            let x_min = net_x;
+            let x_max = net_x + service_box_depth;
 
             match serve_side {
                 ServeSide::Deuce => ServiceBox {
-                    // デュース側: 右半分（X > 0）
-                    x_min: 0.0,
-                    x_max: half_width,
-                    z_min,
-                    z_max,
+                    // デュース側: 奥半分（Z > 0）
+                    x_min,
+                    x_max,
+                    z_min: 0.0,
+                    z_max: half_width,
                 },
                 ServeSide::Ad => ServiceBox {
-                    // アド側: 左半分（X < 0）
-                    x_min: -half_width,
-                    x_max: 0.0,
-                    z_min,
-                    z_max,
+                    // アド側: 手前半分（Z < 0）
+                    x_min,
+                    x_max,
+                    z_min: -half_width,
+                    z_max: 0.0,
                 },
             }
         }
         CourtSide::Player2 => {
-            // 2Pがサーブ → 1Pコート側（Z < 0）
-            let z_min = net_z - service_box_depth;
-            let z_max = net_z;
+            // 2Pがサーブ → 1Pコート側（X < 0）
+            let x_min = net_x - service_box_depth;
+            let x_max = net_x;
 
             match serve_side {
                 ServeSide::Deuce => ServiceBox {
-                    // デュース側: 左半分（X < 0）
-                    x_min: -half_width,
-                    x_max: 0.0,
-                    z_min,
-                    z_max,
+                    // デュース側: 手前半分（Z < 0）
+                    x_min,
+                    x_max,
+                    z_min: -half_width,
+                    z_max: 0.0,
                 },
                 ServeSide::Ad => ServiceBox {
-                    // アド側: 右半分（X > 0）
-                    x_min: 0.0,
-                    x_max: half_width,
-                    z_min,
-                    z_max,
+                    // アド側: 奥半分（Z > 0）
+                    x_min,
+                    x_max,
+                    z_min: 0.0,
+                    z_max: half_width,
                 },
             }
         }
@@ -272,7 +273,7 @@ mod tests {
                 ceiling_height: 5.0,
                 max_jump_height: 5.0,
                 net_height: 1.0,
-                net_z: 0.0,
+                net_x: 0.0,
                 service_box_depth: 1.5,
             },
             player: crate::resource::config::PlayerConfig {
@@ -282,8 +283,8 @@ mod tests {
                 jump_force: 8.0,
                 friction: 0.9,
                 air_control_factor: 0.5,
-                z_min: -3.0,
-                z_max: 3.0,
+                x_min: -3.0,
+                x_max: 3.0,
             },
             ball: crate::resource::config::BallConfig {
                 normal_shot_speed: 10.0,
@@ -335,61 +336,64 @@ mod tests {
 
     /// TST-30904-010: サービスボックス判定テスト
     /// @spec 30902_fault_spec.md#req-30902-001
+    /// 新座標系: X=打ち合い方向, Z=コート幅
     #[test]
     fn test_req_30902_001_service_box_judgment() {
         let config = test_config();
 
-        // 1Pがサーブ、デュースサイド → 2Pコート右半分
+        // 1Pがサーブ、デュースサイド → 2Pコート右半分（X>0, Z>0）
         let service_box = get_service_box(CourtSide::Player1, ServeSide::Deuce, &config);
-        assert_eq!(service_box.x_min, 0.0);
-        assert_eq!(service_box.x_max, 5.0);
-        assert_eq!(service_box.z_min, 0.0);
-        assert_eq!(service_box.z_max, 1.5);
+        assert_eq!(service_box.x_min, 0.0);    // ネット位置
+        assert_eq!(service_box.x_max, 1.5);    // サービスライン位置
+        assert_eq!(service_box.z_min, 0.0);    // コート中央
+        assert_eq!(service_box.z_max, 5.0);    // コート右側（+Z）
 
-        // サービスボックス内
-        assert!(service_box.contains(2.5, 0.75));
-        // サービスボックス外（左半分）
-        assert!(!service_box.contains(-2.5, 0.75));
-        // サービスボックス外（奥）
-        assert!(!service_box.contains(2.5, 2.0));
+        // サービスボックス内（X=0.75, Z=2.5）
+        assert!(service_box.contains(0.75, 2.5));
+        // サービスボックス外（左半分：Z < 0）
+        assert!(!service_box.contains(0.75, -2.5));
+        // サービスボックス外（サービスラインより奥：X > 1.5）
+        assert!(!service_box.contains(2.0, 2.5));
     }
 
     /// TST-30904-010: サービスボックス判定テスト（アドサイド）
     /// @spec 30902_fault_spec.md#req-30902-001
+    /// 新座標系: X=打ち合い方向, Z=コート幅
     #[test]
     fn test_req_30902_001_service_box_ad_side() {
         let config = test_config();
 
-        // 1Pがサーブ、アドサイド → 2Pコート左半分
+        // 1Pがサーブ、アドサイド → 2Pコート左半分（X>0, Z<0）
         let service_box = get_service_box(CourtSide::Player1, ServeSide::Ad, &config);
-        assert_eq!(service_box.x_min, -5.0);
-        assert_eq!(service_box.x_max, 0.0);
-        assert_eq!(service_box.z_min, 0.0);
-        assert_eq!(service_box.z_max, 1.5);
+        assert_eq!(service_box.x_min, 0.0);    // ネット位置
+        assert_eq!(service_box.x_max, 1.5);    // サービスライン位置
+        assert_eq!(service_box.z_min, -5.0);   // コート左側（-Z）
+        assert_eq!(service_box.z_max, 0.0);    // コート中央
 
-        // サービスボックス内
-        assert!(service_box.contains(-2.5, 0.75));
-        // サービスボックス外（右半分）
-        assert!(!service_box.contains(2.5, 0.75));
+        // サービスボックス内（X=0.75, Z=-2.5）
+        assert!(service_box.contains(0.75, -2.5));
+        // サービスボックス外（右半分：Z > 0）
+        assert!(!service_box.contains(0.75, 2.5));
     }
 
     /// TST-30904-010: サービスボックス判定テスト（2Pサーブ）
     /// @spec 30902_fault_spec.md#req-30902-001
+    /// 新座標系: X=打ち合い方向, Z=コート幅
     #[test]
     fn test_req_30902_001_service_box_player2_serve() {
         let config = test_config();
 
-        // 2Pがサーブ、デュースサイド → 1Pコート左半分
+        // 2Pがサーブ、デュースサイド → 1Pコート左半分（X<0, Z<0）
         let service_box = get_service_box(CourtSide::Player2, ServeSide::Deuce, &config);
-        assert_eq!(service_box.x_min, -5.0);
-        assert_eq!(service_box.x_max, 0.0);
-        assert_eq!(service_box.z_min, -1.5);
-        assert_eq!(service_box.z_max, 0.0);
+        assert_eq!(service_box.x_min, -1.5);   // サービスライン位置
+        assert_eq!(service_box.x_max, 0.0);    // ネット位置
+        assert_eq!(service_box.z_min, -5.0);   // コート左側（-Z）
+        assert_eq!(service_box.z_max, 0.0);    // コート中央
 
-        // サービスボックス内
-        assert!(service_box.contains(-2.5, -0.75));
-        // サービスボックス外（右半分）
-        assert!(!service_box.contains(2.5, -0.75));
+        // サービスボックス内（X=-0.75, Z=-2.5）
+        assert!(service_box.contains(-0.75, -2.5));
+        // サービスボックス外（右半分：Z > 0）
+        assert!(!service_box.contains(-0.75, 2.5));
     }
 
     /// TST-30904-011: ダブルフォルト判定テスト

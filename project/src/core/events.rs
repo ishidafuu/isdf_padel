@@ -87,15 +87,16 @@ pub struct PlayerKnockbackEvent {
 
 /// 壁の種類
 /// @spec 30502_wall_design.md#des-30502-002
+/// 新座標系: LeftWall/RightWall = Z方向（コート幅）, BackWall = X方向（打ち合い方向）
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum WallType {
-    /// 左壁（X = -Court.Width/2）
+    /// 左壁（Z = -Court.Width/2、コート幅方向）
     LeftWall,
-    /// 右壁（X = +Court.Width/2）
+    /// 右壁（Z = +Court.Width/2、コート幅方向）
     RightWall,
-    /// 後壁（1Pコート側、Z = -Court.Depth/2）
+    /// 後壁（1Pコート側、X = -Court.Depth/2、打ち合い方向）
     BackWall1P,
-    /// 後壁（2Pコート側、Z = +Court.Depth/2）
+    /// 後壁（2Pコート側、X = +Court.Depth/2、打ち合い方向）
     BackWall2P,
     /// 天井（Y = Court.CeilingHeight）
     Ceiling,
@@ -104,15 +105,16 @@ pub enum WallType {
 impl WallType {
     /// 壁の法線ベクトルを返す
     /// @spec 30502_wall_design.md#des-30502-001
+    /// 新座標系: LeftWall/RightWall = Z方向, BackWall = X方向
     #[allow(dead_code)]
     #[inline]
     pub fn normal(&self) -> Vec3 {
         match self {
-            WallType::LeftWall => Vec3::X,      // 右向き（+X）
-            WallType::RightWall => Vec3::NEG_X, // 左向き（-X）
-            WallType::BackWall1P => Vec3::Z,    // 前向き（+Z）
-            WallType::BackWall2P => Vec3::NEG_Z, // 後ろ向き（-Z）
-            WallType::Ceiling => Vec3::NEG_Y,   // 下向き（-Y）
+            WallType::LeftWall => Vec3::Z,       // +Z方向（Z負側の壁）
+            WallType::RightWall => Vec3::NEG_Z,  // -Z方向（Z正側の壁）
+            WallType::BackWall1P => Vec3::X,     // +X方向（X負側の壁、1Pバックライン）
+            WallType::BackWall2P => Vec3::NEG_X, // -X方向（X正側の壁、2Pバックライン）
+            WallType::Ceiling => Vec3::NEG_Y,    // -Y方向（天井）
         }
     }
 

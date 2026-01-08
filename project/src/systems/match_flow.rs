@@ -187,13 +187,14 @@ fn match_end_system(match_score: Res<MatchScore>, mut match_end_events: MessageW
 }
 
 /// プレイヤーの初期位置を取得
+/// 論理座標系: X=打ち合い方向, Y=高さ, Z=コート幅
 /// @spec 30101_flow_spec.md#req-30101-001
 fn get_initial_position(court_side: CourtSide, config: &GameConfig) -> Vec3 {
     match court_side {
-        // @spec 30101_flow_spec.md#req-30101-001: Player1: 1Pコート側
-        CourtSide::Player1 => Vec3::new(0.0, 0.0, config.player.z_min + 1.0),
-        // @spec 30101_flow_spec.md#req-30101-001: Player2: 2Pコート側
-        CourtSide::Player2 => Vec3::new(0.0, 0.0, config.player.z_max - 1.0),
+        // @spec 30101_flow_spec.md#req-30101-001: Player1: 1Pコート側（画面左）
+        CourtSide::Player1 => Vec3::new(config.player.x_min + 1.0, 0.0, 0.0),
+        // @spec 30101_flow_spec.md#req-30101-001: Player2: 2Pコート側（画面右）
+        CourtSide::Player2 => Vec3::new(config.player.x_max - 1.0, 0.0, 0.0),
     }
 }
 

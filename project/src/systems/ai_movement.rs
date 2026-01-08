@@ -48,10 +48,10 @@ pub fn ai_movement_system(
         let ai_pos = logical_pos.value;
 
         // REQ-30301-005: ボールが自分側にあるかチェック
-        // Player 2 (AI) は +Z 側なので、ボールが +Z 側にあるか
+        // 論理座標系: X=打ち合い方向（Player1: -X側, Player2: +X側）
         let ball_on_my_side = match player.court_side {
-            CourtSide::Player1 => ball_pos.z < 0.0,
-            CourtSide::Player2 => ball_pos.z > 0.0,
+            CourtSide::Player1 => ball_pos.x < 0.0,
+            CourtSide::Player2 => ball_pos.x > 0.0,
         };
 
         // ターゲット位置を決定
@@ -99,24 +99,25 @@ pub fn ai_movement_system(
         let mut new_position = ai_pos + target_velocity * delta;
 
         // REQ-30301-004: 境界制限
-        new_position.x = bounds.clamp_x(new_position.x);
+        // X軸（打ち合い方向）: プレイヤーの自コート半分に制限
+        let (x_min, x_max) = get_ai_x_bounds(player.court_side, &config);
+        new_position.x = new_position.x.clamp(x_min, x_max);
 
-        // プレイヤーの自コート境界（Z軸）
-        let (z_min, z_max) = get_ai_z_bounds(player.court_side, &config);
-        new_position.z = new_position.z.clamp(z_min, z_max);
+        // Z軸（コート幅）: コート全体の幅に制限
+        new_position.z = bounds.clamp_z(new_position.z);
 
         logical_pos.value = new_position;
     }
 }
 
-/// AIプレイヤーのZ軸境界を取得
+/// AIプレイヤーのX軸境界を取得（打ち合い方向）
 /// @spec 30301_ai_movement_spec.md#req-30301-004
-fn get_ai_z_bounds(court_side: CourtSide, config: &GameConfig) -> (f32, f32) {
+fn get_ai_x_bounds(court_side: CourtSide, config: &GameConfig) -> (f32, f32) {
     match court_side {
-        // Player 1: 1Pコート側（-Z側）
-        CourtSide::Player1 => (config.player.z_min, 0.0),
-        // Player 2: 2Pコート側（+Z側）
-        CourtSide::Player2 => (0.0, config.player.z_max),
+        // Player 1: 1Pコート側（-X側、ネットまで）
+        CourtSide::Player1 => (config.player.x_min, 0.0),
+        // Player 2: 2Pコート側（+X側、ネットから）
+        CourtSide::Player2 => (0.0, config.player.x_max),
     }
 }
 

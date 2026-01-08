@@ -105,17 +105,18 @@ pub fn knockback_movement_system(
         let mut new_position = logical_pos.value + knockback.velocity * delta;
 
         // REQ-30203-003: 境界制限
+        // X軸（打ち合い方向）: プレイヤーの自コート半分に制限
+        let (x_min, x_max) = get_player_x_bounds(player.court_side, &config);
         let old_x = new_position.x;
-        new_position.x = bounds.clamp_x(new_position.x);
+        new_position.x = new_position.x.clamp(x_min, x_max);
         if new_position.x != old_x {
             // 境界に達したらX成分を0にリセット
             knockback.velocity.x = 0.0;
         }
 
-        // Z軸境界（プレイヤーごと）
-        let (z_min, z_max) = get_player_z_bounds(player.court_side, &config);
+        // Z軸境界（コート幅）: コート全体の幅に制限
         let old_z = new_position.z;
-        new_position.z = new_position.z.clamp(z_min, z_max);
+        new_position.z = bounds.clamp_z(new_position.z);
         if new_position.z != old_z {
             knockback.velocity.z = 0.0;
         }
@@ -165,11 +166,13 @@ pub fn knockback_timer_system(time: Res<Time>, mut query: Query<(&Player, &mut K
     }
 }
 
-/// プレイヤーごとのZ軸境界を取得
-fn get_player_z_bounds(court_side: CourtSide, config: &GameConfig) -> (f32, f32) {
+/// プレイヤーごとのX軸境界を取得（打ち合い方向）
+fn get_player_x_bounds(court_side: CourtSide, config: &GameConfig) -> (f32, f32) {
     match court_side {
-        CourtSide::Player1 => (config.player.z_min, 0.0),
-        CourtSide::Player2 => (0.0, config.player.z_max),
+        // Player 1: 1Pコート側（-X側、ネットまで）
+        CourtSide::Player1 => (config.player.x_min, 0.0),
+        // Player 2: 2Pコート側（+X側、ネットから）
+        CourtSide::Player2 => (0.0, config.player.x_max),
     }
 }
 

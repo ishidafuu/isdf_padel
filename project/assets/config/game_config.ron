@@ -11,7 +11,7 @@ GameConfig(
         ceiling_height: 100.0,
         max_jump_height: 5.0,
         net_height: 1.0,
-        net_z: 0.0,
+        net_x: 0.0,
         service_box_depth: 5.0,
     ),
     player: PlayerConfig(
@@ -21,8 +21,8 @@ GameConfig(
         jump_force: 3.0,
         friction: 0.9,
         air_control_factor: 0.5,
-        z_min: -8.0,
-        z_max: 8.0,
+        x_min: -8.0,
+        x_max: 8.0,
     ),
     ball: BallConfig(
         normal_shot_speed: 3.0,
@@ -64,8 +64,8 @@ GameConfig(
     // @spec 30102_serve_spec.md
     serve: ServeConfig(
         ball_spawn_offset_y: 0.5,
-        p1_default_direction_z: 1.0,
-        p2_default_direction_z: -1.0,
+        p1_default_direction_x: 1.0,
+        p2_default_direction_x: -1.0,
     ),
     shadow: ShadowConfig(
         player_size: (25.0, 10.0),
@@ -85,8 +85,7 @@ GameConfig(
     // @spec 30302_ai_shot_spec.md
     ai: AiConfig(
         move_speed: 4.5,
-        home_position_x: 0.0,
-        home_position_z: 7.0,
+        home_position_x: 7.0,
         shot_cooldown: 0.5,
         home_return_stop_distance: 0.3,
     ),

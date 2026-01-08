@@ -222,19 +222,20 @@ pub fn let_judgment_system(
         return;
     }
 
-    let net_z = config.court.net_z;
+    // 新座標系: X=打ち合い方向（ネット位置で判定）
+    let net_x = config.court.net_x;
 
     for event in net_events.read() {
         // ネットに触れた後のボール位置を確認
         if let Ok(logical_pos) = query.get(event.ball) {
-            let ball_z = logical_pos.value.z;
+            let ball_x = logical_pos.value.x;
 
             // @spec 30901_point_judgment_spec.md#req-30901-003
             // サーブ側からネットを超えて相手コートに入ったかを判定
             let server_side = rally_state.server;
             let in_opponent_court = match server_side {
-                CourtSide::Player1 => ball_z > net_z, // 1Pサーブ → 2P側に入った
-                CourtSide::Player2 => ball_z < net_z, // 2Pサーブ → 1P側に入った
+                CourtSide::Player1 => ball_x > net_x, // 1Pサーブ → 2P側（+X）に入った
+                CourtSide::Player2 => ball_x < net_x, // 2Pサーブ → 1P側（-X）に入った
             };
 
             if in_opponent_court {
@@ -296,18 +297,19 @@ pub fn net_fault_judgment_system(
         return;
     }
 
-    let net_z = config.court.net_z;
+    // 新座標系: X=打ち合い方向（ネット位置で判定）
+    let net_x = config.court.net_x;
 
     for event in net_events.read() {
         if let Ok((logical_pos, last_shooter)) = query.get(event.ball) {
             if let Some(shooter) = last_shooter.side {
-                let ball_z = logical_pos.value.z;
+                let ball_x = logical_pos.value.x;
 
                 // @spec 30103_point_end_spec.md#req-30103-002
                 // 打ったボールがネットに当たった時点でショット元のコート側にあれば失点
                 let in_shooter_court = match shooter {
-                    CourtSide::Player1 => ball_z < net_z, // 1Pが打った → ネット手前（1P側）
-                    CourtSide::Player2 => ball_z > net_z, // 2Pが打った → ネット手前（2P側）
+                    CourtSide::Player1 => ball_x < net_x, // 1Pが打った → ネット手前（-X側）
+                    CourtSide::Player2 => ball_x > net_x, // 2Pが打った → ネット手前（+X側）
                 };
 
                 if in_shooter_court {
@@ -412,20 +414,20 @@ mod tests {
         assert_eq!(bounce_count.last_court_side, Some(CourtSide::Player2));
     }
 
-    /// TST-30904-003: アウト判定テスト
+    /// TST-30904-003: アウト判定テスト（X軸=打ち合い方向）
     /// @spec 30901_point_judgment_spec.md#req-30901-001
     #[test]
     fn test_req_30901_001_out_judgment() {
-        let net_z = 0.0;
+        let net_x = 0.0;
 
-        // 1Pコート側でアウト
-        let pos_1p = Vec3::new(0.0, -1.0, -2.0);
-        let court_side_1p = crate::core::determine_court_side(pos_1p.z, net_z);
+        // 1Pコート側でアウト（X < 0）
+        let pos_1p = Vec3::new(-2.0, -1.0, 0.0);
+        let court_side_1p = crate::core::determine_court_side(pos_1p.x, net_x);
         assert_eq!(court_side_1p, CourtSide::Player1);
 
-        // 2Pコート側でアウト
-        let pos_2p = Vec3::new(0.0, -1.0, 2.0);
-        let court_side_2p = crate::core::determine_court_side(pos_2p.z, net_z);
+        // 2Pコート側でアウト（X > 0）
+        let pos_2p = Vec3::new(2.0, -1.0, 0.0);
+        let court_side_2p = crate::core::determine_court_side(pos_2p.x, net_x);
         assert_eq!(court_side_2p, CourtSide::Player2);
     }
 
@@ -442,13 +444,15 @@ mod tests {
             ceiling_height: 5.0,
             max_jump_height: 5.0,
             net_height: 1.0,
-            net_z: 0.0,
+            net_x: 0.0,
             service_box_depth: 1.5,
         };
 
         let bounds = create_court_bounds(&config);
 
         // 境界座標の確認
+        // Z軸（コート幅）: left=-5, right=5
+        // X軸（打ち合い方向）: back_1p=-3, back_2p=3
         assert_eq!(bounds.left, -5.0);
         assert_eq!(bounds.right, 5.0);
         assert_eq!(bounds.back_1p, -3.0);

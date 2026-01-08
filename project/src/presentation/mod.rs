@@ -20,18 +20,18 @@ use crate::resource::config::GameConfig;
 pub const WORLD_SCALE: f32 = 50.0;
 
 /// 論理座標を表示用Transformに同期するシステム
-/// 論理座標系: X=横移動, Y=高さ（ジャンプ）, Z=奥行き（コート前後＝打ち合い方向）
-/// 表示座標系: X=打ち合い方向（左右）, Y=横移動+高さ（上下）, Z=レイヤー深度
+/// 論理座標系: X=打ち合い方向, Y=高さ（ジャンプ）, Z=コート幅（奥行き）
+/// 表示座標系: X=打ち合い方向（左右）, Y=コート幅+高さ（上下）, Z=レイヤー深度
 /// @spec REQ-30801-005
 pub fn sync_transform_system(mut query: Query<(&LogicalPosition, &mut Transform)>) {
     for (logical_pos, mut transform) in query.iter_mut() {
-        // 論理座標を表示座標に変換（90度回転：左右の打ち合い）
-        // X: 論理Z（奥行き）→ 画面左右（打ち合い方向）
-        // Y: 論理X（横移動）+ 論理Y（高さ）→ 画面上下
+        // 論理座標を表示座標に直接マッピング（回転不要）
+        // X: 論理X（打ち合い方向）→ 画面左右
+        // Y: 論理Z（コート幅）+ 論理Y（高さ）→ 画面上下
         // Z: レイヤー深度
-        let display_x = logical_pos.value.z * WORLD_SCALE;
-        let display_y = logical_pos.value.x * WORLD_SCALE + logical_pos.value.y * WORLD_SCALE;
-        let display_z = 1.0 - logical_pos.value.x * 0.01; // 奥行きでレイヤー調整
+        let display_x = logical_pos.value.x * WORLD_SCALE;
+        let display_y = logical_pos.value.z * WORLD_SCALE + logical_pos.value.y * WORLD_SCALE;
+        let display_z = 1.0 - logical_pos.value.z * 0.01; // 奥行きでレイヤー調整
 
         transform.translation = Vec3::new(display_x, display_y, display_z);
     }
@@ -48,15 +48,15 @@ pub fn sync_shadow_system(
 ) {
     for (shadow, mut transform) in shadow_query.iter_mut() {
         if let Ok(owner_pos) = owner_query.get(shadow.owner) {
-            // 影は地面（Y=0）に表示（90度回転版）
-            let display_x = owner_pos.value.z * WORLD_SCALE;
+            // 影は地面（Y=0）に表示（直接マッピング）
+            let display_x = owner_pos.value.x * WORLD_SCALE;
             // プレイヤーの影は足元にオフセット、ボールの影はオフセットなし
             let y_offset = if player_query.get(shadow.owner).is_ok() {
                 config.shadow.player_y_offset
             } else {
                 config.shadow.ball_y_offset
             };
-            let display_y = owner_pos.value.x * WORLD_SCALE - y_offset;
+            let display_y = owner_pos.value.z * WORLD_SCALE - y_offset;
             // 影は背面に表示
             let display_z = config.shadow.z_layer;
 

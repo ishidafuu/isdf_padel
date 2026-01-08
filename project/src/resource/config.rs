@@ -79,8 +79,8 @@ pub struct CourtConfig {
     pub max_jump_height: f32,
     #[serde(default = "default_net_height")]
     pub net_height: f32,
-    #[serde(default = "default_net_z")]
-    pub net_z: f32,
+    #[serde(default = "default_net_x")]
+    pub net_x: f32,
     /// サービスボックスの奥行き（ネットからの距離）
     /// @spec 30902_fault_spec.md#req-30902-001
     #[serde(default = "default_service_box_depth")]
@@ -102,7 +102,7 @@ fn default_max_jump_height() -> f32 {
 fn default_net_height() -> f32 {
     1.0
 }
-fn default_net_z() -> f32 {
+fn default_net_x() -> f32 {
     0.0
 }
 fn default_service_box_depth() -> f32 {
@@ -129,10 +129,10 @@ pub struct PlayerConfig {
     #[allow(dead_code)]
     #[serde(default = "default_air_control")]
     pub air_control_factor: f32,
-    #[serde(default = "default_z_min")]
-    pub z_min: f32,
-    #[serde(default = "default_z_max")]
-    pub z_max: f32,
+    #[serde(default = "default_x_min")]
+    pub x_min: f32,
+    #[serde(default = "default_x_max")]
+    pub x_max: f32,
 }
 
 fn default_move_speed() -> f32 {
@@ -153,10 +153,10 @@ fn default_friction() -> f32 {
 fn default_air_control() -> f32 {
     0.5
 }
-fn default_z_min() -> f32 {
+fn default_x_min() -> f32 {
     -3.0
 }
-fn default_z_max() -> f32 {
+fn default_x_max() -> f32 {
     3.0
 }
 
@@ -438,20 +438,20 @@ pub struct ServeConfig {
     /// ボール生成時のY方向オフセット（プレイヤー足元からの高さ）
     #[serde(default = "default_ball_spawn_offset_y")]
     pub ball_spawn_offset_y: f32,
-    /// Player1のデフォルトサーブ方向（Z軸）
-    #[serde(default = "default_p1_default_direction_z")]
-    pub p1_default_direction_z: f32,
-    /// Player2のデフォルトサーブ方向（Z軸）
-    #[serde(default = "default_p2_default_direction_z")]
-    pub p2_default_direction_z: f32,
+    /// Player1のデフォルトサーブ方向（X軸：打ち合い方向）
+    #[serde(default = "default_p1_default_direction_x")]
+    pub p1_default_direction_x: f32,
+    /// Player2のデフォルトサーブ方向（X軸：打ち合い方向）
+    #[serde(default = "default_p2_default_direction_x")]
+    pub p2_default_direction_x: f32,
 }
 
 impl Default for ServeConfig {
     fn default() -> Self {
         Self {
             ball_spawn_offset_y: default_ball_spawn_offset_y(),
-            p1_default_direction_z: default_p1_default_direction_z(),
-            p2_default_direction_z: default_p2_default_direction_z(),
+            p1_default_direction_x: default_p1_default_direction_x(),
+            p2_default_direction_x: default_p2_default_direction_x(),
         }
     }
 }
@@ -459,11 +459,11 @@ impl Default for ServeConfig {
 fn default_ball_spawn_offset_y() -> f32 {
     0.5
 }
-fn default_p1_default_direction_z() -> f32 {
-    1.0 // +Z方向（2Pコートへ）
+fn default_p1_default_direction_x() -> f32 {
+    1.0 // +X方向（2Pコートへ）
 }
-fn default_p2_default_direction_z() -> f32 {
-    -1.0 // -Z方向（1Pコートへ）
+fn default_p2_default_direction_x() -> f32 {
+    -1.0 // -X方向（1Pコートへ）
 }
 
 /// 影パラメータ
@@ -526,14 +526,10 @@ pub struct AiConfig {
     /// @spec 30301_ai_movement_spec.md#req-30301-001
     #[serde(default = "default_ai_move_speed")]
     pub move_speed: f32,
-    /// ホームポジションX座標（m）
+    /// ホームポジションX座標（m、打ち合い方向）
     /// @spec 30301_ai_movement_spec.md#req-30301-005
-    #[serde(default = "default_ai_home_x")]
+    #[serde(default = "default_ai_home_position_x")]
     pub home_position_x: f32,
-    /// ホームポジションZ座標（m）
-    /// @spec 30301_ai_movement_spec.md#req-30301-005
-    #[serde(default = "default_ai_home_z")]
-    pub home_position_z: f32,
     /// AIショットクールダウン（秒）
     /// @spec 30302_ai_shot_spec.md#req-30302-002
     /// @spec 30302_ai_shot_spec.md#req-30302-004
@@ -549,8 +545,7 @@ impl Default for AiConfig {
     fn default() -> Self {
         Self {
             move_speed: default_ai_move_speed(),
-            home_position_x: default_ai_home_x(),
-            home_position_z: default_ai_home_z(),
+            home_position_x: default_ai_home_position_x(),
             shot_cooldown: default_ai_shot_cooldown(),
             home_return_stop_distance: default_ai_home_return_stop_distance(),
         }
@@ -560,11 +555,8 @@ impl Default for AiConfig {
 fn default_ai_move_speed() -> f32 {
     5.0
 }
-fn default_ai_home_x() -> f32 {
-    0.0
-}
-fn default_ai_home_z() -> f32 {
-    5.0 // 2Pコート側中央やや後方
+fn default_ai_home_position_x() -> f32 {
+    5.0 // 2Pコート側（+X方向）
 }
 /// @spec 30302_ai_shot_spec.md#req-30302-002
 fn default_ai_shot_cooldown() -> f32 {

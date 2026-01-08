@@ -29,9 +29,10 @@ impl Plugin for BoundaryPlugin {
 /// @spec 30503_boundary_behavior.md#beh-30503-002
 /// @spec 30503_boundary_behavior.md#beh-30503-003
 ///
+/// 新座標系: X=打ち合い方向, Y=高さ, Z=コート幅
 /// プレイヤーがコート境界を超えないように制限する。
-/// - 左右壁: Position.X を境界内にクランプ、Velocity.X = 0
-/// - 前後壁: Position.Z を境界内にクランプ、Velocity.Z = 0
+/// - 左右壁: Position.Z を境界内にクランプ、Velocity.Z = 0（コート幅方向）
+/// - 前後壁: Position.X を境界内にクランプ、Velocity.X = 0（打ち合い方向）
 /// - ネット: 自コート側に制限
 pub fn player_boundary_system(
     config: Res<GameConfig>,
@@ -43,50 +44,50 @@ pub fn player_boundary_system(
     for (player, mut logical_pos, mut velocity) in query.iter_mut() {
         let pos = &mut logical_pos.value;
 
-        // BEH-30503-001: 左右壁制限
-        if pos.x < bounds.left {
-            pos.x = bounds.left;
-            if velocity.value.x < 0.0 {
-                velocity.value.x = 0.0;
+        // BEH-30503-001: 左右壁制限（Z軸=コート幅方向）
+        if pos.z < bounds.left {
+            pos.z = bounds.left;
+            if velocity.value.z < 0.0 {
+                velocity.value.z = 0.0;
             }
-        } else if pos.x > bounds.right {
-            pos.x = bounds.right;
-            if velocity.value.x > 0.0 {
-                velocity.value.x = 0.0;
+        } else if pos.z > bounds.right {
+            pos.z = bounds.right;
+            if velocity.value.z > 0.0 {
+                velocity.value.z = 0.0;
             }
         }
 
-        // BEH-30503-002: 前後壁制限
+        // BEH-30503-002: 前後壁制限（X軸=打ち合い方向）
         match player.court_side {
             CourtSide::Player1 => {
-                // 1Pは Z < net_z の範囲
-                if pos.z < bounds.back_1p {
-                    pos.z = bounds.back_1p;
-                    if velocity.value.z < 0.0 {
-                        velocity.value.z = 0.0;
+                // 1Pは X < net_x の範囲（-X側）
+                if pos.x < bounds.back_1p {
+                    pos.x = bounds.back_1p;
+                    if velocity.value.x < 0.0 {
+                        velocity.value.x = 0.0;
                     }
                 }
-                // BEH-30503-003: ネット通過禁止（1Pは net_z 未満）
-                if pos.z > net.z {
-                    pos.z = net.z;
-                    if velocity.value.z > 0.0 {
-                        velocity.value.z = 0.0;
+                // BEH-30503-003: ネット通過禁止（1Pは net_x 未満）
+                if pos.x > net.x {
+                    pos.x = net.x;
+                    if velocity.value.x > 0.0 {
+                        velocity.value.x = 0.0;
                     }
                 }
             }
             CourtSide::Player2 => {
-                // 2Pは Z > net_z の範囲
-                if pos.z > bounds.back_2p {
-                    pos.z = bounds.back_2p;
-                    if velocity.value.z > 0.0 {
-                        velocity.value.z = 0.0;
+                // 2Pは X > net_x の範囲（+X側）
+                if pos.x > bounds.back_2p {
+                    pos.x = bounds.back_2p;
+                    if velocity.value.x > 0.0 {
+                        velocity.value.x = 0.0;
                     }
                 }
-                // BEH-30503-003: ネット通過禁止（2Pは net_z 超過）
-                if pos.z < net.z {
-                    pos.z = net.z;
-                    if velocity.value.z < 0.0 {
-                        velocity.value.z = 0.0;
+                // BEH-30503-003: ネット通過禁止（2Pは net_x 超過）
+                if pos.x < net.x {
+                    pos.x = net.x;
+                    if velocity.value.x < 0.0 {
+                        velocity.value.x = 0.0;
                     }
                 }
             }
@@ -130,7 +131,7 @@ mod tests {
                 ceiling_height: 5.0,
                 max_jump_height: 5.0,
                 net_height: 1.0,
-                net_z: 0.0,
+                net_x: 0.0,
                 service_box_depth: 1.5,
             },
             player: PlayerConfig {
@@ -140,8 +141,8 @@ mod tests {
                 jump_force: 8.0,
                 friction: 0.9,
                 air_control_factor: 0.5,
-                z_min: -3.0,
-                z_max: 3.0,
+                x_min: -3.0,
+                x_max: 3.0,
             },
             ball: BallConfig {
                 normal_shot_speed: 10.0,
@@ -191,71 +192,71 @@ mod tests {
         }
     }
 
-    /// TST-30504-011: プレイヤーの左右壁制限
+    /// TST-30504-011: プレイヤーの左右壁制限（Z軸=コート幅方向）
     #[test]
     fn test_beh_30503_001_player_side_wall_constraint() {
         let config = test_config();
         let bounds = create_court_bounds(&config.court);
 
-        // 左壁を超えた位置
-        let mut pos = Vec3::new(-6.0, 0.0, -1.0);
-        let mut vel = Vec3::new(-5.0, 0.0, 0.0);
-
-        // 制限適用
-        if pos.x < bounds.left {
-            pos.x = bounds.left;
-            if vel.x < 0.0 {
-                vel.x = 0.0;
-            }
-        }
-
-        assert_eq!(pos.x, -5.0); // 境界にクランプ
-        assert_eq!(vel.x, 0.0); // 壁方向の速度を0に
-    }
-
-    /// TST-30504-012: プレイヤーの前後壁制限
-    #[test]
-    fn test_beh_30503_002_player_back_wall_constraint() {
-        let config = test_config();
-        let bounds = create_court_bounds(&config.court);
-
-        // 後壁を超えた位置（1P側）
-        let mut pos = Vec3::new(0.0, 0.0, -4.0);
+        // 左壁を超えた位置（Z軸方向）
+        let mut pos = Vec3::new(0.0, 0.0, -6.0);
         let mut vel = Vec3::new(0.0, 0.0, -5.0);
 
         // 制限適用
-        if pos.z < bounds.back_1p {
-            pos.z = bounds.back_1p;
+        if pos.z < bounds.left {
+            pos.z = bounds.left;
             if vel.z < 0.0 {
                 vel.z = 0.0;
             }
         }
 
-        assert_eq!(pos.z, -3.0); // 境界にクランプ
+        assert_eq!(pos.z, -5.0); // 境界にクランプ
         assert_eq!(vel.z, 0.0); // 壁方向の速度を0に
     }
 
-    /// TST-30504-013: プレイヤーのネット通過禁止
+    /// TST-30504-012: プレイヤーの前後壁制限（X軸=打ち合い方向）
+    #[test]
+    fn test_beh_30503_002_player_back_wall_constraint() {
+        let config = test_config();
+        let bounds = create_court_bounds(&config.court);
+
+        // 後壁を超えた位置（1P側、-X方向）
+        let mut pos = Vec3::new(-4.0, 0.0, 0.0);
+        let mut vel = Vec3::new(-5.0, 0.0, 0.0);
+
+        // 制限適用
+        if pos.x < bounds.back_1p {
+            pos.x = bounds.back_1p;
+            if vel.x < 0.0 {
+                vel.x = 0.0;
+            }
+        }
+
+        assert_eq!(pos.x, -3.0); // 境界にクランプ
+        assert_eq!(vel.x, 0.0); // 壁方向の速度を0に
+    }
+
+    /// TST-30504-013: プレイヤーのネット通過禁止（X軸=打ち合い方向）
     #[test]
     fn test_beh_30503_003_player_net_constraint() {
         let config = test_config();
         let net = create_net_info(&config.court);
 
-        // 1Pがネットを超えようとしている
-        let mut pos = Vec3::new(0.0, 0.0, 0.5);
-        let mut vel = Vec3::new(0.0, 0.0, 5.0);
+        // 1Pがネットを超えようとしている（+X方向へ）
+        let mut pos = Vec3::new(0.5, 0.0, 0.0);
+        let mut vel = Vec3::new(5.0, 0.0, 0.0);
         let court_side = CourtSide::Player1;
 
-        // 1Pの場合、net_z より大きくなれない
-        if court_side == CourtSide::Player1 && pos.z > net.z {
-            pos.z = net.z;
-            if vel.z > 0.0 {
-                vel.z = 0.0;
+        // 1Pの場合、net_x より大きくなれない
+        if court_side == CourtSide::Player1 && pos.x > net.x {
+            pos.x = net.x;
+            if vel.x > 0.0 {
+                vel.x = 0.0;
             }
         }
 
-        assert_eq!(pos.z, 0.0); // ネット位置にクランプ
-        assert_eq!(vel.z, 0.0); // ネット方向の速度を0に
+        assert_eq!(pos.x, 0.0); // ネット位置にクランプ
+        assert_eq!(vel.x, 0.0); // ネット方向の速度を0に
     }
 
     /// TST-30504-014: ボールの壁反射判定
@@ -282,32 +283,32 @@ mod tests {
         let config = test_config();
         let net = create_net_info(&config.court);
 
-        // ネット位置で高さ未満
+        // ネット位置（X=0）で高さ未満
         let y = 0.5;
-        let z = 0.0;
+        let x = 0.0;
         let tolerance = 0.1;
 
-        assert!(net.is_collision(y, z, tolerance));
+        assert!(net.is_collision(y, x, tolerance));
 
         // ネット高さ超過
         let y_above = 1.5;
-        assert!(!net.is_collision(y_above, z, tolerance));
+        assert!(!net.is_collision(y_above, x, tolerance));
     }
 
-    /// TST-30504-016: ボールのコート区分判定
+    /// TST-30504-016: ボールのコート区分判定（X軸=打ち合い方向）
     #[test]
     fn test_beh_30503_006_ball_court_side_detection() {
         let config = test_config();
         let net = create_net_info(&config.court);
 
-        // 1Pコート側
-        assert_eq!(determine_court_side(-1.0, net.z), CourtSide::Player1);
+        // 1Pコート側（X < 0）
+        assert_eq!(determine_court_side(-1.0, net.x), CourtSide::Player1);
 
-        // 2Pコート側
-        assert_eq!(determine_court_side(1.0, net.z), CourtSide::Player2);
+        // 2Pコート側（X > 0）
+        assert_eq!(determine_court_side(1.0, net.x), CourtSide::Player2);
 
-        // ネット上は2P側扱い
-        assert_eq!(determine_court_side(0.0, net.z), CourtSide::Player2);
+        // ネット上（X = 0）は2P側扱い
+        assert_eq!(determine_court_side(0.0, net.x), CourtSide::Player2);
     }
 
     /// TST-30504-017: 境界チェックの優先順位

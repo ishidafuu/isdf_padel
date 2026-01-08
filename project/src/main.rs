@@ -127,13 +127,13 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
     // コート境界を描画
     spawn_court(&mut commands, &config);
 
-    // Player 1 をスポーン（1Pコート側: 画面下部）- 人間操作
-    // 論理座標系: X=左右, Y=高さ, Z=奥行き
+    // Player 1 をスポーン（1Pコート側: 画面左側）- 人間操作
+    // 論理座標系: X=打ち合い方向, Y=高さ, Z=コート幅
     // @spec 20006_input_system.md
     let player1_pos = Vec3::new(
-        0.0,
-        0.0, // 地面
-        config.player.z_min + 1.0,
+        config.player.x_min + 1.0, // 1Pコート側（-X方向）
+        0.0,                       // 地面
+        0.0,                       // コート中央
     );
     commands.spawn((
         PlayerBundle::new(1, player1_pos, &config.player_visual),
@@ -141,17 +141,17 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
     ));
     info!("Player 1 (Human) spawned at {:?}", player1_pos);
 
-    // Player 2 をスポーン（2Pコート側: 画面上部）- AI制御
+    // Player 2 をスポーン（2Pコート側: 画面右側）- AI制御
     // @spec 30301_ai_movement_spec.md
     let player2_pos = Vec3::new(
-        0.0,
-        0.0, // 地面
-        config.player.z_max - 1.0,
+        config.player.x_max - 1.0, // 2Pコート側（+X方向）
+        0.0,                       // 地面
+        0.0,                       // コート中央
     );
     let home_position = Vec3::new(
-        config.ai.home_position_x,
+        config.ai.home_position_x, // 打ち合い方向
         0.0,
-        config.ai.home_position_z,
+        0.0, // コート中央
     );
     commands.spawn((
         PlayerBundle::new(2, player2_pos, &config.player_visual),
@@ -162,9 +162,9 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
 
 /// コートの境界線とネットを描画（横向き：左右の打ち合い）
 fn spawn_court(commands: &mut Commands, config: &GameConfig) {
-    // 90度回転：論理Z（depth）→ 画面X、論理X（width）→ 画面Y
-    let court_display_width = config.court.depth * WORLD_SCALE;  // 画面X方向
-    let court_display_height = config.court.width * WORLD_SCALE; // 画面Y方向
+    // 直接マッピング：論理X（depth/打ち合い方向）→ 画面X、論理Z（width/コート幅）→ 画面Y
+    let court_display_width = config.court.depth * WORLD_SCALE;  // 画面X方向（打ち合い方向）
+    let court_display_height = config.court.width * WORLD_SCALE; // 画面Y方向（コート幅）
     let half_display_width = court_display_width / 2.0;
     let half_display_height = court_display_height / 2.0;
 
@@ -273,7 +273,7 @@ fn spawn_court(commands: &mut Commands, config: &GameConfig) {
         Transform::from_xyz(service_line_x / 2.0, 0.0, 0.0),
     ));
 
-    info!("Court spawned: {}x{} pixels (横向き)", court_display_width, court_display_height);
+    info!("Court spawned: {}x{} pixels (直接マッピング)", court_display_width, court_display_height);
 }
 
 // ============================================================================

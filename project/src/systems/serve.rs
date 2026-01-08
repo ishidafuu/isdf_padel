@@ -51,8 +51,8 @@ pub fn serve_execute_system(
         raw_direction.normalize()
     } else {
         match match_score.server {
-            CourtSide::Player1 => Vec2::new(0.0, config.serve.p1_default_direction_z), // Player1: +Z方向（2Pコートへ）
-            CourtSide::Player2 => Vec2::new(0.0, config.serve.p2_default_direction_z), // Player2: -Z方向（1Pコートへ）
+            CourtSide::Player1 => Vec2::new(config.serve.p1_default_direction_x, 0.0), // Player1: +X方向（2Pコートへ）
+            CourtSide::Player2 => Vec2::new(config.serve.p2_default_direction_x, 0.0), // Player2: -X方向（1Pコートへ）
         }
     };
 

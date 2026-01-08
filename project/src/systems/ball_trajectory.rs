@@ -96,7 +96,7 @@ pub fn ball_ground_bounce_system(
 ) {
     let base_bounce_factor = config.ball.bounce_factor;
     let min_bounce_velocity = config.ball.min_bounce_velocity;
-    let net_z = config.court.net_z;
+    let net_x = config.court.net_x;
     let h_factor = config.spin_physics.bounce_spin_horizontal_factor;
     let v_factor = config.spin_physics.bounce_spin_vertical_factor;
 
@@ -128,7 +128,8 @@ pub fn ball_ground_bounce_system(
             logical_pos.value.y = 0.0;
 
             // REQ-30402-002: GroundBounceEvent 発行
-            let court_side = crate::core::determine_court_side(pos.z, net_z);
+            // 新座標系: X=打ち合い方向、ボールのX位置でコートサイド判定
+            let court_side = crate::core::determine_court_side(pos.x, net_x);
             event_writer.write(GroundBounceEvent {
                 ball: entity,
                 bounce_point: Vec3::new(pos.x, 0.0, pos.z),
@@ -394,7 +395,7 @@ mod tests {
             ceiling_height: 5.0,
             max_jump_height: 5.0,
             net_height: 1.0,
-            net_z: 0.0,
+            net_x: 0.0,
             service_box_depth: 1.5,
         };
         let bounds = create_court_bounds(&config);
@@ -427,7 +428,7 @@ mod tests {
             ceiling_height: 5.0,
             max_jump_height: 5.0,
             net_height: 1.0,
-            net_z: 0.0,
+            net_x: 0.0,
             service_box_depth: 1.5,
         };
         let bounds = create_court_bounds(&config);
@@ -460,24 +461,25 @@ mod tests {
             ceiling_height: 5.0,
             max_jump_height: 5.0,
             net_height: 1.0,
-            net_z: 0.0,
+            net_x: 0.0,
             service_box_depth: 1.5,
         };
         let bounds = create_court_bounds(&config);
         let bounce_factor = 0.8_f32;
 
-        // 1P側奥壁に向かう速度
-        let pos = Vec3::new(0.0, 2.5, -3.0);
-        let vel = Vec3::new(5.0, 3.0, -10.0);
+        // 1P側奥壁（back_1p = -3.0）に向かう速度
+        // 新座標系: X=打ち合い方向, back_1pは-X側
+        let pos = Vec3::new(-3.0, 2.5, 0.0);
+        let vel = Vec3::new(-10.0, 3.0, 5.0);
 
         let result = WallReflection::check_and_reflect(pos, vel, &bounds, bounce_factor);
         assert!(result.is_some());
 
         let reflected = result.unwrap().reflected_velocity;
-        // Z成分のみ反転・減衰、他成分は維持
-        assert!((reflected.x - 5.0).abs() < 0.001); // 維持
+        // X成分のみ反転・減衰、他成分は維持
+        assert!((reflected.x - 8.0).abs() < 0.001); // -(-10.0) * 0.8 = 8.0
         assert!((reflected.y - 3.0).abs() < 0.001); // 維持
-        assert!((reflected.z - 8.0).abs() < 0.001); // -(-10.0) * 0.8 = 8.0
+        assert!((reflected.z - 5.0).abs() < 0.001); // 維持
     }
 
     /// TST-30404-012: めり込み防止テスト
@@ -494,22 +496,23 @@ mod tests {
             ceiling_height: 5.0,
             max_jump_height: 5.0,
             net_height: 1.0,
-            net_z: 0.0,
+            net_x: 0.0,
             service_box_depth: 1.5,
         };
         let bounds = create_court_bounds(&config);
 
         // 壁をはみ出した位置をクランプ
-        let out_x = -6.0_f32;
-        let out_y = 6.0_f32;
-        let out_z = 4.0_f32;
+        // 新座標系: X=打ち合い方向（depth）[-3,3], Z=コート幅（width）[-5,5]
+        let out_x = -6.0_f32;  // X方向: back_1p(-3)を超える
+        let out_y = 6.0_f32;   // Y方向: ceiling(5)を超える
+        let out_z = 7.0_f32;   // Z方向: right(5)を超える
 
         let clamped_x = bounds.clamp_x(out_x);
         let clamped_y = bounds.clamp_y(out_y);
         let clamped_z = bounds.clamp_z(out_z);
 
-        assert!((clamped_x - (-5.0)).abs() < 0.001); // クランプ: -5.0
-        assert!((clamped_y - 5.0).abs() < 0.001); // クランプ: 5.0
-        assert!((clamped_z - 3.0).abs() < 0.001); // クランプ: 3.0
+        assert!((clamped_x - (-3.0)).abs() < 0.001); // クランプ: -3.0（back_1p）
+        assert!((clamped_y - 5.0).abs() < 0.001);   // クランプ: 5.0（ceiling）
+        assert!((clamped_z - 5.0).abs() < 0.001);   // クランプ: 5.0（right）
     }
 }

@@ -85,11 +85,12 @@ pub fn movement_system(
         let mut new_position = old_position + final_velocity * delta;
 
         // REQ-30201-004: 境界でのクランプ
-        new_position.x = bounds.clamp_x(new_position.x);
+        // X軸（打ち合い方向）: プレイヤーの自コート半分に制限
+        let (x_min, x_max) = get_player_x_bounds(player.court_side, &config);
+        new_position.x = new_position.x.clamp(x_min, x_max);
 
-        // プレイヤーの自コート境界（Z軸）
-        let (z_min, z_max) = get_player_z_bounds(player.court_side, &config);
-        new_position.z = new_position.z.clamp(z_min, z_max);
+        // Z軸（コート幅）: コート全体の幅に制限
+        new_position.z = bounds.clamp_z(new_position.z);
 
         // 位置更新
         logical_pos.value = new_position;
@@ -105,15 +106,15 @@ pub fn movement_system(
     }
 }
 
-/// プレイヤーごとのZ軸境界を取得
+/// プレイヤーごとのX軸境界を取得（打ち合い方向）
 /// @spec 30201_movement_spec.md#req-30201-002
-fn get_player_z_bounds(court_side: CourtSide, config: &GameConfig) -> (f32, f32) {
-    let net_z = config.court.net_z;
+fn get_player_x_bounds(court_side: CourtSide, config: &GameConfig) -> (f32, f32) {
+    let net_x = config.court.net_x;
     match court_side {
-        // Player 1: 1Pコート側（-Z側）
-        CourtSide::Player1 => (config.player.z_min, net_z),
-        // Player 2: 2Pコート側（+Z側）
-        CourtSide::Player2 => (net_z, config.player.z_max),
+        // Player 1: 1Pコート側（-X側、ネットまで）
+        CourtSide::Player1 => (config.player.x_min, net_x),
+        // Player 2: 2Pコート側（+X側、ネットから）
+        CourtSide::Player2 => (net_x, config.player.x_max),
     }
 }
 
@@ -135,23 +136,23 @@ mod tests {
         assert!((normalized.length() - 1.0).abs() < 0.001);
     }
 
-    /// 境界クランプテスト
+    /// 境界クランプテスト（X軸=打ち合い方向）
     #[test]
-    fn test_z_bounds_player1() {
-        // Player 1 は -Z 側（1Pコート）
-        let (z_min, z_max) = (-3.0_f32, 0.0_f32);
-        let test_z = 1.0_f32;
-        let clamped = test_z.clamp(z_min, z_max);
-        assert_eq!(clamped, 0.0);
+    fn test_x_bounds_player1() {
+        // Player 1 は -X 側（1Pコート、ネットまで）
+        let (x_min, x_max) = (-8.0_f32, 0.0_f32);
+        let test_x = 1.0_f32; // +X側に出ようとする
+        let clamped = test_x.clamp(x_min, x_max);
+        assert_eq!(clamped, 0.0); // ネット位置で止まる
     }
 
-    /// 境界クランプテスト
+    /// 境界クランプテスト（X軸=打ち合い方向）
     #[test]
-    fn test_z_bounds_player2() {
-        // Player 2 は +Z 側（2Pコート）
-        let (z_min, z_max) = (0.0_f32, 3.0_f32);
-        let test_z = -1.0_f32;
-        let clamped = test_z.clamp(z_min, z_max);
-        assert_eq!(clamped, 0.0);
+    fn test_x_bounds_player2() {
+        // Player 2 は +X 側（2Pコート、ネットから）
+        let (x_min, x_max) = (0.0_f32, 8.0_f32);
+        let test_x = -1.0_f32; // -X側に出ようとする
+        let clamped = test_x.clamp(x_min, x_max);
+        assert_eq!(clamped, 0.0); // ネット位置で止まる
     }
 }
