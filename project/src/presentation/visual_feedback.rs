@@ -3,9 +3,8 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, BallSpin, Player};
+use crate::components::{Ball, BallSpin, InputState, Player};
 use crate::resource::config::GameConfig;
-use crate::systems::ShotButtonState;
 
 /// プレイヤーの元の色を保存するコンポーネント
 /// @spec 30802_visual_feedback_spec.md#req-30802-001
@@ -17,12 +16,12 @@ pub struct OriginalColor {
 /// プレイヤーホールド表示システム
 /// @spec 30802_visual_feedback_spec.md#req-30802-001
 /// @spec 30802_visual_feedback_spec.md#req-30802-002
+/// @spec 20006_input_system.md - InputState 対応
 pub fn player_hold_visual_system(
     config: Res<GameConfig>,
-    button_state: Res<ShotButtonState>,
-    mut query: Query<(&Player, &mut Sprite, Option<&OriginalColor>), With<Player>>,
+    mut query: Query<(&Player, &InputState, &mut Sprite, Option<&OriginalColor>), With<Player>>,
 ) {
-    for (player, mut sprite, original_color) in query.iter_mut() {
+    for (_player, input_state, mut sprite, original_color) in query.iter_mut() {
         // 元の色を保存（初回のみ）
         let original = match original_color {
             Some(oc) => oc.color,
@@ -36,12 +35,9 @@ pub fn player_hold_visual_system(
             }
         };
 
-        // プレイヤーごとのホールド状態を取得
-        let (is_holding, hold_time) = match player.id {
-            1 => (button_state.player1_holding, button_state.player1_hold_time),
-            2 => (button_state.player2_holding, button_state.player2_hold_time),
-            _ => (false, 0.0),
-        };
+        // InputState からホールド状態を取得
+        let is_holding = input_state.holding;
+        let hold_time = input_state.hold_time;
 
         if is_holding {
             // ホールド中: 色をオレンジにブレンド

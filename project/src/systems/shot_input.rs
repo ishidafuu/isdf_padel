@@ -1,31 +1,14 @@
 //! ショット入力システム
 //! @spec 30601_shot_input_spec.md
+//! @spec 20006_input_system.md
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, KnockbackState, LastShooter, LogicalPosition, Player, ShotState};
+use crate::components::{
+    Ball, InputState, KnockbackState, LastShooter, LogicalPosition, Player, ShotState,
+};
 use crate::core::events::ShotEvent;
 use crate::resource::config::GameConfig;
-use crate::systems::MovementInput;
-
-/// ショット入力リソース（各プレイヤーのショット入力を保持）
-/// @spec 30601_shot_input_spec.md#req-30601-001
-#[derive(Resource, Default)]
-pub struct ShotInput {
-    /// Player 1 のショット入力（押された瞬間のみtrue）
-    pub player1_pressed: bool,
-    /// Player 2 のショット入力（押された瞬間のみtrue）
-    pub player2_pressed: bool,
-}
-
-/// ショット入力読み取りシステム
-/// @spec 30601_shot_input_spec.md#req-30601-001
-/// 共通: V（距離判定でボールに近い方のみ有効）
-pub fn read_shot_input_system(keyboard: Res<ButtonInput<KeyCode>>, mut input: ResMut<ShotInput>) {
-    let shot_pressed = keyboard.just_pressed(KeyCode::KeyV);
-    input.player1_pressed = shot_pressed;
-    input.player2_pressed = shot_pressed;
-}
 
 /// ショット入力処理システム
 /// @spec 30601_shot_input_spec.md#req-30601-001
@@ -34,15 +17,15 @@ pub fn read_shot_input_system(keyboard: Res<ButtonInput<KeyCode>>, mut input: Re
 /// @spec 30601_shot_input_spec.md#req-30601-004
 /// @spec 30601_shot_input_spec.md#req-30601-005
 /// @spec 30601_shot_input_spec.md#req-30601-006
+/// @spec 20006_input_system.md - InputState 対応
 pub fn shot_input_system(
     config: Res<GameConfig>,
-    shot_input: Res<ShotInput>,
-    movement_input: Res<MovementInput>,
     mut player_query: Query<(
         &Player,
         &LogicalPosition,
         &mut ShotState,
         &KnockbackState,
+        &InputState,
     )>,
     ball_query: Query<(&LogicalPosition, &LastShooter), With<Ball>>,
     mut event_writer: MessageWriter<ShotEvent>,
@@ -54,24 +37,17 @@ pub fn shot_input_system(
     };
     let ball_pos = ball_logical_pos.value;
 
-    for (player, player_logical_pos, mut shot_state, knockback) in player_query.iter_mut() {
-        // プレイヤーごとのショット入力を取得
-        let shot_pressed = match player.id {
-            1 => shot_input.player1_pressed,
-            2 => shot_input.player2_pressed,
-            _ => false,
-        };
-
-        if !shot_pressed {
+    for (player, player_logical_pos, mut shot_state, knockback, input_state) in
+        player_query.iter_mut()
+    {
+        // InputState からショット入力を取得
+        if !input_state.shot_pressed {
             continue;
         }
 
         // REQ-30601-005: ふっとばし中はショット禁止
         if knockback.is_knockback_active() {
-            info!(
-                "Player {} shot ignored: knockback active",
-                player.id
-            );
+            info!("Player {} shot ignored: knockback active", player.id);
             continue;
         }
 
@@ -120,11 +96,7 @@ pub fn shot_input_system(
         // REQ-30602-001: ショット方向の決定
         // X軸（左右）: 入力で調整可能
         // Z軸（前後）: 常に相手コート方向に固定（shot_direction.rs で処理）
-        let raw_direction = match player.id {
-            1 => movement_input.player1,
-            2 => movement_input.player2,
-            _ => Vec2::ZERO,
-        };
+        let raw_direction = input_state.movement;
         // X軸入力のみを使用（上下入力は無視）
         // Y成分は shot_direction.rs でプレイヤーIDに応じて決定される
         let direction = Vec2::new(raw_direction.x, 0.0);

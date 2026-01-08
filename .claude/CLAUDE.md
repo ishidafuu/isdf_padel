@@ -152,7 +152,50 @@ velocity.y += config.physics.gravity * time.delta_secs();
 **対象**: 物理パラメータ、移動パラメータ、サイズ、時間、ゲームバランス値など
 **配置**: `project/docs/8_data/` に定義 → RON ファイル（`.ron`）
 
-### 4. 1タスク=1コミット原則
+### 4. プレイヤー固定参照禁止原則（CRITICAL）
+
+**NEVER hardcode player identifiers like `player1_`, `player2_`, or fixed player IDs.**
+
+```rust
+// ❌ 絶対に禁止
+pub struct ShotButtonState {
+    pub player1_holding: bool,
+    pub player2_holding: bool,
+}
+
+// ❌ 絶対に禁止
+match player.id {
+    1 => ...,
+    2 => ...,
+}
+
+// ✅ 必須: エンティティ/コンポーネントベース
+#[derive(Component)]
+pub struct InputState {
+    pub holding: bool,
+    pub hold_time: f32,
+}
+
+// ✅ 必須: マーカーコンポーネントで制御種別を区別
+#[derive(Component)]
+pub struct HumanControlled { pub device_id: usize }
+
+#[derive(Component)]
+pub struct AiControlled;
+```
+
+**理由**:
+- ダブルス対応（4人以上）が不可能になる
+- AI/人間の動的切り替えが不可能になる
+- プレイヤー数の変更が困難になる
+- 入力デバイス割り当ての柔軟性がなくなる
+
+**設計原則**:
+- 状態はエンティティごとのコンポーネントで管理
+- 制御種別（人間/AI）はマーカーコンポーネントで区別
+- リソースは「グローバルに1つしかないもの」にのみ使用
+
+### 5. 1タスク=1コミット原則
 
 **1つのタスクは1つのコミットにまとめる**
 
@@ -170,7 +213,7 @@ git add（タスクファイルも追加）
 まとめて1コミット
 ```
 
-### 5. フェーズ管理（MVP/バージョン管理）
+### 6. フェーズ管理（MVP/バージョン管理）
 
 **仕様書には全バージョンの要件を記載し、実装スコープは別途管理する**
 

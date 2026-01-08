@@ -1,5 +1,6 @@
 //! ショット属性計算システム
 //! @spec 30604_shot_attributes_spec.md
+//! @spec 20006_input_system.md
 
 use bevy::prelude::*;
 
@@ -60,80 +61,6 @@ where
 }
 
 // ============================================================================
-// 入力方式判定
-// @spec 30604_shot_attributes_spec.md#req-30604-050
-// @spec 30604_shot_attributes_spec.md#req-30604-051
-// ============================================================================
-
-/// ボタン押下状態を追跡するリソース
-/// @spec 30604_shot_attributes_spec.md#req-30604-051
-/// @spec 30802_visual_feedback_spec.md#req-30802-001
-#[derive(Resource, Default)]
-pub struct ShotButtonState {
-    /// Player 1 がボタンを押し続けている時間（ミリ秒）
-    pub player1_hold_time: f32,
-    /// Player 2 がボタンを押し続けている時間（ミリ秒）
-    pub player2_hold_time: f32,
-    /// Player 1 がボタンを押しているかどうか
-    /// @spec 30802_visual_feedback_spec.md#req-30802-001
-    pub player1_holding: bool,
-    /// Player 2 がボタンを押しているかどうか
-    /// @spec 30802_visual_feedback_spec.md#req-30802-001
-    pub player2_holding: bool,
-}
-
-/// ボタン押下状態追跡システム
-/// @spec 30604_shot_attributes_spec.md#req-30604-051
-/// @spec 30802_visual_feedback_spec.md#req-30802-001
-pub fn track_shot_button_system(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-    mut button_state: ResMut<ShotButtonState>,
-) {
-    let delta_ms = time.delta_secs() * 1000.0;
-
-    // Vキーの状態を追跡（Player1のみ）
-    // Player2（AI）はキー入力を使わないため、ホールド状態は更新しない
-    if keyboard.pressed(KeyCode::KeyV) {
-        if !button_state.player1_holding {
-            // 押し始め
-            button_state.player1_holding = true;
-            button_state.player1_hold_time = 0.0;
-        } else {
-            // 押し続けている
-            button_state.player1_hold_time += delta_ms;
-        }
-    } else {
-        // 離した
-        button_state.player1_holding = false;
-        // hold_time はショット実行時に参照されるのでリセットしない
-    }
-}
-
-/// 入力方式を判定
-/// @spec 30604_shot_attributes_spec.md#req-30604-050
-/// @spec 30604_shot_attributes_spec.md#req-30604-051
-pub fn determine_input_mode(
-    button_state: &ShotButtonState,
-    player_id: u8,
-    config: &ShotAttributesConfig,
-) -> (InputMode, f32, f32) {
-    let hold_time = match player_id {
-        1 => button_state.player1_hold_time,
-        2 => button_state.player2_hold_time,
-        _ => 0.0,
-    };
-
-    // ホールド時間が閾値以上ならホールド、そうでなければプッシュ
-    if hold_time >= config.push_to_hold_threshold {
-        (InputMode::Hold, 0.0, hold_time)
-    } else {
-        // プッシュの場合、タイミング差はhold_timeと等価
-        (InputMode::Push, hold_time, hold_time)
-    }
-}
-
-// ============================================================================
 // 5要素の取得
 // ============================================================================
 
@@ -165,10 +92,7 @@ pub fn calculate_approach_dot(player_velocity: Vec3, player_pos: Vec3, ball_pos:
 
 /// 打点高さから係数を取得
 /// @spec 30604_shot_attributes_spec.md#req-30604-055
-pub fn get_height_factors(
-    height: f32,
-    curve: &[HeightCurvePoint],
-) -> (f32, f32, f32) {
+pub fn get_height_factors(height: f32, curve: &[HeightCurvePoint]) -> (f32, f32, f32) {
     let power = interpolate_from_curve(curve, height, |p| p.height, |p| p.power_factor);
     let stability = interpolate_from_curve(curve, height, |p| p.height, |p| p.stability_factor);
     let angle = interpolate_from_curve(curve, height, |p| p.height, |p| p.angle_offset);
@@ -177,10 +101,7 @@ pub fn get_height_factors(
 
 /// バウンド経過時間から係数を取得
 /// @spec 30604_shot_attributes_spec.md#req-30604-058
-pub fn get_timing_factors(
-    elapsed: f32,
-    curve: &[TimingCurvePoint],
-) -> (f32, f32, f32) {
+pub fn get_timing_factors(elapsed: f32, curve: &[TimingCurvePoint]) -> (f32, f32, f32) {
     let power = interpolate_from_curve(curve, elapsed, |p| p.elapsed, |p| p.power_factor);
     let stability = interpolate_from_curve(curve, elapsed, |p| p.elapsed, |p| p.stability_factor);
     let angle = interpolate_from_curve(curve, elapsed, |p| p.elapsed, |p| p.angle_offset);
@@ -249,7 +170,10 @@ pub fn calculate_hold_stability_factor(hold_time: f32, config: &ShotAttributesCo
 /// @spec 30604_shot_attributes_spec.md#req-30604-065
 /// @spec 30604_shot_attributes_spec.md#req-30604-066
 /// @spec 30604_shot_attributes_spec.md#req-30604-067
-pub fn calculate_shot_attributes(context: &ShotContext, config: &ShotAttributesConfig) -> ShotAttributes {
+pub fn calculate_shot_attributes(
+    context: &ShotContext,
+    config: &ShotAttributesConfig,
+) -> ShotAttributes {
     // 入力方式による係数
     let (input_power_factor, input_stability_factor) = match context.input_mode {
         InputMode::Push => {
@@ -341,7 +265,10 @@ pub fn calculate_shot_attributes(context: &ShotContext, config: &ShotAttributesC
 /// @spec 30604_shot_attributes_spec.md#req-30604-056
 /// v0.2 で使用予定
 #[allow(dead_code)]
-pub fn update_bounce_state_timer_system(time: Res<Time>, mut query: Query<&mut BounceState, With<Ball>>) {
+pub fn update_bounce_state_timer_system(
+    time: Res<Time>,
+    mut query: Query<&mut BounceState, With<Ball>>,
+) {
     let delta = time.delta_secs();
 
     for mut bounce_state in query.iter_mut() {
@@ -384,19 +311,25 @@ pub fn reset_bounce_state_on_shot_system(mut query: Query<&mut BounceState, With
 // ShotContext 構築ヘルパー
 // ============================================================================
 
-/// 現在の状態から ShotContext を構築する
+/// 現在の状態から ShotContext を構築する（InputState 対応版）
 /// @spec 30604_shot_attributes_spec.md
-pub fn build_shot_context(
-    button_state: &ShotButtonState,
-    player_id: u8,
+/// @spec 20006_input_system.md
+pub fn build_shot_context_from_input_state(
+    hold_time: f32,
     player_pos: Vec3,
     player_velocity: Vec3,
     ball_pos: Vec3,
     ball_bounce_state: &BounceState,
     config: &ShotAttributesConfig,
 ) -> ShotContext {
+    // ホールド時間が閾値以上ならホールド、そうでなければプッシュ
     let (input_mode, push_timing_diff, hold_duration) =
-        determine_input_mode(button_state, player_id, config);
+        if hold_time >= config.push_to_hold_threshold {
+            (InputMode::Hold, 0.0, hold_time)
+        } else {
+            // プッシュの場合、タイミング差はhold_timeと等価
+            (InputMode::Push, hold_time, hold_time)
+        };
 
     let ball_distance = calculate_ball_distance(player_pos, ball_pos);
     let approach_dot = calculate_approach_dot(player_velocity, player_pos, ball_pos);
@@ -547,10 +480,10 @@ mod tests {
             input_mode: InputMode::Push,
             push_timing_diff: 0.0, // 完璧
             hold_duration: 0.0,
-            hit_height: 1.0,  // 最適高さ
+            hit_height: 1.0,       // 最適高さ
             bounce_elapsed: Some(0.5), // 頂点
-            approach_dot: 0.0, // 静止
-            ball_distance: 1.0, // 最適距離
+            approach_dot: 0.0,     // 静止
+            ball_distance: 1.0,    // 最適距離
         };
 
         let attrs = calculate_shot_attributes(&context, &config);

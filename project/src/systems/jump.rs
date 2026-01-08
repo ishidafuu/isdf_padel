@@ -1,59 +1,32 @@
 //! プレイヤージャンプシステム
 //! @spec 30202_jump_spec.md
+//! @spec 20006_input_system.md
 
 use bevy::prelude::*;
 
-use crate::components::{GroundedState, KnockbackState, LogicalPosition, Player, Velocity};
+use crate::components::{GroundedState, InputState, KnockbackState, LogicalPosition, Player, Velocity};
 use crate::core::events::{PlayerJumpEvent, PlayerLandEvent};
 use crate::resource::config::GameConfig;
-
-/// ジャンプ入力リソース（各プレイヤーのジャンプ入力を保持）
-/// @spec 30202_jump_spec.md#req-30202-001
-#[derive(Resource, Default)]
-pub struct JumpInput {
-    /// Player 1 のジャンプ入力（押された瞬間のみtrue）
-    pub player1_pressed: bool,
-    /// Player 2 のジャンプ入力（押された瞬間のみtrue）
-    pub player2_pressed: bool,
-}
-
-/// ジャンプ入力読み取りシステム
-/// @spec 30202_jump_spec.md#req-30202-001
-/// 共通: B
-pub fn read_jump_input_system(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mut input: ResMut<JumpInput>,
-) {
-    let jump_pressed = keyboard.just_pressed(KeyCode::KeyB);
-    input.player1_pressed = jump_pressed;
-    input.player2_pressed = jump_pressed;
-}
 
 /// ジャンプ開始システム
 /// @spec 30202_jump_spec.md#req-30202-001
 /// @spec 30202_jump_spec.md#req-30202-004
 /// @spec 30202_jump_spec.md#req-30202-006
 /// @spec 30202_jump_spec.md#req-30202-007
+/// @spec 20006_input_system.md - InputState 対応
 pub fn jump_system(
     config: Res<GameConfig>,
-    input: Res<JumpInput>,
-    mut query: Query<(&Player, &mut Velocity, &mut GroundedState, &KnockbackState)>,
+    mut query: Query<(&Player, &mut Velocity, &mut GroundedState, &KnockbackState, &InputState)>,
     mut event_writer: MessageWriter<PlayerJumpEvent>,
 ) {
-    for (player, mut velocity, mut grounded, knockback) in query.iter_mut() {
+    for (player, mut velocity, mut grounded, knockback, input_state) in query.iter_mut() {
         // REQ-30202-006: ふっとばし中はジャンプ禁止
         if knockback.is_knockback_active() {
             continue;
         }
 
-        // プレイヤーごとのジャンプ入力を取得
-        let jump_pressed = match player.id {
-            1 => input.player1_pressed,
-            2 => input.player2_pressed,
-            _ => false,
-        };
-
-        if !jump_pressed {
+        // InputState からジャンプ入力を取得
+        if !input_state.jump_pressed {
             continue;
         }
 

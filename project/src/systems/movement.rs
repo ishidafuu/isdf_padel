@@ -1,54 +1,14 @@
 //! プレイヤー移動システム
 //! @spec 30201_movement_spec.md
+//! @spec 20006_input_system.md
 
 use bevy::prelude::*;
 
-use crate::components::{AiController, KnockbackState, LogicalPosition, Player, Velocity};
+use crate::components::{AiController, InputState, KnockbackState, LogicalPosition, Player, Velocity};
 use crate::core::events::PlayerMoveEvent;
 use crate::resource::config::GameConfig;
 
 use super::court_factory::create_court_bounds;
-
-/// 移動入力リソース（各プレイヤーの入力を保持）
-/// @spec 30201_movement_spec.md
-#[derive(Resource, Default)]
-pub struct MovementInput {
-    /// Player 1 の入力（-1.0〜1.0）
-    pub player1: Vec2,
-    /// Player 2 の入力（-1.0〜1.0）
-    pub player2: Vec2,
-}
-
-/// 入力読み取りシステム
-/// @spec 30201_movement_spec.md#req-30201-001
-/// @spec 30201_movement_spec.md#req-30201-002
-/// Player 1のみキーボード操作（WASD または 矢印キー）
-/// 横向きコート: A/D=画面左右（打ち合い方向）、W/S=画面上下（横移動）
-pub fn read_input_system(keyboard: Res<ButtonInput<KeyCode>>, mut input: ResMut<MovementInput>) {
-    // Player 1 入力: WASD + Arrow keys
-    // 横向きレイアウト用にマッピング変更
-    let mut player1_input = Vec2::ZERO;
-
-    // W/S → 論理X（画面上下）
-    if keyboard.pressed(KeyCode::KeyW) || keyboard.pressed(KeyCode::ArrowUp) {
-        player1_input.x += 1.0;
-    }
-    if keyboard.pressed(KeyCode::KeyS) || keyboard.pressed(KeyCode::ArrowDown) {
-        player1_input.x -= 1.0;
-    }
-
-    // A/D → 論理Z（画面左右＝打ち合い方向）
-    if keyboard.pressed(KeyCode::KeyA) || keyboard.pressed(KeyCode::ArrowLeft) {
-        player1_input.y -= 1.0; // -Z方向（左＝1P側）
-    }
-    if keyboard.pressed(KeyCode::KeyD) || keyboard.pressed(KeyCode::ArrowRight) {
-        player1_input.y += 1.0; // +Z方向（右＝2P側）
-    }
-
-    // Player 1のみ入力を設定（Player 2はAI制御）
-    input.player1 = player1_input;
-    input.player2 = Vec2::ZERO;
-}
 
 /// プレイヤー移動システム
 /// @spec 30201_movement_spec.md#req-30201-001
@@ -57,12 +17,12 @@ pub fn read_input_system(keyboard: Res<ButtonInput<KeyCode>>, mut input: ResMut<
 /// @spec 30201_movement_spec.md#req-30201-004
 /// @spec 30201_movement_spec.md#req-30201-005
 /// @spec 30201_movement_spec.md#req-30201-006
+/// @spec 20006_input_system.md - InputState 対応
 pub fn movement_system(
     time: Res<Time>,
     config: Res<GameConfig>,
-    input: Res<MovementInput>,
     mut query: Query<
-        (&Player, &mut LogicalPosition, &mut Velocity, &KnockbackState),
+        (&Player, &mut LogicalPosition, &mut Velocity, &KnockbackState, &InputState),
         Without<AiController>,
     >,
     mut event_writer: MessageWriter<PlayerMoveEvent>,
@@ -70,18 +30,14 @@ pub fn movement_system(
     let bounds = create_court_bounds(&config.court);
     let delta = time.delta_secs();
 
-    for (player, mut logical_pos, mut velocity, knockback) in query.iter_mut() {
+    for (player, mut logical_pos, mut velocity, knockback, input_state) in query.iter_mut() {
         // REQ-30201-005: ふっとばし中は入力を無視
         if knockback.is_knockback_active() {
             continue;
         }
 
-        // プレイヤーごとの入力を取得
-        let raw_input = match player.id {
-            1 => input.player1,
-            2 => input.player2,
-            _ => Vec2::ZERO,
-        };
+        // InputState から入力を取得
+        let raw_input = input_state.movement;
 
         // 入力がない場合は水平速度のみ0にする（Y成分は保持：ジャンプ対応）
         if raw_input == Vec2::ZERO {

@@ -52,6 +52,37 @@ pub struct AiController {
     pub home_position: Vec3,
 }
 
+/// 人間操作プレイヤーマーカーコンポーネント
+/// @spec 20006_input_system.md
+#[derive(Component, Debug, Clone, Copy)]
+pub struct HumanControlled {
+    /// 入力デバイスID（キーボード=0, ゲームパッド=1,2,...）
+    pub device_id: usize,
+}
+
+impl Default for HumanControlled {
+    fn default() -> Self {
+        Self { device_id: 0 }
+    }
+}
+
+/// 入力状態コンポーネント
+/// 各プレイヤーエンティティに付与される入力状態
+/// @spec 20006_input_system.md
+#[derive(Component, Debug, Clone, Copy, Default)]
+pub struct InputState {
+    /// 移動入力（-1.0 〜 1.0）
+    pub movement: Vec2,
+    /// ジャンプボタンが押されたか（今フレーム）
+    pub jump_pressed: bool,
+    /// ショットボタンが押されたか（今フレーム）
+    pub shot_pressed: bool,
+    /// ショットボタンを保持中か
+    pub holding: bool,
+    /// ホールド継続時間（秒）
+    pub hold_time: f32,
+}
+
 /// ボールマーカーコンポーネント
 /// @spec 30401_ball_spec.md
 #[derive(Component, Debug, Clone, Copy, Default)]
@@ -315,6 +346,7 @@ impl KnockbackState {
 /// @spec 30200_player_overview.md
 /// @spec 30202_jump_spec.md
 /// @spec 30601_shot_input_spec.md
+/// @spec 20006_input_system.md
 #[derive(Bundle)]
 pub struct PlayerBundle {
     pub player: Player,
@@ -323,6 +355,7 @@ pub struct PlayerBundle {
     pub knockback: KnockbackState,
     pub grounded: GroundedState,
     pub shot_state: ShotState,
+    pub input_state: InputState,
     pub sprite: Sprite,
     pub transform: Transform,
 }
@@ -347,6 +380,7 @@ impl PlayerBundle {
             knockback: KnockbackState::default(),
             grounded: GroundedState::default(),
             shot_state: ShotState::default(),
+            input_state: InputState::default(),
             sprite: Sprite {
                 color,
                 custom_size: Some(Vec2::new(40.0, 60.0)),

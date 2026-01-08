@@ -7,10 +7,9 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, BallBundle, LogicalPosition, Player};
+use crate::components::{Ball, BallBundle, InputState, LogicalPosition, Player};
 use crate::core::{CourtSide, ShotEvent};
 use crate::resource::{GameConfig, MatchScore};
-use crate::systems::{MovementInput, ShotInput};
 
 /// サーブ実行システム
 /// @spec 30102_serve_spec.md#req-30102-002
@@ -20,10 +19,8 @@ use crate::systems::{MovementInput, ShotInput};
 pub fn serve_execute_system(
     mut commands: Commands,
     config: Res<GameConfig>,
-    shot_input: Res<ShotInput>,
     match_score: Res<MatchScore>,
-    movement_input: Res<MovementInput>,
-    player_query: Query<(&Player, &LogicalPosition)>,
+    player_query: Query<(&Player, &LogicalPosition, &InputState)>,
     ball_query: Query<Entity, With<Ball>>,
     mut shot_event_writer: MessageWriter<ShotEvent>,
 ) {
@@ -38,29 +35,21 @@ pub fn serve_execute_system(
         CourtSide::Player2 => 2,
     };
 
-    // @spec 30102_serve_spec.md#req-30102-002: サーバーのショット入力をチェック
-    let shot_pressed = match server_id {
-        1 => shot_input.player1_pressed,
-        2 => shot_input.player2_pressed,
-        _ => false,
-    };
-
-    if !shot_pressed {
-        return;
-    }
-
-    // サーバーのプレイヤーを取得
-    let Some((_, logical_pos)) = player_query.iter().find(|(p, _)| p.id == server_id) else {
+    // サーバーのプレイヤーを取得（InputStateからショット入力をチェック）
+    let Some((_, logical_pos, input_state)) =
+        player_query.iter().find(|(p, _, _)| p.id == server_id)
+    else {
         warn!("Server player {} not found", server_id);
         return;
     };
 
+    // @spec 30102_serve_spec.md#req-30102-002: サーバーのショット入力をチェック
+    if !input_state.shot_pressed {
+        return;
+    }
+
     // @spec 30102_serve_spec.md#req-30102-002: 入力方向を取得
-    let raw_direction = match server_id {
-        1 => movement_input.player1,
-        2 => movement_input.player2,
-        _ => Vec2::ZERO,
-    };
+    let raw_direction = input_state.movement;
 
     // 入力がない場合は相手コート方向をデフォルトに
     let direction = if raw_direction.length() > 0.0 {

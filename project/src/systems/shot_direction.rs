@@ -7,14 +7,13 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::components::{
-    Ball, BallSpin, BounceCount, BounceState, LastShooter, LogicalPosition, Player, Velocity,
+    Ball, BallSpin, BounceCount, BounceState, InputState, LastShooter, LogicalPosition, Player,
+    Velocity,
 };
 use crate::core::CourtSide;
 use crate::core::events::{ShotEvent, ShotExecutedEvent};
 use crate::resource::config::GameConfig;
-use crate::systems::shot_attributes::{
-    ShotButtonState, build_shot_context, calculate_shot_attributes,
-};
+use crate::systems::shot_attributes::{build_shot_context_from_input_state, calculate_shot_attributes};
 
 /// ショット方向計算システム
 /// ShotEvent を受信してボールの速度を設定する
@@ -29,7 +28,6 @@ use crate::systems::shot_attributes::{
 /// @spec 30604_shot_attributes_spec.md#req-30604-070
 pub fn shot_direction_system(
     config: Res<GameConfig>,
-    button_state: Res<ShotButtonState>,
     mut shot_events: MessageReader<ShotEvent>,
     mut ball_query: Query<
         (
@@ -42,7 +40,7 @@ pub fn shot_direction_system(
         ),
         With<Ball>,
     >,
-    player_query: Query<(&Player, &LogicalPosition, &Velocity), Without<Ball>>,
+    player_query: Query<(&Player, &LogicalPosition, &Velocity, &InputState), Without<Ball>>,
     mut shot_executed_writer: MessageWriter<ShotExecutedEvent>,
 ) {
     for event in shot_events.read() {
@@ -63,12 +61,12 @@ pub fn shot_direction_system(
         // 最後にショットを打ったプレイヤーを記録（自己衝突回避のため）
         last_shooter.record(event.court_side);
 
-        // プレイヤー情報を取得
+        // プレイヤー情報を取得（InputState も含む）
         let player_info = player_query
             .iter()
-            .find(|(p, _, _)| p.id == event.player_id);
-        let (player_pos, player_velocity) = match player_info {
-            Some((_, pos, vel)) => (pos.value, vel.value),
+            .find(|(p, _, _, _)| p.id == event.player_id);
+        let (player_pos, player_velocity, hold_time) = match player_info {
+            Some((_, pos, vel, input_state)) => (pos.value, vel.value, input_state.hold_time),
             None => {
                 warn!("Player {} not found", event.player_id);
                 continue;
@@ -80,9 +78,9 @@ pub fn shot_direction_system(
 
         // === ショット属性計算（v0.2新機能） ===
         // @spec 30604_shot_attributes_spec.md
-        let shot_context = build_shot_context(
-            &button_state,
-            event.player_id,
+        // @spec 20006_input_system.md - InputState 対応
+        let shot_context = build_shot_context_from_input_state(
+            hold_time,
             player_pos,
             player_velocity,
             ball_pos.value,

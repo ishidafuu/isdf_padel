@@ -1,21 +1,28 @@
 # Input System
 
-**Version**: 3.0.0
-**Last Updated**: 2026-01-06
+**Version**: 4.0.0
+**Last Updated**: 2026-01-08
 **Status**: Active
 
 ## 概要
 
 プラットフォーム非依存の入力抽象化レイヤー。2.5D 移動に対応した入力システム。Bevy の `ButtonInput<KeyCode>` を使用。
 
+**v4.0.0 変更点**: エンティティベースの入力状態管理に移行。プレイヤー固定参照（player1/player2）を廃止。
+
 ## 設計方針
 
-### 1. 抽象化レイヤー
-- **Bevy Input → InputAction への変換**: 物理キー/ボタンを論理アクションに変換
+### 1. エンティティベースの入力状態（v4.0.0）
+- **InputState コンポーネント**: 各プレイヤーエンティティに付与、入力状態を保持
+- **制御種別マーカー**: `HumanControlled` / `AiControlled` で人間/AI を区別
+- **スケーラビリティ**: ダブルス（4人）、全員AI、全員人間に対応可能
+
+### 2. 抽象化レイヤー
+- **Bevy Input → InputState への反映**: 物理キー/ボタンを論理状態に変換
 - **入力バッファ**: 先行入力を受け付ける（ジャンプ、コンボ）
 - **入力制約**: ふっとばし中は入力を無効化
 
-### 2. 座標系への対応
+### 3. 座標系への対応
 - **X軸入力**: 方向キー左右 → 左右移動
 - **Z軸入力**: 方向キー上下 → 奥行き移動（くにおくん方式）
 - **Y軸入力**: Aボタン → ジャンプ（重力と組み合わせ）
@@ -57,62 +64,114 @@ Player が空中にいる
 ```
 1. Bevy ButtonInput<KeyCode> 受信
    ↓
-2. input_system が変換
-   → InputAction に変換（MoveHorizontal, Jump, 等）
+2. human_input_system が HumanControlled エンティティの InputState を更新
+   → movement, jump_pressed, shot_pressed 等を設定
    ↓
-3. 入力制約チェック
-   → Controllable コンポーネントを確認
-   → is_controllable = false なら入力を無視
+3. 各処理システムが InputState を参照
+   → movement_system: InputState.movement → Velocity
+   → jump_system: InputState.jump_pressed → ジャンプ処理
+   → shot_input_system: InputState.shot_pressed → ショット処理
    ↓
-4. 入力バッファに追加
-   → ジャンプ等の先行入力を保持
-   ↓
-5. Velocity に直接反映、または InputEvent を発行
-   → movement_system, shot_system 等が購読
+4. AI の場合は ai_input_system が InputState を更新
+   → ゲーム状態から適切な入力を決定
+```
+
+### システム構成
+
+| システム | 対象 | 役割 |
+|----------|------|------|
+| `human_input_system` | `HumanControlled` を持つエンティティ | キーボード入力 → InputState 更新 |
+| `ai_input_system` | `AiControlled` を持つエンティティ | AI判断 → InputState 更新 |
+| `movement_system` | 全プレイヤー | InputState.movement → Velocity |
+| `jump_system` | 全プレイヤー | InputState.jump_pressed → ジャンプ |
+| `shot_input_system` | 全プレイヤー | InputState.shot_pressed → ショット |
+
+---
+
+## コンポーネント定義
+
+### InputState（入力状態コンポーネント）
+
+```rust
+/// 各プレイヤーエンティティに付与される入力状態
+/// @spec 20006_input_system.md
+#[derive(Component, Default, Clone)]
+pub struct InputState {
+    /// 移動入力（-1.0 〜 1.0）
+    pub movement: Vec2,
+    /// ジャンプボタンが押されたか（今フレーム）
+    pub jump_pressed: bool,
+    /// ショットボタンが押されたか（今フレーム）
+    pub shot_pressed: bool,
+    /// ショットボタンを保持中か
+    pub holding: bool,
+    /// ホールド継続時間（秒）
+    pub hold_time: f32,
+}
+```
+
+### HumanControlled（人間操作マーカー）
+
+```rust
+/// 人間が操作するプレイヤーに付与
+/// @spec 20006_input_system.md
+#[derive(Component)]
+pub struct HumanControlled {
+    /// 入力デバイスID（キーボード=0, ゲームパッド=1,2,...）
+    pub device_id: usize,
+}
+```
+
+### AiControlled（AI操作マーカー）
+
+```rust
+/// AIが操作するプレイヤーに付与
+/// @spec 20006_input_system.md
+#[derive(Component)]
+pub struct AiControlled;
 ```
 
 ---
 
 ## 実装例
 
-### input_system
+### human_input_system
 
 ```rust
-pub fn input_system(
+/// 人間操作プレイヤーの InputState を更新
+pub fn human_input_system(
     keyboard: Res<ButtonInput<KeyCode>>,
-    config: Res<GameConfig>,
-    mut query: Query<(&mut Velocity, &Controllable, &GroundState), With<Player>>,
+    mut query: Query<(&HumanControlled, &mut InputState)>,
 ) {
-    for (mut velocity, controllable, ground_state) in &mut query {
-        // 入力制約チェック
-        if !controllable.is_controllable {
+    for (human, mut input_state) in &mut query {
+        // device_id=0 のみキーボード対応（将来的にゲームパッド対応）
+        if human.device_id != 0 {
             continue;
         }
 
-        // 水平移動（X軸）
+        // 移動入力
         let mut move_x = 0.0;
+        let mut move_z = 0.0;
         if keyboard.pressed(KeyCode::ArrowLeft) || keyboard.pressed(KeyCode::KeyA) {
             move_x -= 1.0;
         }
         if keyboard.pressed(KeyCode::ArrowRight) || keyboard.pressed(KeyCode::KeyD) {
             move_x += 1.0;
         }
-        velocity.x = move_x * config.player.move_speed;
-
-        // 奥行き移動（Z軸）
-        let mut move_z = 0.0;
         if keyboard.pressed(KeyCode::ArrowUp) || keyboard.pressed(KeyCode::KeyW) {
-            move_z += 1.0;  // 奥へ
+            move_z += 1.0;
         }
         if keyboard.pressed(KeyCode::ArrowDown) || keyboard.pressed(KeyCode::KeyS) {
-            move_z -= 1.0;  // 手前へ
+            move_z -= 1.0;
         }
-        velocity.z = move_z * config.player.move_speed;
+        input_state.movement = Vec2::new(move_x, move_z);
 
-        // ジャンプ（Y軸）
-        if keyboard.just_pressed(KeyCode::Space) && ground_state.is_grounded {
-            velocity.y = config.player.jump_force;
-        }
+        // ジャンプ入力
+        input_state.jump_pressed = keyboard.just_pressed(KeyCode::Space);
+
+        // ショット入力
+        input_state.shot_pressed = keyboard.just_pressed(KeyCode::KeyV);
+        input_state.holding = keyboard.pressed(KeyCode::KeyV);
     }
 }
 ```
@@ -271,9 +330,13 @@ pub fn gamepad_input_system(
 ## 次のステップ
 
 1. ✅ 入力システム設計（このドキュメント）
-2. ⏳ input_system の実装（Bevy）
-3. ⏳ 入力バッファの実装
-4. ⏳ movement_system との統合
+2. ✅ エンティティベースの入力状態管理（v4.0.0）
+3. ✅ HumanControlled / InputState コンポーネント実装
+4. ✅ human_input_system 実装
+5. ✅ movement_system, jump_system, shot_input_system との統合
+6. ⏳ 入力バッファの実装（先行入力対応）
+7. ⏳ ゲームパッド対応
+8. ⏳ 旧リソース（MovementInput, JumpInput, ShotInput, ShotButtonState）の削除
 
 ## 参考資料
 

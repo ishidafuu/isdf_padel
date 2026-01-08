@@ -8,7 +8,7 @@ mod resource;
 mod systems;
 
 use bevy::{asset::AssetPlugin, prelude::*};
-use components::{AiController, PlayerBundle};
+use components::{AiController, HumanControlled, PlayerBundle};
 use core::{
     BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent,
     ShotEvent, ShotExecutedEvent,
@@ -21,13 +21,12 @@ use presentation::{
 use resource::config::{load_game_config, GameConfig, GameConfigHandle, GameConfigLoader};
 use resource::MatchFlowState;
 use systems::{
-    ai_movement_system, ai_shot_system, ceiling_collision_system, gravity_system, jump_system,
-    knockback_movement_system, knockback_start_system, knockback_timer_system, landing_system,
-    movement_system, read_input_system, read_jump_input_system, read_shot_input_system,
-    shot_cooldown_system, shot_direction_system, shot_input_system, track_shot_button_system,
-    vertical_movement_system, BallCollisionPlugin, BallTrajectoryPlugin, BoundaryPlugin,
-    FaultJudgmentPlugin, JumpInput, MatchFlowPlugin, MovementInput, PointJudgmentPlugin,
-    ScoringPlugin, ShotButtonState, ShotInput,
+    ai_movement_system, ai_shot_system, ceiling_collision_system, gravity_system,
+    human_input_system, jump_system, knockback_movement_system, knockback_start_system,
+    knockback_timer_system, landing_system, movement_system, shot_cooldown_system,
+    shot_direction_system, shot_input_system, vertical_movement_system, BallCollisionPlugin,
+    BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin, MatchFlowPlugin,
+    PointJudgmentPlugin, ScoringPlugin,
 };
 
 fn main() {
@@ -65,10 +64,6 @@ fn main() {
         .add_plugins(MatchFlowPlugin)
         .add_plugins(DebugUiPlugin)
         .insert_resource(config)
-        .init_resource::<MovementInput>()
-        .init_resource::<JumpInput>()
-        .init_resource::<ShotInput>()
-        .init_resource::<ShotButtonState>()
         .add_message::<PlayerMoveEvent>()
         .add_message::<PlayerJumpEvent>()
         .add_message::<PlayerLandEvent>()
@@ -82,11 +77,9 @@ fn main() {
             (
                 // 設定ホットリロード
                 update_config_on_change,
-                // 入力読み取り
-                (read_input_system, read_jump_input_system, read_shot_input_system),
-                // ショットボタン状態追跡（視覚フィードバック用）
-                // @spec 30802_visual_feedback_spec.md#req-30802-001
-                track_shot_button_system,
+                // 人間入力読み取り（HumanControlled を持つプレイヤーの InputState を更新）
+                // @spec 20006_input_system.md
+                human_input_system,
                 // ふっとばし開始（BallHitEvent を処理）
                 knockback_start_system,
                 // ジャンプ・重力
@@ -134,15 +127,19 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
     // コート境界を描画
     spawn_court(&mut commands, &config);
 
-    // Player 1 をスポーン（1Pコート側: 画面下部）
+    // Player 1 をスポーン（1Pコート側: 画面下部）- 人間操作
     // 論理座標系: X=左右, Y=高さ, Z=奥行き
+    // @spec 20006_input_system.md
     let player1_pos = Vec3::new(
         0.0,
         0.0, // 地面
         config.player.z_min + 1.0,
     );
-    commands.spawn(PlayerBundle::new(1, player1_pos));
-    info!("Player 1 spawned at {:?}", player1_pos);
+    commands.spawn((
+        PlayerBundle::new(1, player1_pos),
+        HumanControlled::default(),
+    ));
+    info!("Player 1 (Human) spawned at {:?}", player1_pos);
 
     // Player 2 をスポーン（2Pコート側: 画面上部）- AI制御
     // @spec 30301_ai_movement_spec.md
