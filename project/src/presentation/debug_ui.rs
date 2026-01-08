@@ -68,14 +68,17 @@ fn update_debug_ui(
     let p1_point = match_score.get_point_display(CourtSide::Player1, point_values);
     let p2_point = match_score.get_point_display(CourtSide::Player2, point_values);
 
+    let p1_score = match_score.get_score(CourtSide::Player1);
+    let p2_score = match_score.get_score(CourtSide::Player2);
+
     let score_text = format!(
         "Score: {} - {} (G: {}-{}, S: {}-{})",
         p1_point,
         p2_point,
-        match_score.player1_score.games,
-        match_score.player2_score.games,
-        match_score.player1_score.sets,
-        match_score.player2_score.sets,
+        p1_score.games,
+        p2_score.games,
+        p1_score.sets,
+        p2_score.sets,
     );
 
     // ラリー状態表示

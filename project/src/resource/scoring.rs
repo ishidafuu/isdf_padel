@@ -80,16 +80,13 @@ impl PlayerGameScore {
 
 /// マッチ全体のスコア状態
 /// @spec 30701_point_spec.md
+/// ECS設計原則: CourtSideベースの配列アクセス（固定識別子を排除）
 #[derive(Resource, Debug, Clone)]
 pub struct MatchScore {
-    /// Player 1のポイント
-    pub player1_point: PlayerPoint,
-    /// Player 2のポイント
-    pub player2_point: PlayerPoint,
-    /// Player 1のゲーム/セットスコア
-    pub player1_score: PlayerGameScore,
-    /// Player 2のゲーム/セットスコア
-    pub player2_score: PlayerGameScore,
+    /// 各サイドのポイント [Player1側, Player2側]
+    pub points: [PlayerPoint; 2],
+    /// 各サイドのゲーム/セットスコア [Player1側, Player2側]
+    pub scores: [PlayerGameScore; 2],
     /// サーバー（サーブを打つ側）
     pub server: CourtSide,
     /// 現在のゲーム状態
@@ -116,10 +113,8 @@ pub enum GameState {
 impl Default for MatchScore {
     fn default() -> Self {
         Self {
-            player1_point: PlayerPoint::default(),
-            player2_point: PlayerPoint::default(),
-            player1_score: PlayerGameScore::default(),
-            player2_score: PlayerGameScore::default(),
+            points: [PlayerPoint::default(), PlayerPoint::default()],
+            scores: [PlayerGameScore::default(), PlayerGameScore::default()],
             server: CourtSide::Player1,
             game_state: GameState::default(),
         }
@@ -133,22 +128,40 @@ impl MatchScore {
         Self::default()
     }
 
+    /// 指定したサイドのポイントを取得
+    #[inline]
+    pub fn get_point(&self, side: CourtSide) -> &PlayerPoint {
+        &self.points[side as usize]
+    }
+
+    /// 指定したサイドのポイントを取得（可変）
+    #[inline]
+    pub fn get_point_mut(&mut self, side: CourtSide) -> &mut PlayerPoint {
+        &mut self.points[side as usize]
+    }
+
+    /// 指定したサイドのスコアを取得
+    #[inline]
+    pub fn get_score(&self, side: CourtSide) -> &PlayerGameScore {
+        &self.scores[side as usize]
+    }
+
+    /// 指定したサイドのスコアを取得（可変）
+    #[inline]
+    pub fn get_score_mut(&mut self, side: CourtSide) -> &mut PlayerGameScore {
+        &mut self.scores[side as usize]
+    }
+
     /// 指定したプレイヤーのポイントを取得（インデックス）
     #[inline]
     pub fn get_point_index(&self, player: CourtSide) -> usize {
-        match player {
-            CourtSide::Player1 => self.player1_point.index,
-            CourtSide::Player2 => self.player2_point.index,
-        }
+        self.get_point(player).index
     }
 
     /// 指定したプレイヤーにポイントを加算
     /// @spec 30701_point_spec.md#req-30701-002
     pub fn add_point(&mut self, scorer: CourtSide) {
-        match scorer {
-            CourtSide::Player1 => self.player1_point.advance(),
-            CourtSide::Player2 => self.player2_point.advance(),
-        }
+        self.get_point_mut(scorer).advance();
     }
 
     /// ゲーム勝利判定（40から得点で勝利、相手が40未満）
@@ -167,17 +180,15 @@ impl MatchScore {
     /// ポイントをリセット（ゲーム終了後）
     /// @spec 30701_point_spec.md#req-30701-005
     pub fn reset_points(&mut self) {
-        self.player1_point.reset();
-        self.player2_point.reset();
+        for point in &mut self.points {
+            point.reset();
+        }
     }
 
     /// ゲーム獲得処理
     /// @spec 30702_game_spec.md#req-30702-002
     pub fn win_game(&mut self, winner: CourtSide) {
-        match winner {
-            CourtSide::Player1 => self.player1_score.win_game(),
-            CourtSide::Player2 => self.player2_score.win_game(),
-        }
+        self.get_score_mut(winner).win_game();
         self.reset_points();
         // サーバー交代
         self.server = self.server.opponent();
@@ -186,30 +197,19 @@ impl MatchScore {
     /// セット獲得判定（6ゲーム先取でセット獲得）
     /// @spec 30703_set_spec.md#req-30703-002
     pub fn check_set_win(&self, winner: CourtSide, games_to_win: u32) -> bool {
-        let games = match winner {
-            CourtSide::Player1 => self.player1_score.games,
-            CourtSide::Player2 => self.player2_score.games,
-        };
-        games >= games_to_win
+        self.get_score(winner).games >= games_to_win
     }
 
     /// セット獲得処理
     /// @spec 30703_set_spec.md#req-30703-002
     pub fn win_set(&mut self, winner: CourtSide) {
-        match winner {
-            CourtSide::Player1 => self.player1_score.win_set(),
-            CourtSide::Player2 => self.player2_score.win_set(),
-        }
+        self.get_score_mut(winner).win_set();
     }
 
     /// マッチ勝利判定（1セット制: 1セット先取でマッチ勝利）
     /// @spec 30703_set_spec.md#req-30703-003
     pub fn check_match_win(&self, winner: CourtSide, sets_to_win: u32) -> bool {
-        let sets = match winner {
-            CourtSide::Player1 => self.player1_score.sets,
-            CourtSide::Player2 => self.player2_score.sets,
-        };
-        sets >= sets_to_win
+        self.get_score(winner).sets >= sets_to_win
     }
 
     /// ポイント表示用文字列を取得
