@@ -269,6 +269,15 @@ pub struct BounceState {
     pub time_since_bounce: Option<f32>,
 }
 
+/// ボールのスピン状態コンポーネント
+/// @spec 30802_visual_feedback_spec.md#req-30802-004
+#[derive(Component, Debug, Clone, Copy, Default)]
+pub struct BallSpin {
+    /// スピン値（-1.0〜+1.0）
+    /// 正: トップスピン、負: スライス、0: ニュートラル
+    pub value: f32,
+}
+
 impl KnockbackState {
     /// ふっとばし中かどうか（操作不能状態）
     /// @spec 30203_knockback_spec.md#req-30203-006
@@ -351,6 +360,7 @@ impl PlayerBundle {
 /// ボールバンドル（ボール生成時に使用）
 /// @spec 30401_trajectory_spec.md
 /// @spec 30604_shot_attributes_spec.md
+/// @spec 30802_visual_feedback_spec.md
 #[derive(Bundle)]
 pub struct BallBundle {
     pub ball: Ball,
@@ -359,6 +369,7 @@ pub struct BallBundle {
     pub bounce_count: BounceCount,
     pub bounce_state: BounceState,
     pub last_shooter: LastShooter,
+    pub ball_spin: BallSpin,
     pub sprite: Sprite,
     pub transform: Transform,
 }
@@ -374,6 +385,7 @@ impl BallBundle {
             bounce_count: BounceCount::default(),
             bounce_state: BounceState::default(),
             last_shooter: LastShooter::default(),
+            ball_spin: BallSpin::default(),
             sprite: Sprite {
                 color: Color::srgb(0.9, 0.9, 0.2), // 黄色
                 custom_size: Some(Vec2::new(20.0, 20.0)),
@@ -393,6 +405,7 @@ impl BallBundle {
             bounce_count: BounceCount::default(),
             bounce_state: BounceState::default(),
             last_shooter: LastShooter { side: Some(shooter) },
+            ball_spin: BallSpin::default(),
             sprite: Sprite {
                 color: Color::srgb(0.9, 0.9, 0.2), // 黄色
                 custom_size: Some(Vec2::new(20.0, 20.0)),

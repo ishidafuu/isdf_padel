@@ -321,6 +321,7 @@ mod tests {
             shadow: crate::resource::config::ShadowConfig::default(),
             shot_attributes: crate::resource::config::ShotAttributesConfig::default(),
             ai: crate::resource::config::AiConfig::default(),
+            visual_feedback: crate::resource::config::VisualFeedbackConfig::default(),
         }
     }
 

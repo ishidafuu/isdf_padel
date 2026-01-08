@@ -2,8 +2,12 @@
 //! @spec 20001_layers.md#layer-5-presentation
 
 mod debug_ui;
+mod visual_feedback;
 
 pub use debug_ui::DebugUiPlugin;
+pub use visual_feedback::{
+    ball_spin_color_system, player_hold_visual_system, save_player_original_color_system,
+};
 
 use bevy::prelude::*;
 

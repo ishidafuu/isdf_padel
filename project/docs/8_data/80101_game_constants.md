@@ -512,6 +512,61 @@ fn load_config() -> GameConfig {
 
 ---
 
+## Visual Feedback Config
+
+視覚フィードバックパラメータ
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| hold_color | (f32, f32, f32, f32) | (1.0, 0.5, 0.0, 1.0) | ホールド中の色（RGBA） |
+| ball_color_topspin | (f32, f32, f32, f32) | (1.0, 0.2, 0.2, 1.0) | トップスピン時の色（赤系） |
+| ball_color_neutral | (f32, f32, f32, f32) | (0.9, 0.9, 0.2, 1.0) | ニュートラル時の色（黄色） |
+| ball_color_slice | (f32, f32, f32, f32) | (0.2, 0.4, 1.0, 1.0) | スライス時の色（青系） |
+
+```rust
+#[derive(Deserialize, Clone, Debug)]
+pub struct VisualFeedbackConfig {
+    /// ホールド中のプレイヤー色（RGBA）
+    #[serde(default = "default_hold_color")]
+    pub hold_color: (f32, f32, f32, f32),
+    /// トップスピン時のボール色（RGBA）
+    #[serde(default = "default_ball_color_topspin")]
+    pub ball_color_topspin: (f32, f32, f32, f32),
+    /// ニュートラル時のボール色（RGBA）
+    #[serde(default = "default_ball_color_neutral")]
+    pub ball_color_neutral: (f32, f32, f32, f32),
+    /// スライス時のボール色（RGBA）
+    #[serde(default = "default_ball_color_slice")]
+    pub ball_color_slice: (f32, f32, f32, f32),
+}
+
+fn default_hold_color() -> (f32, f32, f32, f32) { (1.0, 0.5, 0.0, 1.0) }
+fn default_ball_color_topspin() -> (f32, f32, f32, f32) { (1.0, 0.2, 0.2, 1.0) }
+fn default_ball_color_neutral() -> (f32, f32, f32, f32) { (0.9, 0.9, 0.2, 1.0) }
+fn default_ball_color_slice() -> (f32, f32, f32, f32) { (0.2, 0.4, 1.0, 1.0) }
+```
+
+**使用例**:
+```rust
+// ホールド中の色
+let hold_color = Color::srgba(
+    config.visual_feedback.hold_color.0,
+    config.visual_feedback.hold_color.1,
+    config.visual_feedback.hold_color.2,
+    config.visual_feedback.hold_color.3,
+);
+
+// スピンに応じたボール色
+let ball_color = lerp_color(
+    config.visual_feedback.ball_color_slice,
+    config.visual_feedback.ball_color_neutral,
+    config.visual_feedback.ball_color_topspin,
+    spin_value, // -1.0 ~ +1.0
+);
+```
+
+---
+
 ## 次のステップ
 
 1. ✅ データ定義（このドキュメント）

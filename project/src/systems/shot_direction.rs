@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::components::{
-    Ball, BounceCount, BounceState, LastShooter, LogicalPosition, Player, Velocity,
+    Ball, BallSpin, BounceCount, BounceState, LastShooter, LogicalPosition, Player, Velocity,
 };
 use crate::core::CourtSide;
 use crate::core::events::{ShotEvent, ShotExecutedEvent};
@@ -38,6 +38,7 @@ pub fn shot_direction_system(
             &mut LastShooter,
             &LogicalPosition,
             &BounceState,
+            &mut BallSpin,
         ),
         With<Ball>,
     >,
@@ -46,8 +47,14 @@ pub fn shot_direction_system(
 ) {
     for event in shot_events.read() {
         // ボールを取得
-        let Ok((mut ball_velocity, mut bounce_count, mut last_shooter, ball_pos, bounce_state)) =
-            ball_query.single_mut()
+        let Ok((
+            mut ball_velocity,
+            mut bounce_count,
+            mut last_shooter,
+            ball_pos,
+            bounce_state,
+            mut ball_spin,
+        )) = ball_query.single_mut()
         else {
             warn!("No ball found for shot direction calculation");
             continue;
@@ -123,6 +130,9 @@ pub fn shot_direction_system(
 
         // バウンスカウントをリセット（新しいショット開始）
         bounce_count.reset();
+
+        // REQ-30802-004: スピン属性をボールに設定
+        ball_spin.value = shot_attrs.spin;
 
         // REQ-30603-001: ジャンプショット判定（ログ用）
         let is_jump_shot = event.jump_height > config.shot.jump_threshold;

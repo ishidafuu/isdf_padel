@@ -14,7 +14,8 @@ use core::{
     ShotEvent, ShotExecutedEvent,
 };
 use presentation::{
-    despawn_ball_shadow_system, spawn_ball_shadow_system, spawn_player_shadow_system,
+    ball_spin_color_system, despawn_ball_shadow_system, player_hold_visual_system,
+    save_player_original_color_system, spawn_ball_shadow_system, spawn_player_shadow_system,
     sync_shadow_system, sync_transform_system, DebugUiPlugin, WORLD_SCALE,
 };
 use resource::config::{load_game_config, GameConfig, GameConfigHandle, GameConfigLoader};
@@ -23,9 +24,10 @@ use systems::{
     ai_movement_system, ai_shot_system, ceiling_collision_system, gravity_system, jump_system,
     knockback_movement_system, knockback_start_system, knockback_timer_system, landing_system,
     movement_system, read_input_system, read_jump_input_system, read_shot_input_system,
-    shot_cooldown_system, shot_direction_system, shot_input_system, vertical_movement_system,
-    BallCollisionPlugin, BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin, JumpInput,
-    MatchFlowPlugin, MovementInput, PointJudgmentPlugin, ScoringPlugin, ShotInput,
+    shot_cooldown_system, shot_direction_system, shot_input_system, track_shot_button_system,
+    vertical_movement_system, BallCollisionPlugin, BallTrajectoryPlugin, BoundaryPlugin,
+    FaultJudgmentPlugin, JumpInput, MatchFlowPlugin, MovementInput, PointJudgmentPlugin,
+    ScoringPlugin, ShotButtonState, ShotInput,
 };
 
 fn main() {
@@ -66,6 +68,7 @@ fn main() {
         .init_resource::<MovementInput>()
         .init_resource::<JumpInput>()
         .init_resource::<ShotInput>()
+        .init_resource::<ShotButtonState>()
         .add_message::<PlayerMoveEvent>()
         .add_message::<PlayerJumpEvent>()
         .add_message::<PlayerLandEvent>()
@@ -81,6 +84,9 @@ fn main() {
                 update_config_on_change,
                 // 入力読み取り
                 (read_input_system, read_jump_input_system, read_shot_input_system),
+                // ショットボタン状態追跡（視覚フィードバック用）
+                // @spec 30802_visual_feedback_spec.md#req-30802-001
+                track_shot_button_system,
                 // ふっとばし開始（BallHitEvent を処理）
                 knockback_start_system,
                 // ジャンプ・重力
@@ -105,6 +111,9 @@ fn main() {
                 sync_transform_system,
                 // 影システム
                 (spawn_ball_shadow_system, spawn_player_shadow_system, sync_shadow_system, despawn_ball_shadow_system),
+                // 視覚フィードバック（色変化）
+                // @spec 30802_visual_feedback_spec.md
+                (save_player_original_color_system, player_hold_visual_system, ball_spin_color_system),
             )
                 .chain(),
         )

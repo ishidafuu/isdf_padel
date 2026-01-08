@@ -28,6 +28,8 @@ pub struct GameConfig {
     pub shot_attributes: ShotAttributesConfig,
     #[serde(default)]
     pub ai: AiConfig,
+    #[serde(default)]
+    pub visual_feedback: VisualFeedbackConfig,
 }
 
 /// 物理演算パラメータ
@@ -404,6 +406,53 @@ fn default_ai_home_z() -> f32 {
 /// @spec 30302_ai_shot_spec.md#req-30302-002
 fn default_ai_shot_cooldown() -> f32 {
     0.5 // デフォルト: 0.5秒
+}
+
+/// 視覚フィードバックパラメータ
+/// @spec 30802_visual_feedback_spec.md
+/// @data 80101_game_constants.md#visual-feedback-config
+#[derive(Deserialize, Clone, Debug)]
+pub struct VisualFeedbackConfig {
+    /// ホールド中のプレイヤー色（RGBA）
+    /// @spec 30802_visual_feedback_spec.md#req-30802-001
+    #[serde(default = "default_hold_color")]
+    pub hold_color: (f32, f32, f32, f32),
+    /// トップスピン時のボール色（RGBA）
+    /// @spec 30802_visual_feedback_spec.md#req-30802-003
+    #[serde(default = "default_ball_color_topspin")]
+    pub ball_color_topspin: (f32, f32, f32, f32),
+    /// ニュートラル時のボール色（RGBA）
+    /// @spec 30802_visual_feedback_spec.md#req-30802-003
+    #[serde(default = "default_ball_color_neutral")]
+    pub ball_color_neutral: (f32, f32, f32, f32),
+    /// スライス時のボール色（RGBA）
+    /// @spec 30802_visual_feedback_spec.md#req-30802-003
+    #[serde(default = "default_ball_color_slice")]
+    pub ball_color_slice: (f32, f32, f32, f32),
+}
+
+impl Default for VisualFeedbackConfig {
+    fn default() -> Self {
+        Self {
+            hold_color: default_hold_color(),
+            ball_color_topspin: default_ball_color_topspin(),
+            ball_color_neutral: default_ball_color_neutral(),
+            ball_color_slice: default_ball_color_slice(),
+        }
+    }
+}
+
+fn default_hold_color() -> (f32, f32, f32, f32) {
+    (1.0, 0.5, 0.0, 1.0) // オレンジ
+}
+fn default_ball_color_topspin() -> (f32, f32, f32, f32) {
+    (1.0, 0.2, 0.2, 1.0) // 赤
+}
+fn default_ball_color_neutral() -> (f32, f32, f32, f32) {
+    (0.9, 0.9, 0.2, 1.0) // 黄色
+}
+fn default_ball_color_slice() -> (f32, f32, f32, f32) {
+    (0.2, 0.4, 1.0, 1.0) // 青
 }
 
 /// ショット属性パラメータ

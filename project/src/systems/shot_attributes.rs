@@ -67,6 +67,7 @@ where
 
 /// ボタン押下状態を追跡するリソース
 /// @spec 30604_shot_attributes_spec.md#req-30604-051
+/// @spec 30802_visual_feedback_spec.md#req-30802-001
 #[derive(Resource, Default)]
 pub struct ShotButtonState {
     /// Player 1 がボタンを押し続けている時間（ミリ秒）
@@ -74,19 +75,16 @@ pub struct ShotButtonState {
     /// Player 2 がボタンを押し続けている時間（ミリ秒）
     pub player2_hold_time: f32,
     /// Player 1 がボタンを押しているかどうか
-    /// v0.2 で使用予定 (REQ-30604-051: ホールド判定)
-    #[allow(dead_code)]
+    /// @spec 30802_visual_feedback_spec.md#req-30802-001
     pub player1_holding: bool,
     /// Player 2 がボタンを押しているかどうか
-    /// v0.2 で使用予定 (REQ-30604-051: ホールド判定)
-    #[allow(dead_code)]
+    /// @spec 30802_visual_feedback_spec.md#req-30802-001
     pub player2_holding: bool,
 }
 
 /// ボタン押下状態追跡システム
 /// @spec 30604_shot_attributes_spec.md#req-30604-051
-/// v0.2 で使用予定
-#[allow(dead_code)]
+/// @spec 30802_visual_feedback_spec.md#req-30802-001
 pub fn track_shot_button_system(
     keyboard: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,

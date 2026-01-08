@@ -32,5 +32,6 @@ pub use movement::*;
 pub use point_judgment::*;
 pub use scoring::*;
 pub use serve::*;
+pub use shot_attributes::{track_shot_button_system, ShotButtonState};
 pub use shot_direction::*;
 pub use shot_input::*;
