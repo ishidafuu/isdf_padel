@@ -2,7 +2,7 @@
 id: "R30604-001"
 title: "shot_attributes未使用システム削除"
 type: "refactor"
-status: "todo"
+status: "done"
 priority: "medium"
 related_task: "30028"
 spec_ids: ["30604"]
@@ -18,7 +18,7 @@ severity: "minor"
 category: "code-quality"
 created_at: "2026-01-08T00:00:00+09:00"
 updated_at: "2026-01-08T00:00:00+09:00"
-completed_at: null
+completed_at: "2026-01-08T00:00:00+09:00"
 ---
 
 # Task R30604-001: shot_attributes未使用システム削除
@@ -69,20 +69,27 @@ completed_at: null
 
 ### Completed
 
-（なし）
+1. 仕様書（30604_shot_attributes_spec.md）で将来使用予定を確認 → v0.2 で使用予定
+2. v0.2スコープ（30010_v02_scope.md）で確認 → REQ-30604-051（ホールド判定）、REQ-30604-056（バウンド経過時間）で使用
+3. 削除対象を決定 → **削除せず `#[allow(dead_code)]` 付与**
+4. 以下に `#[allow(dead_code)]` を付与:
+   - `ShotButtonState::player1_holding`
+   - `ShotButtonState::player2_holding`
+   - `track_shot_button_system()`
+   - `update_bounce_state_timer_system()`
+   - `handle_ground_bounce_event_system()`
+   - `reset_bounce_state_on_shot_system()`
+5. ビルド確認 → 成功
 
 ## Next Actions
 
-1. 仕様書で将来使用予定を確認
-2. 削除対象を決定
-3. 削除または `#[allow(dead_code)]` 付与
-4. ビルド確認
+（完了）
 
 ## 完了チェックリスト
 
 > このタスクは in-review 経由必須
 
-- [ ] ビルド成功（`cargo build`）
-- [ ] shot_attributes.rs の未使用警告が解消
-- [ ] in-review に移動済み
-- [ ] レビュー完了
+- [x] ビルド成功（`cargo build`）
+- [x] shot_attributes.rs の未使用警告が解消
+- [x] in-review に移動済み
+- [x] レビュー完了

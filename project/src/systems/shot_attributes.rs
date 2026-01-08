@@ -74,13 +74,19 @@ pub struct ShotButtonState {
     /// Player 2 がボタンを押し続けている時間（ミリ秒）
     pub player2_hold_time: f32,
     /// Player 1 がボタンを押しているかどうか
+    /// v0.2 で使用予定 (REQ-30604-051: ホールド判定)
+    #[allow(dead_code)]
     pub player1_holding: bool,
     /// Player 2 がボタンを押しているかどうか
+    /// v0.2 で使用予定 (REQ-30604-051: ホールド判定)
+    #[allow(dead_code)]
     pub player2_holding: bool,
 }
 
 /// ボタン押下状態追跡システム
 /// @spec 30604_shot_attributes_spec.md#req-30604-051
+/// v0.2 で使用予定
+#[allow(dead_code)]
 pub fn track_shot_button_system(
     keyboard: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
@@ -337,6 +343,8 @@ pub fn calculate_shot_attributes(context: &ShotContext, config: &ShotAttributesC
 
 /// BounceState のタイマーを更新するシステム
 /// @spec 30604_shot_attributes_spec.md#req-30604-056
+/// v0.2 で使用予定
+#[allow(dead_code)]
 pub fn update_bounce_state_timer_system(time: Res<Time>, mut query: Query<&mut BounceState, With<Ball>>) {
     let delta = time.delta_secs();
 
@@ -349,6 +357,8 @@ pub fn update_bounce_state_timer_system(time: Res<Time>, mut query: Query<&mut B
 
 /// GroundBounceEvent を受けて BounceState をリセットするシステム
 /// @spec 30604_shot_attributes_spec.md#req-30604-056
+/// v0.2 で使用予定
+#[allow(dead_code)]
 pub fn handle_ground_bounce_event_system(
     mut reader: MessageReader<GroundBounceEvent>,
     mut query: Query<&mut BounceState, With<Ball>>,
@@ -364,6 +374,8 @@ pub fn handle_ground_bounce_event_system(
 
 /// ショットされたときに BounceState をリセットするシステム
 /// @spec 30604_shot_attributes_spec.md#req-30604-056
+/// v0.2 で使用予定
+#[allow(dead_code)]
 pub fn reset_bounce_state_on_shot_system(mut query: Query<&mut BounceState, With<Ball>>) {
     // このシステムはショットイベント時に手動で呼び出すか、
     // ShotExecutedEvent をトリガーにする
