@@ -56,14 +56,15 @@ pub fn serve_execute_system(
         raw_direction.normalize()
     } else {
         match server_id {
-            1 => Vec2::new(0.0, 1.0),  // Player1: +Z方向（2Pコートへ）
-            2 => Vec2::new(0.0, -1.0), // Player2: -Z方向（1Pコートへ）
+            1 => Vec2::new(0.0, config.serve.p1_default_direction_z),  // Player1: +Z方向（2Pコートへ）
+            2 => Vec2::new(0.0, config.serve.p2_default_direction_z), // Player2: -Z方向（1Pコートへ）
             _ => Vec2::ZERO,
         }
     };
 
-    // @spec 30102_serve_spec.md#req-30102-002: ボールを生成（プレイヤーの足元 + (0, 0.5, 0)）
-    let ball_pos = logical_pos.value + Vec3::new(0.0, 0.5, 0.0);
+    // @spec 30102_serve_spec.md#req-30102-002: ボールを生成（プレイヤーの足元 + オフセット）
+    let ball_spawn_offset_y = config.serve.ball_spawn_offset_y;
+    let ball_pos = logical_pos.value + Vec3::new(0.0, ball_spawn_offset_y, 0.0);
 
     // サーブ時は通常ショットの速度と角度を使用
     // commands.spawn() は遅延適用されるため、ここで直接速度を計算する

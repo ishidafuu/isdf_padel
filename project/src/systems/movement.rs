@@ -47,7 +47,8 @@ pub fn movement_system(
         }
 
         // REQ-30201-003: 斜め移動の正規化
-        let normalized_input = if raw_input.length() > 1.0 {
+        let normalization_threshold = config.input.normalization_threshold;
+        let normalized_input = if raw_input.length() > normalization_threshold {
             raw_input.normalize()
         } else {
             raw_input
@@ -106,11 +107,12 @@ pub fn movement_system(
 /// プレイヤーごとのZ軸境界を取得
 /// @spec 30201_movement_spec.md#req-30201-002
 fn get_player_z_bounds(player_id: u8, config: &GameConfig) -> (f32, f32) {
+    let net_z = config.court.net_z;
     match player_id {
         // Player 1: 1Pコート側（-Z側）
-        1 => (config.player.z_min, 0.0),
+        1 => (config.player.z_min, net_z),
         // Player 2: 2Pコート側（+Z側）
-        2 => (0.0, config.player.z_max),
+        2 => (net_z, config.player.z_max),
         _ => (config.player.z_min, config.player.z_max),
     }
 }

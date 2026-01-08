@@ -176,12 +176,15 @@ mod tests {
             input: InputConfig {
                 jump_buffer_time: 0.1,
                 shot_buffer_time: 0.05,
+                normalization_threshold: 1.0,
+                input_sensitivity: 1.0,
             },
             input_keys: InputKeysConfig::default(),
             shadow: ShadowConfig::default(),
             shot_attributes: ShotAttributesConfig::default(),
             ai: AiConfig::default(),
             visual_feedback: VisualFeedbackConfig::default(),
+            serve: ServeConfig::default(),
         }
     }
 

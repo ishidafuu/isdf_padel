@@ -34,6 +34,9 @@ pub struct GameConfig {
     pub ai: AiConfig,
     #[serde(default)]
     pub visual_feedback: VisualFeedbackConfig,
+    /// サーブ設定
+    #[serde(default)]
+    pub serve: ServeConfig,
 }
 
 /// 物理演算パラメータ
@@ -310,6 +313,12 @@ pub struct InputConfig {
     pub jump_buffer_time: f32,
     #[serde(default = "default_shot_buffer_time")]
     pub shot_buffer_time: f32,
+    /// 斜め移動の正規化閾値（この値を超えると正規化）
+    #[serde(default = "default_normalization_threshold")]
+    pub normalization_threshold: f32,
+    /// 入力感度（移動入力に乗算する係数、アナログ入力対応用）
+    #[serde(default = "default_input_sensitivity")]
+    pub input_sensitivity: f32,
 }
 
 fn default_jump_buffer_time() -> f32 {
@@ -317,6 +326,12 @@ fn default_jump_buffer_time() -> f32 {
 }
 fn default_shot_buffer_time() -> f32 {
     0.05
+}
+fn default_normalization_threshold() -> f32 {
+    1.0
+}
+fn default_input_sensitivity() -> f32 {
+    1.0
 }
 
 /// 入力キーバインド設定
@@ -401,6 +416,41 @@ fn default_key_jump() -> KeyCode {
 }
 fn default_key_shot() -> KeyCode {
     KeyCode::KeyV
+}
+
+/// サーブパラメータ
+/// @spec 30102_serve_spec.md
+#[derive(Deserialize, Clone, Debug)]
+pub struct ServeConfig {
+    /// ボール生成時のY方向オフセット（プレイヤー足元からの高さ）
+    #[serde(default = "default_ball_spawn_offset_y")]
+    pub ball_spawn_offset_y: f32,
+    /// Player1のデフォルトサーブ方向（Z軸）
+    #[serde(default = "default_p1_default_direction_z")]
+    pub p1_default_direction_z: f32,
+    /// Player2のデフォルトサーブ方向（Z軸）
+    #[serde(default = "default_p2_default_direction_z")]
+    pub p2_default_direction_z: f32,
+}
+
+impl Default for ServeConfig {
+    fn default() -> Self {
+        Self {
+            ball_spawn_offset_y: default_ball_spawn_offset_y(),
+            p1_default_direction_z: default_p1_default_direction_z(),
+            p2_default_direction_z: default_p2_default_direction_z(),
+        }
+    }
+}
+
+fn default_ball_spawn_offset_y() -> f32 {
+    0.5
+}
+fn default_p1_default_direction_z() -> f32 {
+    1.0 // +Z方向（2Pコートへ）
+}
+fn default_p2_default_direction_z() -> f32 {
+    -1.0 // -Z方向（1Pコートへ）
 }
 
 /// 影パラメータ

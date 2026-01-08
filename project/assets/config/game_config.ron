@@ -57,6 +57,14 @@ GameConfig(
     input: InputConfig(
         jump_buffer_time: 0.1,
         shot_buffer_time: 0.05,
+        normalization_threshold: 1.0,
+        input_sensitivity: 1.0,
+    ),
+    // @spec 30102_serve_spec.md
+    serve: ServeConfig(
+        ball_spawn_offset_y: 0.5,
+        p1_default_direction_z: 1.0,
+        p2_default_direction_z: -1.0,
     ),
     shadow: ShadowConfig(
         player_size: (50.0, 20.0),

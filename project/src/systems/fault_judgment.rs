@@ -318,12 +318,15 @@ mod tests {
             input: crate::resource::config::InputConfig {
                 jump_buffer_time: 0.1,
                 shot_buffer_time: 0.05,
+                normalization_threshold: 1.0,
+                input_sensitivity: 1.0,
             },
             input_keys: crate::resource::config::InputKeysConfig::default(),
             shadow: crate::resource::config::ShadowConfig::default(),
             shot_attributes: crate::resource::config::ShotAttributesConfig::default(),
             ai: crate::resource::config::AiConfig::default(),
             visual_feedback: crate::resource::config::VisualFeedbackConfig::default(),
+            serve: crate::resource::config::ServeConfig::default(),
         }
     }
 
