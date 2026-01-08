@@ -185,7 +185,7 @@ fn point_end_to_next_system(
 /// @spec 30101_flow_spec.md#req-30101-005
 fn match_end_system(match_score: Res<MatchScore>, mut match_end_events: MessageWriter<MatchWonEvent>) {
     if let GameState::MatchWon(winner) = match_score.game_state {
-        // @spec 30101_flow_spec.md#req-30101-005: MatchEndEvent を発行する
+        // @spec 30101_flow_spec.md#req-30101-005: MatchWonEvent を発行する
         match_end_events.write(MatchWonEvent { winner });
         info!("Match ended! Winner: {:?}", winner);
     }

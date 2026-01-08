@@ -2,10 +2,10 @@
 //! @spec 20001_layers.md#layer-4-systems
 //!
 //! このモジュールはSystems層に配置し、Resource層のCourtConfigを
-//! Core層のCourtBounds/NetInfo/Courtに変換する役割を持つ。
+//! Core層のCourtBounds/NetInfoに変換する役割を持つ。
 //! これによりCore層のResource層への依存を解消する。
 
-use crate::core::court::{Court, CourtBounds, NetInfo};
+use crate::core::court::{CourtBounds, NetInfo};
 use crate::resource::CourtConfig;
 
 /// CourtConfigからCourtBoundsを生成
@@ -29,13 +29,6 @@ pub fn create_court_bounds(config: &CourtConfig) -> CourtBounds {
 #[inline]
 pub fn create_net_info(config: &CourtConfig) -> NetInfo {
     NetInfo::new(config.net_z, config.net_height)
-}
-
-/// CourtConfigからCourtを生成
-/// @spec 30501_court_spec.md
-#[inline]
-pub fn create_court(config: &CourtConfig) -> Court {
-    Court::new(create_court_bounds(config), create_net_info(config))
 }
 
 #[cfg(test)]
@@ -76,12 +69,4 @@ mod tests {
         assert_eq!(net.height, 1.0);
     }
 
-    #[test]
-    fn test_create_court() {
-        let config = test_config();
-        let court = create_court(&config);
-
-        assert_eq!(court.bounds.left, -5.0);
-        assert_eq!(court.net.height, 1.0);
-    }
 }

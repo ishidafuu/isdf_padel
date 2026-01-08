@@ -11,33 +11,43 @@ use bevy::prelude::*;
 
 /// プレイヤー移動イベント
 /// @spec 30201_movement_spec.md#req-30201-006
+/// NOTE: デバッグ・ログ出力用のイベント。読み取りハンドラは将来実装予定。
 #[derive(Event, Message, Debug, Clone)]
 pub struct PlayerMoveEvent {
     /// プレイヤーID
+    #[allow(dead_code)]
     pub player_id: u8,
     /// 新しい位置
+    #[allow(dead_code)]
     pub position: Vec3,
     /// 移動速度ベクトル
+    #[allow(dead_code)]
     pub velocity: Vec3,
 }
 
 /// プレイヤージャンプイベント
 /// @spec 30202_jump_spec.md#req-30202-007
+/// NOTE: デバッグ・ログ出力用のイベント。読み取りハンドラは将来実装予定。
 #[derive(Event, Message, Debug, Clone)]
 pub struct PlayerJumpEvent {
     /// プレイヤーID
+    #[allow(dead_code)]
     pub player_id: u8,
     /// ジャンプ初速度
+    #[allow(dead_code)]
     pub jump_velocity: f32,
 }
 
 /// プレイヤー着地イベント
 /// @spec 30202_jump_spec.md#req-30202-008
+/// NOTE: デバッグ・ログ出力用のイベント。読み取りハンドラは将来実装予定。
 #[derive(Event, Message, Debug, Clone)]
 pub struct PlayerLandEvent {
     /// プレイヤーID
+    #[allow(dead_code)]
     pub player_id: u8,
     /// 着地位置
+    #[allow(dead_code)]
     pub land_position: Vec3,
 }
 
@@ -46,6 +56,7 @@ pub struct PlayerLandEvent {
 #[derive(Event, Message, Debug, Clone)]
 pub struct BallHitEvent {
     /// ボールのEntity
+    #[allow(dead_code)]
     pub ball_id: Entity,
     /// 被弾したプレイヤーのEntity
     pub target_id: Entity,
@@ -57,15 +68,20 @@ pub struct BallHitEvent {
 
 /// プレイヤーふっとばしイベント
 /// @spec 30203_knockback_spec.md#req-30203-007
+/// NOTE: デバッグ・ログ出力用のイベント。読み取りハンドラは将来実装予定。
 #[derive(Event, Message, Debug, Clone)]
 pub struct PlayerKnockbackEvent {
     /// プレイヤーID
+    #[allow(dead_code)]
     pub player_id: u8,
     /// ふっとばし速度ベクトル
+    #[allow(dead_code)]
     pub knockback_velocity: Vec3,
     /// ふっとばし時間（秒）
+    #[allow(dead_code)]
     pub duration: f32,
     /// 無敵時間（秒）
+    #[allow(dead_code)]
     pub invincibility_time: f32,
 }
 
@@ -88,6 +104,7 @@ pub enum WallType {
 impl WallType {
     /// 壁の法線ベクトルを返す
     /// @spec 30502_wall_design.md#des-30502-001
+    #[allow(dead_code)]
     #[inline]
     pub fn normal(&self) -> Vec3 {
         match self {
@@ -100,12 +117,14 @@ impl WallType {
     }
 
     /// 左右壁かどうか
+    #[allow(dead_code)]
     #[inline]
     pub fn is_side_wall(&self) -> bool {
         matches!(self, WallType::LeftWall | WallType::RightWall)
     }
 
     /// 前後壁かどうか
+    #[allow(dead_code)]
     #[inline]
     pub fn is_back_wall(&self) -> bool {
         matches!(self, WallType::BackWall1P | WallType::BackWall2P)
@@ -115,17 +134,23 @@ impl WallType {
 /// 壁反射イベント
 /// @spec 30502_wall_design.md#des-30502-003
 /// @spec 30502_wall_design.md#beh-30502-005
+/// NOTE: デバッグ・ログ出力用のイベント。読み取りハンドラは将来実装予定。
 #[derive(Message, Debug, Clone)]
 pub struct WallReflectionEvent {
     /// 反射したボールのEntity
+    #[allow(dead_code)]
     pub ball: Entity,
     /// 反射した壁の種類
+    #[allow(dead_code)]
     pub wall_type: WallType,
     /// 接触点の座標
+    #[allow(dead_code)]
     pub contact_point: Vec3,
     /// 反射前の速度
+    #[allow(dead_code)]
     pub incident_velocity: Vec3,
     /// 反射後の速度
+    #[allow(dead_code)]
     pub reflected_velocity: Vec3,
 }
 
@@ -136,6 +161,7 @@ pub struct NetHitEvent {
     /// ネットに当たったボールのEntity
     pub ball: Entity,
     /// 接触点の座標
+    #[allow(dead_code)]
     pub contact_point: Vec3,
 }
 
@@ -146,6 +172,7 @@ pub struct GroundBounceEvent {
     /// バウンドしたボールのEntity
     pub ball: Entity,
     /// バウンド位置
+    #[allow(dead_code)]
     pub bounce_point: Vec3,
     /// バウンドしたコート側
     pub court_side: super::court::CourtSide,
@@ -156,6 +183,7 @@ pub struct GroundBounceEvent {
 #[derive(Event, Message, Debug, Clone)]
 pub struct BallOutOfBoundsEvent {
     /// アウトになったボールのEntity
+    #[allow(dead_code)]
     pub ball: Entity,
     /// 最終位置
     pub final_position: Vec3,
@@ -183,8 +211,10 @@ pub struct ShotExecutedEvent {
     /// プレイヤーID
     pub player_id: u8,
     /// 打球速度ベクトル
+    #[allow(dead_code)]
     pub shot_velocity: Vec3,
     /// ジャンプショットかどうか
+    #[allow(dead_code)]
     pub is_jump_shot: bool,
 }
 
@@ -232,42 +262,48 @@ pub struct PointScoredEvent {
 
 /// ゲーム勝利イベント
 /// @spec 30701_point_spec.md#req-30701-003
+/// NOTE: デバッグ・ログ出力用のイベント。読み取りハンドラは将来実装予定。
 #[derive(Event, Message, Debug, Clone)]
 pub struct GameWonEvent {
     /// 勝利したプレイヤー側
+    #[allow(dead_code)]
     pub winner: super::court::CourtSide,
     /// 勝利後のゲーム数
+    #[allow(dead_code)]
     pub games_won: u32,
 }
 
 /// セット勝利イベント
 /// @spec 30701_point_spec.md
+/// NOTE: デバッグ・ログ出力用のイベント。読み取りハンドラは将来実装予定。
 #[derive(Event, Message, Debug, Clone)]
 pub struct SetWonEvent {
     /// 勝利したプレイヤー側
+    #[allow(dead_code)]
     pub winner: super::court::CourtSide,
     /// 勝利後のセット数
+    #[allow(dead_code)]
     pub sets_won: u32,
 }
 
 /// マッチ勝利イベント（試合終了イベント）
 /// @spec 30701_point_spec.md
 /// @spec 30101_flow_spec.md#req-30101-005
+/// NOTE: デバッグ・ログ出力用のイベント。読み取りハンドラは将来実装予定。
 #[derive(Event, Message, Debug, Clone)]
 pub struct MatchWonEvent {
     /// 勝利したプレイヤー側
+    #[allow(dead_code)]
     pub winner: super::court::CourtSide,
 }
 
-/// 試合終了イベント（MatchWonEventのエイリアス）
-/// @spec 30101_flow_spec.md#req-30101-005
-pub type MatchEndEvent = MatchWonEvent;
-
 /// 試合開始イベント
 /// @spec 30101_flow_spec.md#req-30101-005
+/// NOTE: デバッグ・ログ出力用のイベント。読み取りハンドラは将来実装予定。
 #[derive(Event, Message, Debug, Clone)]
 pub struct MatchStartEvent {
     /// サーブ権を持つプレイヤー側
+    #[allow(dead_code)]
     pub first_server: super::court::CourtSide,
 }
 
@@ -279,8 +315,10 @@ pub struct FaultEvent {
     /// サーバー側
     pub server: super::court::CourtSide,
     /// 現在のフォールトカウント（このフォールト後の値）
+    #[allow(dead_code)]
     pub fault_count: u32,
     /// フォールト理由
+    #[allow(dead_code)]
     pub reason: FaultReason,
 }
 
@@ -291,6 +329,8 @@ pub enum FaultReason {
     /// サービスボックス外への着地
     OutOfServiceBox,
     /// ネットフォールト（サーブがネットに当たりサービスボックスに入らなかった）
+    /// NOTE: 仕様書で定義済み、将来実装予定
+    #[allow(dead_code)]
     NetFault,
 }
 

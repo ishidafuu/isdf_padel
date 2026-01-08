@@ -19,6 +19,8 @@ pub struct GameConfig {
     pub knockback: KnockbackConfig,
     pub shot: ShotConfig,
     pub scoring: ScoringConfig,
+    /// TODO: v0.2で入力バッファリング機能として使用予定
+    #[allow(dead_code)]
     pub input: InputConfig,
     #[serde(default)]
     pub shadow: ShadowConfig,
@@ -55,6 +57,8 @@ pub struct CourtConfig {
     pub depth: f32,
     #[serde(default = "default_ceiling_height")]
     pub ceiling_height: f32,
+    /// TODO: v0.2でジャンプ高さ制限として使用予定
+    #[allow(dead_code)]
     #[serde(default = "default_max_jump_height")]
     pub max_jump_height: f32,
     #[serde(default = "default_net_height")]
@@ -101,8 +105,12 @@ pub struct PlayerConfig {
     pub max_speed: f32,
     #[serde(default = "default_jump_force")]
     pub jump_force: f32,
+    /// TODO: v0.2で移動システム改善として使用予定
+    #[allow(dead_code)]
     #[serde(default = "default_friction")]
     pub friction: f32,
+    /// TODO: v0.2で空中制御として使用予定
+    #[allow(dead_code)]
     #[serde(default = "default_air_control")]
     pub air_control_factor: f32,
     #[serde(default = "default_z_min")]
@@ -142,6 +150,8 @@ fn default_z_max() -> f32 {
 pub struct BallConfig {
     #[serde(default = "default_normal_shot_speed")]
     pub normal_shot_speed: f32,
+    /// TODO: v0.2ショット属性システムで使用予定
+    #[allow(dead_code)]
     #[serde(default = "default_power_shot_speed")]
     pub power_shot_speed: f32,
     #[serde(default = "default_bounce_factor")]
@@ -220,6 +230,8 @@ pub struct ShotConfig {
     pub cooldown_time: f32,
     #[serde(default = "default_normal_shot_angle")]
     pub normal_shot_angle: f32,
+    /// TODO: v0.2ショット属性システムで使用予定
+    #[allow(dead_code)]
     #[serde(default = "default_jump_shot_angle")]
     pub jump_shot_angle: f32,
     #[serde(default = "default_jump_threshold")]
@@ -277,6 +289,8 @@ fn default_sets_to_win_match() -> u32 {
 
 /// 入力パラメータ
 /// @data 80101_game_constants.md#input-config
+/// TODO: v0.2で入力バッファリング機能として使用予定
+#[allow(dead_code)]
 #[derive(Deserialize, Clone, Debug)]
 pub struct InputConfig {
     #[serde(default = "default_jump_buffer_time")]
@@ -399,6 +413,8 @@ pub struct ShotAttributesConfig {
     // === 入力方式パラメータ ===
     /// プッシュ完璧判定ウィンドウ（ミリ秒）
     /// @spec 30604_shot_attributes_spec.md#req-30604-050
+    /// TODO: v0.2ショット属性システムで使用予定
+    #[allow(dead_code)]
     #[serde(default = "default_push_perfect_window")]
     pub push_perfect_window: f32,
     /// プッシュ→ホールド閾値（ミリ秒）
@@ -417,6 +433,8 @@ pub struct ShotAttributesConfig {
     // === 距離パラメータ ===
     /// 最適距離（メートル）
     /// @spec 30604_shot_attributes_spec.md#req-30604-062
+    /// TODO: v0.2ショット属性システムで使用予定
+    #[allow(dead_code)]
     #[serde(default = "default_optimal_distance")]
     pub optimal_distance: f32,
 
