@@ -206,7 +206,7 @@
 
 ### 依存元
 - [30503_boundary_behavior.md](30503_boundary_behavior.md) - 境界判定動作（コート区分を参照）
-- [30901_point_judgment_spec.md](../../309_referee/30901_point_judgment_spec.md) - アウト判定
+- [30901_point_judgment_spec.md](../309_referee/30901_point_judgment_spec.md) - アウト判定
 
 ---
 

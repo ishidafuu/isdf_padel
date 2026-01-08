@@ -774,4 +774,4 @@ spin_physics: SpinPhysicsConfig(
 
 - [20000_overview.md](../2_architecture/20000_overview.md) - アーキテクチャ概要
 - [20001_layers.md](../2_architecture/20001_layers.md) - Resource Layer
-- [.claude/CLAUDE.md](../../.claude/CLAUDE.md) - ハードコーディング禁止原則
+- [.claude/CLAUDE.md](../../../.claude/CLAUDE.md) - ハードコーディング禁止原則

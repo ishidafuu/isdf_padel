@@ -55,7 +55,7 @@
 
 **AND THE SYSTEM SHALL** 反射処理を実行する
 
-**依存**: [30502_wall_design.md](30502_wall_design.md#beh-30502-001)
+**備考**: 壁反射ロジックは本ドキュメント BEH-30503-004 〜 BEH-30503-006 で定義
 **テスト**: TST-30504-014
 
 ---
@@ -130,7 +130,7 @@
 
 ### 依存先
 - [30501_court_spec.md](30501_court_spec.md) - コート境界定義
-- [30502_wall_design.md](30502_wall_design.md) - 壁反射ロジック
+- 壁反射ロジック: 本ドキュメント BEH-30503-004 〜 BEH-30503-006 で定義
 - [80101_game_constants.md](../../8_data/80101_game_constants.md) - ゲーム定数
 
 ### 依存元

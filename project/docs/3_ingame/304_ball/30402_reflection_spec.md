@@ -35,7 +35,7 @@
 **THE SYSTEM SHALL** ボールの水平速度（Velocity.X）を反転させる
 - `Velocity.X = -Velocity.X * config.Ball.BounceFactor`
 
-**参照**: [30502_wall_design.md](../305_court/30502_wall_design.md)
+**参照**: [30503_boundary_behavior.md](../305_court/30503_boundary_behavior.md#beh-30503-004)
 **テスト**: TST-30404-009
 
 ---
@@ -74,7 +74,7 @@
 - X軸: `Position.X = Clamp(Position.X, -Court.Width/2, +Court.Width/2)`
 - Z軸: `Position.Z = Clamp(Position.Z, -Court.Depth/2, +Court.Depth/2)`
 
-**参照**: [30502_wall_design.md](../305_court/30502_wall_design.md)
+**参照**: [30503_boundary_behavior.md](../305_court/30503_boundary_behavior.md#beh-30503-004)
 **テスト**: TST-30404-013
 
 ---
@@ -166,8 +166,7 @@
 
 ### 依存先
 - [80101_game_constants.md](../../8_data/80101_game_constants.md) - Ball, Court パラメータ
-- [30502_wall_design.md](../305_court/30502_wall_design.md) - 壁反射設計
-- [30503_boundary_behavior.md](../305_court/30503_boundary_behavior.md) - 境界判定
+- [30503_boundary_behavior.md](../305_court/30503_boundary_behavior.md) - 壁反射設計・境界判定
 - [20005_event_system.md](../../2_architecture/20005_event_system.md) - イベント定義
 
 ---

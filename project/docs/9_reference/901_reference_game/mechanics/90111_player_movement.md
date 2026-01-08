@@ -70,7 +70,7 @@ related_spec_categories:
 本メカニクスを新規仕様に反映する際の参照：
 
 ```
-**参考**: [プレイヤー移動](../9_reference/901_reference_game/mechanics/90111_player_movement.md)
+**参考**: プレイヤー移動（本ドキュメント）
 - 確度: ★★★☆☆（Web情報からの構造化）
 - 参照推奨項目: 8方向移動、コート範囲制限
 ```

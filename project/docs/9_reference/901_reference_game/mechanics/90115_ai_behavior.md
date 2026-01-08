@@ -106,7 +106,7 @@ related_spec_categories:
 本メカニクスを新規仕様に反映する際の参照：
 
 ```
-**参考**: [AI挙動](../9_reference/901_reference_game/mechanics/90115_ai_behavior.md)
+**参考**: AI挙動（本ドキュメント）
 - 確度: ★★☆☆☆（動画観察と推測）
 - 参照推奨項目: ボール追跡、返球判断、難易度パラメータ（参考程度）
 ```

@@ -95,7 +95,7 @@ related_spec_categories:
 本メカニクスを新規仕様に反映する際の参照：
 
 ```
-**参考**: [ボール物理](../9_reference/901_reference_game/mechanics/90113_ball_physics.md)
+**参考**: ボール物理（本ドキュメント）
 - 確度: ★★★☆☆（Web情報と動画観察から構造化）
 - 参照推奨項目: 放物線軌道、バウンド処理、コート判定
 ```
