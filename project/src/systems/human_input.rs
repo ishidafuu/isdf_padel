@@ -28,20 +28,20 @@ pub fn human_input_system(
         // 移動入力（横向きコート用マッピング）
         let mut movement = Vec2::ZERO;
 
-        // W/S → 論理X（画面上下）
+        // W/S → movement.y（画面上下＝論理Z）
         if keyboard.pressed(keys.move_up) || keyboard.pressed(keys.move_up_alt) {
-            movement.x += 1.0;
+            movement.y += 1.0;
         }
         if keyboard.pressed(keys.move_down) || keyboard.pressed(keys.move_down_alt) {
-            movement.x -= 1.0;
-        }
-
-        // A/D → 論理Z（画面左右＝打ち合い方向）
-        if keyboard.pressed(keys.move_left) || keyboard.pressed(keys.move_left_alt) {
             movement.y -= 1.0;
         }
+
+        // A/D → movement.x（画面左右＝論理X＝打ち合い方向）
+        if keyboard.pressed(keys.move_left) || keyboard.pressed(keys.move_left_alt) {
+            movement.x -= 1.0;
+        }
         if keyboard.pressed(keys.move_right) || keyboard.pressed(keys.move_right_alt) {
-            movement.y += 1.0;
+            movement.x += 1.0;
         }
 
         // 入力感度を適用（アナログ入力対応用）

@@ -179,9 +179,9 @@ fn update_shot_range_visuals(
     // 既存のビジュアルを更新
     for (visual, mut transform, mut sprite) in visual_query.iter_mut() {
         if let Ok((_, logical_pos)) = player_query.get(visual.owner) {
-            // プレイヤーの地面位置（Y=0）に追従
-            let display_x = logical_pos.value.z * WORLD_SCALE;
-            let display_y = logical_pos.value.x * WORLD_SCALE; // 高さ成分なし（地面基準）
+            // プレイヤーの地面位置に追従（sync_transform_systemと同じ座標変換）
+            let display_x = logical_pos.value.x * WORLD_SCALE;
+            let display_y = logical_pos.value.z * WORLD_SCALE + logical_pos.value.y * WORLD_SCALE;
 
             transform.translation.x = display_x;
             transform.translation.y = display_y;
