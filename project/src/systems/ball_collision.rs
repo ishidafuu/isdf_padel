@@ -37,6 +37,7 @@ pub fn ball_player_collision_system(
     let ball_radius = config.ball.radius;
     let character_radius = config.collision.character_radius;
     let z_tolerance = config.collision.z_tolerance;
+    let max_height_diff = config.shot.max_height_diff;
     let collision_distance = ball_radius + character_radius;
 
     for (ball_entity, ball_logical_pos, mut ball_velocity, last_shooter) in ball_query.iter_mut() {
@@ -69,8 +70,15 @@ pub fn ball_player_collision_system(
                 continue;
             }
 
-            // REQ-30403-001: XY平面での距離計算
-            let distance_2d = distance_xy(ball_pos, player_pos);
+            // 高さ方向の打球可能範囲チェック
+            // プレイヤーの位置から上方向にmax_height_diffまで打てる
+            let height_diff = ball_pos.y - player_pos.y;
+            if height_diff < 0.0 || height_diff > max_height_diff {
+                continue;
+            }
+
+            // REQ-30403-001: XZ平面での距離計算（高さは別途チェック済み）
+            let distance_2d = distance_xz(ball_pos, player_pos);
 
             // 衝突判定
             if distance_2d <= collision_distance {
@@ -112,19 +120,19 @@ pub fn ball_player_collision_system(
     }
 }
 
-/// XY平面での2点間距離を計算（Z軸は無視）
+/// XZ平面での2点間距離を計算（水平距離、高さは無視）
 #[inline]
-fn distance_xy(a: Vec3, b: Vec3) -> f32 {
+fn distance_xz(a: Vec3, b: Vec3) -> f32 {
     let dx = a.x - b.x;
-    let dy = a.y - b.y;
-    (dx * dx + dy * dy).sqrt()
+    let dz = a.z - b.z;
+    (dx * dx + dz * dz).sqrt()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// TST-30404-014: プレイヤー衝突判定テスト
+    /// TST-30404-014: プレイヤー衝突判定テスト（XZ平面）
     /// @spec 30403_collision_spec.md#req-30403-001
     #[test]
     fn test_collision_detection() {
@@ -132,16 +140,38 @@ mod tests {
         let character_radius = 0.5_f32;
         let collision_distance = ball_radius + character_radius; // 0.7
 
-        // 衝突する距離
+        // 衝突する距離（XZ平面）
         let ball_pos = Vec3::new(0.5, 1.0, 0.0);
         let player_pos = Vec3::new(0.0, 1.0, 0.0);
-        let distance = distance_xy(ball_pos, player_pos);
+        let distance = distance_xz(ball_pos, player_pos);
         assert!(distance <= collision_distance); // 0.5 <= 0.7
 
         // 衝突しない距離
         let ball_pos_far = Vec3::new(1.0, 1.0, 0.0);
-        let distance_far = distance_xy(ball_pos_far, player_pos);
+        let distance_far = distance_xz(ball_pos_far, player_pos);
         assert!(distance_far > collision_distance); // 1.0 > 0.7
+    }
+
+    /// 高さ方向の打球可能範囲テスト
+    #[test]
+    fn test_height_diff_check() {
+        let max_height_diff = 2.0_f32;
+
+        // 打球可能範囲内
+        let player_y = 0.0;
+        let ball_y_ok = 1.5;
+        let height_diff_ok = ball_y_ok - player_y;
+        assert!(height_diff_ok >= 0.0 && height_diff_ok <= max_height_diff);
+
+        // 打球可能範囲外（高すぎる）
+        let ball_y_high = 3.0;
+        let height_diff_high = ball_y_high - player_y;
+        assert!(height_diff_high > max_height_diff);
+
+        // 打球可能範囲外（低すぎる＝地面より下）
+        let ball_y_low = -0.5;
+        let height_diff_low = ball_y_low - player_y;
+        assert!(height_diff_low < 0.0);
     }
 
     /// TST-30404-015: Z軸許容範囲テスト
@@ -174,16 +204,16 @@ mod tests {
         assert!(reflection_dir.y.abs() < 0.001);
     }
 
-    /// TST-30404-019: 複数プレイヤー衝突時の優先順位テスト
+    /// TST-30404-019: 複数プレイヤー衝突時の優先順位テスト（XZ平面）
     /// @spec 30403_collision_spec.md#req-30403-006
     #[test]
     fn test_closest_player_priority() {
         let ball_pos = Vec3::new(0.0, 1.0, 0.0);
-        let player1_pos = Vec3::new(0.5, 1.0, 0.0); // 距離 0.5
-        let player2_pos = Vec3::new(0.3, 1.0, 0.0); // 距離 0.3
+        let player1_pos = Vec3::new(0.5, 1.0, 0.0); // XZ距離 0.5
+        let player2_pos = Vec3::new(0.3, 1.0, 0.0); // XZ距離 0.3
 
-        let dist1 = distance_xy(ball_pos, player1_pos);
-        let dist2 = distance_xy(ball_pos, player2_pos);
+        let dist1 = distance_xz(ball_pos, player1_pos);
+        let dist2 = distance_xz(ball_pos, player2_pos);
 
         // player2 が最も近い
         assert!(dist2 < dist1);
