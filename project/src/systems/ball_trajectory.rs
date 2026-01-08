@@ -4,7 +4,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, LogicalPosition, Velocity};
+use crate::components::{Ball, BallSpin, LogicalPosition, Velocity};
 use crate::core::events::{BallOutOfBoundsEvent, GroundBounceEvent, WallReflectionEvent};
 use crate::core::WallReflection;
 use crate::resource::config::GameConfig;
@@ -23,8 +23,15 @@ impl Plugin for BallTrajectoryPlugin {
             .add_systems(
                 Update,
                 (
+                    // スピン減衰を最初に適用（重力計算前にスピン値を更新）
+                    ball_spin_decay_system,
+                    // 重力適用（スピンによる変動含む）
                     ball_gravity_system,
+                    // 空気抵抗適用（スピンによる追加抵抗含む）
+                    ball_air_drag_system,
+                    // 位置更新
                     ball_position_update_system,
+                    // バウンド・反射（スピンによるバウンド変動含む）
                     ball_ground_bounce_system,
                     ball_wall_reflection_system,
                     ball_out_of_bounds_system,
@@ -37,20 +44,29 @@ impl Plugin for BallTrajectoryPlugin {
 /// ボール重力適用システム
 /// @spec 30401_trajectory_spec.md#req-30401-001
 /// @spec 30401_trajectory_spec.md#req-30401-004
+/// @spec 30401_trajectory_spec.md#req-30401-100
 pub fn ball_gravity_system(
     time: Res<Time>,
     config: Res<GameConfig>,
-    mut query: Query<(&mut Velocity, &LogicalPosition), With<Ball>>,
+    mut query: Query<(&mut Velocity, &LogicalPosition, Option<&BallSpin>), With<Ball>>,
 ) {
     let delta = time.delta_secs();
-    let gravity = config.physics.gravity;
+    let base_gravity = config.physics.gravity;
+    let gravity_spin_factor = config.spin_physics.gravity_spin_factor;
 
-    for (mut velocity, logical_pos) in query.iter_mut() {
+    for (mut velocity, logical_pos, ball_spin) in query.iter_mut() {
         // REQ-30401-001: ボールが空中にある場合のみ重力を適用
         // Y > 0 のときは空中とみなす
         if logical_pos.value.y > 0.0 {
+            // REQ-30401-100: スピンによる重力変動
+            // effective_gravity = base_gravity * (1.0 + spin * gravity_spin_factor)
+            // トップスピン（spin > 0）: 重力増加 → 早く落ちる
+            // スライス（spin < 0）: 重力減少 → 浮く
+            let spin_value = ball_spin.map_or(0.0, |s| s.value);
+            let effective_gravity = base_gravity * (1.0 + spin_value * gravity_spin_factor);
+
             // REQ-30401-004: 速度更新（重力適用）
-            velocity.value.y += gravity * delta;
+            velocity.value.y += effective_gravity * delta;
         }
     }
 }
@@ -72,23 +88,39 @@ pub fn ball_position_update_system(
 /// 地面バウンドシステム
 /// @spec 30402_reflection_spec.md#req-30402-001
 /// @spec 30402_reflection_spec.md#req-30402-002
+/// @spec 30402_reflection_spec.md#req-30402-100
 pub fn ball_ground_bounce_system(
     config: Res<GameConfig>,
-    mut query: Query<(Entity, &mut Velocity, &mut LogicalPosition), With<Ball>>,
+    mut query: Query<(Entity, &mut Velocity, &mut LogicalPosition, Option<&BallSpin>), With<Ball>>,
     mut event_writer: MessageWriter<GroundBounceEvent>,
 ) {
-    let bounce_factor = config.ball.bounce_factor;
+    let base_bounce_factor = config.ball.bounce_factor;
     let min_bounce_velocity = config.ball.min_bounce_velocity;
     let net_z = config.court.net_z;
+    let h_factor = config.spin_physics.bounce_spin_horizontal_factor;
+    let v_factor = config.spin_physics.bounce_spin_vertical_factor;
 
-    for (entity, mut velocity, mut logical_pos) in query.iter_mut() {
+    for (entity, mut velocity, mut logical_pos, ball_spin) in query.iter_mut() {
         let pos = logical_pos.value;
 
         // REQ-30402-001: ボールが地面（Y <= 0）に接触し、下向きまたは静止中の場合
         // Y速度が0の場合もバウンドさせる（プレイヤー衝突で水平に跳ね返った場合対応）
         if pos.y <= 0.0 && velocity.value.y <= 0.0 {
-            // 速度Y成分を反転し、バウンド係数を適用
-            let bounced_y = -velocity.value.y * bounce_factor;
+            // REQ-30402-100: スピンによるバウンド挙動変化
+            let spin_value = ball_spin.map_or(0.0, |s| s.value);
+
+            // 水平方向（X, Z）: velocity *= base_bounce * (1.0 + spin * h_factor)
+            // トップスピン（spin > 0）: 水平維持率上昇 → 低く伸びる
+            // スライス（spin < 0）: 水平維持率低下 → 高く止まる
+            let horizontal_bounce = base_bounce_factor * (1.0 + spin_value * h_factor);
+            velocity.value.x *= horizontal_bounce;
+            velocity.value.z *= horizontal_bounce;
+
+            // 垂直方向（Y）: velocity.y = -velocity.y * base_bounce * (1.0 - spin * v_factor)
+            // トップスピン（spin > 0）: 垂直維持率低下 → 低く伸びる
+            // スライス（spin < 0）: 垂直維持率上昇 → 高く止まる
+            let vertical_bounce = base_bounce_factor * (1.0 - spin_value * v_factor);
+            let bounced_y = -velocity.value.y * vertical_bounce;
             // 最小バウンド速度を保証（Y速度が0でも軽く跳ねる）
             velocity.value.y = bounced_y.max(min_bounce_velocity);
 
@@ -181,6 +213,57 @@ pub fn ball_out_of_bounds_system(
                     final_position: pos,
                 });
             }
+        }
+    }
+}
+
+/// ボール空気抵抗システム
+/// @spec 30401_trajectory_spec.md#req-30401-102
+///
+/// スピン絶対値に応じて空気抵抗を増加させる。
+/// drag = base_air_drag + spin.abs() * spin_drag_factor
+/// 速度減衰: velocity *= (1.0 - drag * delta).max(0.9)
+pub fn ball_air_drag_system(
+    time: Res<Time>,
+    config: Res<GameConfig>,
+    mut query: Query<(&mut Velocity, &LogicalPosition, Option<&BallSpin>), With<Ball>>,
+) {
+    let delta = time.delta_secs();
+    let base_air_drag = config.spin_physics.base_air_drag;
+    let spin_drag_factor = config.spin_physics.spin_drag_factor;
+
+    for (mut velocity, logical_pos, ball_spin) in query.iter_mut() {
+        // 空中にある場合のみ適用
+        if logical_pos.value.y > 0.0 {
+            let spin_value = ball_spin.map_or(0.0, |s| s.value);
+            let drag = base_air_drag + spin_value.abs() * spin_drag_factor;
+
+            // 速度減衰（最低0.9を保証して極端な減速を防ぐ）
+            let decay_factor = (1.0 - drag * delta).max(0.9);
+            velocity.value.x *= decay_factor;
+            velocity.value.z *= decay_factor;
+            // Y速度は重力で制御されるため、空気抵抗は水平方向のみ適用
+        }
+    }
+}
+
+/// ボールスピン時間減衰システム
+/// @spec 30401_trajectory_spec.md#req-30401-101
+///
+/// 飛行中にスピン効果を時間経過で減衰させる。
+/// ball_spin.value *= (1.0 - spin_decay_rate * delta).max(0.0)
+pub fn ball_spin_decay_system(
+    time: Res<Time>,
+    config: Res<GameConfig>,
+    mut query: Query<(&mut BallSpin, &LogicalPosition), With<Ball>>,
+) {
+    let delta = time.delta_secs();
+    let spin_decay_rate = config.spin_physics.spin_decay_rate;
+
+    for (mut ball_spin, logical_pos) in query.iter_mut() {
+        // 空中にある場合のみ減衰
+        if logical_pos.value.y > 0.0 {
+            ball_spin.value *= (1.0 - spin_decay_rate * delta).max(0.0);
         }
     }
 }

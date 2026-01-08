@@ -186,6 +186,7 @@ mod tests {
             ai: AiConfig::default(),
             visual_feedback: VisualFeedbackConfig::default(),
             serve: ServeConfig::default(),
+            spin_physics: SpinPhysicsConfig::default(),
         }
     }
 

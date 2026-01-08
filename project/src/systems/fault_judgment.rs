@@ -328,6 +328,7 @@ mod tests {
             ai: crate::resource::config::AiConfig::default(),
             visual_feedback: crate::resource::config::VisualFeedbackConfig::default(),
             serve: crate::resource::config::ServeConfig::default(),
+            spin_physics: crate::resource::config::SpinPhysicsConfig::default(),
         }
     }
 

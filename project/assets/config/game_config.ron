@@ -85,4 +85,16 @@ GameConfig(
         shot_cooldown: 0.5,
         home_return_stop_distance: 0.3,
     ),
+    // @spec 30401_trajectory_spec.md#req-30401-100
+    // @spec 30401_trajectory_spec.md#req-30401-101
+    // @spec 30401_trajectory_spec.md#req-30401-102
+    // @spec 30402_reflection_spec.md#req-30402-100
+    spin_physics: SpinPhysicsConfig(
+        gravity_spin_factor: 0.3,
+        bounce_spin_horizontal_factor: 0.3,
+        bounce_spin_vertical_factor: 0.2,
+        base_air_drag: 0.0,
+        spin_drag_factor: 0.3,
+        spin_decay_rate: 0.5,
+    ),
 )
