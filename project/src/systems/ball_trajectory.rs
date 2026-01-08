@@ -6,8 +6,10 @@ use bevy::prelude::*;
 
 use crate::components::{Ball, LogicalPosition, Velocity};
 use crate::core::events::{BallOutOfBoundsEvent, GroundBounceEvent, WallReflectionEvent};
-use crate::core::{CourtBounds, WallReflection};
+use crate::core::WallReflection;
 use crate::resource::config::GameConfig;
+
+use super::court_factory::create_court_bounds;
 
 /// ボール軌道プラグイン
 /// @spec 30401_trajectory_spec.md
@@ -115,7 +117,7 @@ pub fn ball_wall_reflection_system(
     mut query: Query<(Entity, &mut Velocity, &mut LogicalPosition), With<Ball>>,
     mut event_writer: MessageWriter<WallReflectionEvent>,
 ) {
-    let bounds = CourtBounds::from_config(&config.court);
+    let bounds = create_court_bounds(&config.court);
     let bounce_factor = config.ball.bounce_factor;
 
     for (entity, mut velocity, mut logical_pos) in query.iter_mut() {
@@ -311,7 +313,7 @@ mod tests {
             net_z: 0.0,
             service_box_depth: 1.5,
         };
-        let bounds = CourtBounds::from_config(&config);
+        let bounds = create_court_bounds(&config);
         let bounce_factor = 0.8_f32;
 
         // 左壁に向かう速度
@@ -344,7 +346,7 @@ mod tests {
             net_z: 0.0,
             service_box_depth: 1.5,
         };
-        let bounds = CourtBounds::from_config(&config);
+        let bounds = create_court_bounds(&config);
         let bounce_factor = 0.8_f32;
 
         // 天井に向かう速度
@@ -377,7 +379,7 @@ mod tests {
             net_z: 0.0,
             service_box_depth: 1.5,
         };
-        let bounds = CourtBounds::from_config(&config);
+        let bounds = create_court_bounds(&config);
         let bounce_factor = 0.8_f32;
 
         // 1P側奥壁に向かう速度
@@ -410,7 +412,7 @@ mod tests {
             net_z: 0.0,
             service_box_depth: 1.5,
         };
-        let bounds = CourtBounds::from_config(&config);
+        let bounds = create_court_bounds(&config);
 
         // 壁をはみ出した位置をクランプ
         let out_x = -6.0_f32;

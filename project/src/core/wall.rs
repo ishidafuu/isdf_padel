@@ -180,19 +180,11 @@ impl WallReflection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::resource::CourtConfig;
 
+    /// テスト用の境界を生成（width=10, depth=6, ceiling=5）
     fn test_bounds() -> CourtBounds {
-        let config = CourtConfig {
-            width: 10.0,
-            depth: 6.0,
-            ceiling_height: 5.0,
-            max_jump_height: 5.0,
-            net_height: 1.0,
-            net_z: 0.0,
-            service_box_depth: 1.5,
-        };
-        CourtBounds::from_config(&config)
+        // left=-5, right=5, back_1p=-3, back_2p=3, ground=0, ceiling=5
+        CourtBounds::new(-5.0, 5.0, -3.0, 3.0, 0.0, 5.0)
     }
 
     /// TST-30504-007: 左右壁の反射

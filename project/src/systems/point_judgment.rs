@@ -359,7 +359,7 @@ mod tests {
     /// @spec 30901_point_judgment_spec.md#req-30901-004
     #[test]
     fn test_req_30901_004_court_bounds() {
-        use crate::core::CourtBounds;
+        use crate::systems::court_factory::create_court_bounds;
         use crate::resource::CourtConfig;
 
         let config = CourtConfig {
@@ -372,7 +372,7 @@ mod tests {
             service_box_depth: 1.5,
         };
 
-        let bounds = CourtBounds::from_config(&config);
+        let bounds = create_court_bounds(&config);
 
         // 境界座標の確認
         assert_eq!(bounds.left, -5.0);

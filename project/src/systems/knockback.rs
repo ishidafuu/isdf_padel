@@ -4,9 +4,10 @@
 use bevy::prelude::*;
 
 use crate::components::{GroundedState, KnockbackState, LogicalPosition, Player, Velocity};
-use crate::core::court::CourtBounds;
 use crate::core::events::{BallHitEvent, PlayerKnockbackEvent};
 use crate::resource::config::GameConfig;
+
+use super::court_factory::create_court_bounds;
 
 /// ふっとばし開始システム
 /// @spec 30203_knockback_spec.md#req-30203-001
@@ -77,7 +78,7 @@ pub fn knockback_movement_system(
         &GroundedState,
     )>,
 ) {
-    let bounds = CourtBounds::from_config(&config.court);
+    let bounds = create_court_bounds(&config.court);
     let delta = time.delta_secs();
 
     for (player, mut logical_pos, mut knockback, mut velocity, grounded) in query.iter_mut() {

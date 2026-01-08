@@ -4,8 +4,9 @@
 use bevy::prelude::*;
 
 use crate::components::{AiController, Ball, KnockbackState, LogicalPosition, Player, Velocity};
-use crate::core::court::CourtBounds;
 use crate::resource::config::GameConfig;
+
+use super::court_factory::create_court_bounds;
 
 /// AI移動システム
 /// @spec 30301_ai_movement_spec.md#req-30301-001
@@ -29,7 +30,7 @@ pub fn ai_movement_system(
     >,
 ) {
     let delta = time.delta_secs();
-    let bounds = CourtBounds::from_config(&config.court);
+    let bounds = create_court_bounds(&config.court);
 
     // ボール位置を取得（存在しなければ何もしない）
     let ball_pos = match ball_query.iter().next() {

@@ -4,9 +4,11 @@
 use bevy::prelude::*;
 
 use crate::components::{KnockbackState, LogicalPosition, Player, Velocity};
-use crate::core::court::{CourtBounds, CourtSide};
+use crate::core::court::CourtSide;
 use crate::core::events::PlayerMoveEvent;
 use crate::resource::config::GameConfig;
+
+use super::court_factory::create_court_bounds;
 
 /// 移動入力リソース（各プレイヤーの入力を保持）
 /// @spec 30201_movement_spec.md
@@ -63,7 +65,7 @@ pub fn movement_system(
     mut query: Query<(&Player, &mut LogicalPosition, &mut Velocity, &KnockbackState)>,
     mut event_writer: MessageWriter<PlayerMoveEvent>,
 ) {
-    let bounds = CourtBounds::from_config(&config.court);
+    let bounds = create_court_bounds(&config.court);
     let delta = time.delta_secs();
 
     for (player, mut logical_pos, mut velocity, knockback) in query.iter_mut() {

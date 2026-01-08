@@ -10,8 +10,6 @@
 //! コートは壁で完全に囲まれており、アウト判定は存在しない。
 //! 失点条件はツーバウンド、ネット、自コート打球のみ。
 
-use crate::resource::CourtConfig;
-
 /// コート区分（1P/2Pのどちら側か）
 /// @spec 30501_court_spec.md#req-30501-006
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -55,18 +53,18 @@ pub struct CourtBounds {
 }
 
 impl CourtBounds {
-    /// CourtConfigから境界情報を生成
+    /// 境界情報を生成
     /// @spec 30501_court_spec.md#req-30501-002
     /// @spec 30501_court_spec.md#req-30501-003
     /// @spec 30501_court_spec.md#req-30501-004
-    pub fn from_config(config: &CourtConfig) -> Self {
+    pub fn new(left: f32, right: f32, back_1p: f32, back_2p: f32, ground: f32, ceiling: f32) -> Self {
         Self {
-            left: -config.width / 2.0,
-            right: config.width / 2.0,
-            back_1p: -config.depth / 2.0,
-            back_2p: config.depth / 2.0,
-            ground: 0.0,
-            ceiling: config.ceiling_height,
+            left,
+            right,
+            back_1p,
+            back_2p,
+            ground,
+            ceiling,
         }
     }
 
@@ -129,13 +127,10 @@ pub struct NetInfo {
 }
 
 impl NetInfo {
-    /// CourtConfigからネット情報を生成
+    /// ネット情報を生成
     /// @spec 30501_court_spec.md#req-30501-005
-    pub fn from_config(config: &CourtConfig) -> Self {
-        Self {
-            z: config.net_z,
-            height: config.net_height,
-        }
+    pub fn new(z: f32, height: f32) -> Self {
+        Self { z, height }
     }
 
     /// 指定位置がネットに衝突するかチェック
@@ -174,12 +169,9 @@ pub struct Court {
 }
 
 impl Court {
-    /// CourtConfigからコート情報を生成
-    pub fn from_config(config: &CourtConfig) -> Self {
-        Self {
-            bounds: CourtBounds::from_config(config),
-            net: NetInfo::from_config(config),
-        }
+    /// コート情報を生成
+    pub fn new(bounds: CourtBounds, net: NetInfo) -> Self {
+        Self { bounds, net }
     }
 
     /// 指定位置のコート区分を判定
@@ -194,23 +186,26 @@ impl Court {
 mod tests {
     use super::*;
 
-    fn test_config() -> CourtConfig {
-        CourtConfig {
-            width: 10.0,
-            depth: 6.0,
-            ceiling_height: 5.0,
-            max_jump_height: 5.0,
-            net_height: 1.0,
-            net_z: 0.0,
-            service_box_depth: 1.5,
-        }
+    /// テスト用の境界を生成（width=10, depth=6, ceiling=5）
+    fn test_bounds() -> CourtBounds {
+        // left=-5, right=5, back_1p=-3, back_2p=3, ground=0, ceiling=5
+        CourtBounds::new(-5.0, 5.0, -3.0, 3.0, 0.0, 5.0)
+    }
+
+    /// テスト用のネット情報を生成（z=0, height=1）
+    fn test_net() -> NetInfo {
+        NetInfo::new(0.0, 1.0)
+    }
+
+    /// テスト用のコート全体を生成
+    fn test_court() -> Court {
+        Court::new(test_bounds(), test_net())
     }
 
     /// TST-30504-001: コート座標系
     #[test]
     fn test_req_30501_001_coordinate_system() {
-        let config = test_config();
-        let court = Court::from_config(&config);
+        let court = test_court();
 
         // X軸: -5.0（左）〜 +5.0（右）
         assert_eq!(court.bounds.left, -5.0);
@@ -228,8 +223,7 @@ mod tests {
     /// TST-30504-002: コート境界（左右）
     #[test]
     fn test_req_30501_002_boundary_x() {
-        let config = test_config();
-        let bounds = CourtBounds::from_config(&config);
+        let bounds = test_bounds();
 
         // 左端: -5.0, 右端: +5.0
         assert!(bounds.is_within_x(0.0));
@@ -242,8 +236,7 @@ mod tests {
     /// TST-30504-003: コート境界（前後）
     #[test]
     fn test_req_30501_003_boundary_z() {
-        let config = test_config();
-        let bounds = CourtBounds::from_config(&config);
+        let bounds = test_bounds();
 
         // 後端（1P側）: -3.0, 後端（2P側）: +3.0
         assert!(bounds.is_within_z(0.0));
@@ -256,8 +249,7 @@ mod tests {
     /// TST-30504-004: コート境界（天井）
     #[test]
     fn test_req_30501_004_boundary_ceiling() {
-        let config = test_config();
-        let bounds = CourtBounds::from_config(&config);
+        let bounds = test_bounds();
 
         // 天井: 5.0
         assert!(bounds.is_within_y(0.0));
@@ -269,8 +261,7 @@ mod tests {
     /// TST-30504-005: ネット位置
     #[test]
     fn test_req_30501_005_net_position() {
-        let config = test_config();
-        let net = NetInfo::from_config(&config);
+        let net = test_net();
 
         // ネット位置: Z = 0.0, 高さ = 1.0
         assert_eq!(net.z, 0.0);
@@ -285,8 +276,7 @@ mod tests {
     /// TST-30504-006: コート区分（1P/2P）
     #[test]
     fn test_req_30501_006_court_side() {
-        let config = test_config();
-        let court = Court::from_config(&config);
+        let court = test_court();
 
         // 1Pコート範囲: Z < 0
         assert_eq!(court.get_court_side(-1.0), CourtSide::Player1);
@@ -309,8 +299,7 @@ mod tests {
 
     #[test]
     fn test_court_bounds_is_inside() {
-        let config = test_config();
-        let bounds = CourtBounds::from_config(&config);
+        let bounds = test_bounds();
 
         // コート中央
         assert!(bounds.is_inside(0.0, 2.5, 0.0));
@@ -327,8 +316,7 @@ mod tests {
 
     #[test]
     fn test_court_bounds_clamp() {
-        let config = test_config();
-        let bounds = CourtBounds::from_config(&config);
+        let bounds = test_bounds();
 
         // クランプ動作
         assert_eq!(bounds.clamp_x(-10.0), -5.0);

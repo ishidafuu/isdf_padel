@@ -4,8 +4,10 @@
 use bevy::prelude::*;
 
 use crate::components::{LogicalPosition, Player, Velocity};
-use crate::core::{CourtBounds, CourtSide, NetHitEvent, NetInfo};
+use crate::core::{CourtSide, NetHitEvent};
 use crate::resource::GameConfig;
+
+use super::court_factory::{create_court, create_court_bounds, create_net_info};
 
 /// 境界システムプラグイン
 pub struct BoundaryPlugin;
@@ -34,8 +36,8 @@ pub fn player_boundary_system(
     config: Res<GameConfig>,
     mut query: Query<(&Player, &mut LogicalPosition, &mut Velocity)>,
 ) {
-    let bounds = CourtBounds::from_config(&config.court);
-    let net = NetInfo::from_config(&config.court);
+    let bounds = create_court_bounds(&config.court);
+    let net = create_net_info(&config.court);
 
     for (player, mut logical_pos, mut velocity) in query.iter_mut() {
         let pos = &mut logical_pos.value;
@@ -183,7 +185,7 @@ mod tests {
     #[test]
     fn test_beh_30503_001_player_side_wall_constraint() {
         let config = test_config();
-        let bounds = CourtBounds::from_config(&config.court);
+        let bounds = create_court_bounds(&config.court);
 
         // 左壁を超えた位置
         let mut pos = Vec3::new(-6.0, 0.0, -1.0);
@@ -205,7 +207,7 @@ mod tests {
     #[test]
     fn test_beh_30503_002_player_back_wall_constraint() {
         let config = test_config();
-        let bounds = CourtBounds::from_config(&config.court);
+        let bounds = create_court_bounds(&config.court);
 
         // 後壁を超えた位置（1P側）
         let mut pos = Vec3::new(0.0, 0.0, -4.0);
@@ -227,7 +229,7 @@ mod tests {
     #[test]
     fn test_beh_30503_003_player_net_constraint() {
         let config = test_config();
-        let net = NetInfo::from_config(&config.court);
+        let net = create_net_info(&config.court);
 
         // 1Pがネットを超えようとしている
         let mut pos = Vec3::new(0.0, 0.0, 0.5);
@@ -250,7 +252,7 @@ mod tests {
     #[test]
     fn test_beh_30503_004_ball_wall_reflection() {
         let config = test_config();
-        let court = Court::from_config(&config.court);
+        let court = create_court(&config.court);
         let bounce_factor = config.ball.bounce_factor;
 
         // 左壁に接触
@@ -268,7 +270,7 @@ mod tests {
     #[test]
     fn test_beh_30503_005_ball_net_collision() {
         let config = test_config();
-        let net = NetInfo::from_config(&config.court);
+        let net = create_net_info(&config.court);
 
         // ネット位置で高さ未満
         let y = 0.5;
@@ -286,7 +288,7 @@ mod tests {
     #[test]
     fn test_beh_30503_006_ball_court_side_detection() {
         let config = test_config();
-        let court = Court::from_config(&config.court);
+        let court = create_court(&config.court);
 
         // 1Pコート側
         assert_eq!(court.get_court_side(-1.0), CourtSide::Player1);
