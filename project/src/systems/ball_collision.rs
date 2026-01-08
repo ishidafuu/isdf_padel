@@ -39,90 +39,149 @@ pub fn ball_player_collision_system(
         return;
     }
 
-    let ball_radius = config.ball.radius;
-    let character_radius = config.collision.character_radius;
-    let z_tolerance = config.collision.z_tolerance;
-    let max_height_diff = config.shot.max_height_diff;
-    let collision_distance = ball_radius + character_radius;
+    let collision_params = CollisionParams::from_config(&config);
 
     for (ball_entity, ball_logical_pos, mut ball_velocity, last_shooter) in ball_query.iter_mut() {
         let ball_pos = ball_logical_pos.value;
         let ball_vel = ball_velocity.value;
 
         // REQ-30403-006: 複数プレイヤー衝突時、最も近いプレイヤー優先
-        let mut closest_collision: Option<(Entity, Vec3, f32)> = None;
-
-        for (player_entity, player_logical_pos, knockback, player) in player_query.iter() {
-            // REQ-30403-003: 無敵状態のプレイヤーは衝突無視
-            if knockback.is_invincible() {
-                continue;
-            }
-
-            // 最後に打ったプレイヤー自身との衝突は無視
-            if last_shooter.side == Some(player.court_side) {
-                info!(
-                    "Skipping collision: last_shooter={:?}, player={:?}",
-                    last_shooter.side, player.court_side
-                );
-                continue;
-            }
-
-            let player_pos = player_logical_pos.value;
-
-            // REQ-30403-001: Z軸許容範囲チェック
-            let z_diff = (ball_pos.z - player_pos.z).abs();
-            if z_diff > z_tolerance {
-                continue;
-            }
-
-            // 高さ方向の打球可能範囲チェック
-            // プレイヤーの位置から上方向にmax_height_diffまで打てる
-            let height_diff = ball_pos.y - player_pos.y;
-            if height_diff < 0.0 || height_diff > max_height_diff {
-                continue;
-            }
-
-            // REQ-30403-001: XZ平面での距離計算（高さは別途チェック済み）
-            let distance_2d = distance_xz(ball_pos, player_pos);
-
-            // 衝突判定
-            if distance_2d <= collision_distance {
-                // 最も近いプレイヤーを記録
-                if closest_collision.is_none() || distance_2d < closest_collision.unwrap().2 {
-                    closest_collision = Some((player_entity, player_pos, distance_2d));
-                }
-            }
-        }
+        let closest = find_closest_collision(
+            ball_pos,
+            last_shooter,
+            &collision_params,
+            &player_query,
+        );
 
         // 最も近いプレイヤーとの衝突を処理
-        if let Some((target_entity, player_pos, _)) = closest_collision {
-            // REQ-30403-002: BallHitEvent 発行
-            let hit_point = ball_pos; // 衝突位置はボールの位置
-            event_writer.write(BallHitEvent {
-                ball_id: ball_entity,
-                target_id: target_entity,
-                ball_velocity: ball_vel,
-                hit_point,
-            });
-
-            // REQ-30403-004: ボール反射（プレイヤー衝突時）
-            // 反射方向: プレイヤー→ボールの方向
-            let reflection_dir = (ball_pos - player_pos).normalize_or_zero();
-
-            // XY平面での反射（Z成分は維持）
-            let speed = ball_vel.length();
-            ball_velocity.value = Vec3::new(
-                reflection_dir.x * speed.abs(),
-                reflection_dir.y * speed.abs(),
-                ball_vel.z, // Z成分は維持
-            );
-
-            info!(
-                "Ball collision with player: ball={:?}, player={:?}, hit_point={:?}",
-                ball_entity, target_entity, hit_point
+        if let Some((target_entity, player_pos)) = closest {
+            process_collision(
+                ball_entity,
+                ball_pos,
+                ball_vel,
+                target_entity,
+                player_pos,
+                &mut ball_velocity,
+                &mut event_writer,
             );
         }
     }
+}
+
+/// 衝突判定に必要なパラメータ
+struct CollisionParams {
+    collision_distance: f32,
+    z_tolerance: f32,
+    max_height_diff: f32,
+}
+
+impl CollisionParams {
+    fn from_config(config: &GameConfig) -> Self {
+        Self {
+            collision_distance: config.ball.radius + config.collision.character_radius,
+            z_tolerance: config.collision.z_tolerance,
+            max_height_diff: config.shot.max_height_diff,
+        }
+    }
+}
+
+/// 最も近い衝突プレイヤーを検索
+/// @spec 30403_collision_spec.md#req-30403-001
+/// @spec 30403_collision_spec.md#req-30403-003
+/// @spec 30403_collision_spec.md#req-30403-006
+fn find_closest_collision(
+    ball_pos: Vec3,
+    last_shooter: &LastShooter,
+    params: &CollisionParams,
+    player_query: &Query<(Entity, &LogicalPosition, &KnockbackState, &Player), With<Player>>,
+) -> Option<(Entity, Vec3)> {
+    let mut closest: Option<(Entity, Vec3, f32)> = None;
+
+    for (player_entity, player_logical_pos, knockback, player) in player_query.iter() {
+        // REQ-30403-003: 無敵状態のプレイヤーは衝突無視
+        if knockback.is_invincible() {
+            continue;
+        }
+
+        // 最後に打ったプレイヤー自身との衝突は無視
+        if last_shooter.side == Some(player.court_side) {
+            info!(
+                "Skipping collision: last_shooter={:?}, player={:?}",
+                last_shooter.side, player.court_side
+            );
+            continue;
+        }
+
+        let player_pos = player_logical_pos.value;
+
+        // 衝突条件をチェック
+        if !is_collision_candidate(ball_pos, player_pos, params) {
+            continue;
+        }
+
+        // XZ平面での距離計算
+        let distance_2d = distance_xz(ball_pos, player_pos);
+
+        // 衝突判定 & 最も近いプレイヤーを記録
+        if distance_2d <= params.collision_distance {
+            if closest.is_none() || distance_2d < closest.unwrap().2 {
+                closest = Some((player_entity, player_pos, distance_2d));
+            }
+        }
+    }
+
+    closest.map(|(entity, pos, _)| (entity, pos))
+}
+
+/// 衝突候補かどうかをチェック（Z軸・高さ方向）
+/// @spec 30403_collision_spec.md#req-30403-001
+#[inline]
+fn is_collision_candidate(ball_pos: Vec3, player_pos: Vec3, params: &CollisionParams) -> bool {
+    // Z軸許容範囲チェック
+    let z_diff = (ball_pos.z - player_pos.z).abs();
+    if z_diff > params.z_tolerance {
+        return false;
+    }
+
+    // 高さ方向の打球可能範囲チェック
+    let height_diff = ball_pos.y - player_pos.y;
+    height_diff >= 0.0 && height_diff <= params.max_height_diff
+}
+
+/// 衝突処理（イベント発行・ボール反射）
+/// @spec 30403_collision_spec.md#req-30403-002
+/// @spec 30403_collision_spec.md#req-30403-004
+fn process_collision(
+    ball_entity: Entity,
+    ball_pos: Vec3,
+    ball_vel: Vec3,
+    target_entity: Entity,
+    player_pos: Vec3,
+    ball_velocity: &mut Velocity,
+    event_writer: &mut MessageWriter<BallHitEvent>,
+) {
+    // REQ-30403-002: BallHitEvent 発行
+    let hit_point = ball_pos;
+    event_writer.write(BallHitEvent {
+        ball_id: ball_entity,
+        target_id: target_entity,
+        ball_velocity: ball_vel,
+        hit_point,
+    });
+
+    // REQ-30403-004: ボール反射（プレイヤー衝突時）
+    let reflection_dir = (ball_pos - player_pos).normalize_or_zero();
+    let speed = ball_vel.length();
+    ball_velocity.value = Vec3::new(
+        reflection_dir.x * speed.abs(),
+        reflection_dir.y * speed.abs(),
+        ball_vel.z, // Z成分は維持
+    );
+
+    info!(
+        "Ball collision with player: ball={:?}, player={:?}, hit_point={:?}",
+        ball_entity, target_entity, hit_point
+    );
 }
 
 /// XZ平面での2点間距離を計算（水平距離、高さは無視）
