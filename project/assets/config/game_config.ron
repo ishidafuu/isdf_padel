@@ -6,23 +6,23 @@ GameConfig(
         max_fall_speed: -10.0,
     ),
     court: CourtConfig(
-        width: 6.0,
-        depth: 12.0,
-        ceiling_height: 5.0,
+        width: 12.0,
+        depth: 16.0,
+        ceiling_height: 100.0,
         max_jump_height: 5.0,
         net_height: 1.0,
         net_z: 0.0,
         service_box_depth: 5.0,
     ),
     player: PlayerConfig(
-        move_speed: 2.0,
-        move_speed_z: 2.5,
-        max_speed: 4.0,
+        move_speed: 3.0,
+        move_speed_z: 4.0,
+        max_speed: 5.0,
         jump_force: 3.0,
         friction: 0.9,
         air_control_factor: 0.5,
-        z_min: -6.0,
-        z_max: 6.0,
+        z_min: -8.0,
+        z_max: 8.0,
     ),
     ball: BallConfig(
         normal_shot_speed: 3.0,
@@ -79,9 +79,9 @@ GameConfig(
     // @spec 30301_ai_movement_spec.md
     // @spec 30302_ai_shot_spec.md
     ai: AiConfig(
-        move_speed: 3.5,
+        move_speed: 4.5,
         home_position_x: 0.0,
-        home_position_z: 5.0,
+        home_position_z: 7.0,
         shot_cooldown: 0.5,
         home_return_stop_distance: 0.3,
     ),

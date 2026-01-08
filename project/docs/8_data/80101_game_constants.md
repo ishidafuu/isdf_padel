@@ -1,6 +1,6 @@
 # Game Constants
 
-**Version**: 3.0.0
+**Version**: 3.1.0
 **Last Updated**: 2026-01-08
 **Status**: Active
 
@@ -66,9 +66,9 @@ velocity.y += config.physics.gravity * time.delta_secs();
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| width | f32 | 10.0 | コート幅（m）- サイドライン境界 |
-| depth | f32 | 6.0 | コート奥行き（m）- ベースライン境界 |
-| ~~ceiling_height~~ | ~~f32~~ | ~~5.0~~ | ~~天井高さ（m）~~ **廃止: テニスでは天井なし** |
+| width | f32 | 12.0 | コート幅（m）- サイドライン境界 |
+| depth | f32 | 16.0 | コート奥行き（m）- ベースライン境界（各コート側8.0m） |
+| ceiling_height | f32 | 100.0 | 天井高さ（m）- 事実上無効（テニスでは天井なし） |
 | max_jump_height | f32 | 5.0 | 最大ジャンプ高さ（m）- ジャンプ制限用 |
 | net_height | f32 | 0.88 | ネット高さ（m）- テニス規格 |
 | net_z | f32 | 0.0 | ネットのZ座標位置（m） |
@@ -92,9 +92,9 @@ pub struct CourtConfig {
     pub net_z: f32,
 }
 
-fn default_court_width() -> f32 { 10.0 }
-fn default_court_depth() -> f32 { 6.0 }
-fn default_ceiling_height() -> f32 { 5.0 }
+fn default_court_width() -> f32 { 12.0 }
+fn default_court_depth() -> f32 { 16.0 }
+fn default_ceiling_height() -> f32 { 100.0 }
 fn default_max_jump_height() -> f32 { 5.0 }
 fn default_net_height() -> f32 { 1.0 }
 fn default_net_z() -> f32 { 0.0 }
@@ -120,8 +120,8 @@ if ball_pos.y < config.court.net_height && ball_pos.z == config.court.net_z { ..
 | jump_force | f32 | 8.0 | ジャンプ初速（m/s、上向き） |
 | friction | f32 | 0.9 | 地上摩擦係数（0.0～1.0） |
 | air_control_factor | f32 | 0.5 | 空中制御係数（0.0～1.0） |
-| z_min | f32 | -3.0 | Z軸最小値（m） |
-| z_max | f32 | 3.0 | Z軸最大値（m） |
+| z_min | f32 | -8.0 | Z軸最小値（m） |
+| z_max | f32 | 8.0 | Z軸最大値（m） |
 
 ```rust
 #[derive(Deserialize, Clone, Debug)]
@@ -150,8 +150,8 @@ fn default_max_speed() -> f32 { 10.0 }
 fn default_jump_force() -> f32 { 8.0 }
 fn default_friction() -> f32 { 0.9 }
 fn default_air_control() -> f32 { 0.5 }
-fn default_z_min() -> f32 { -3.0 }
-fn default_z_max() -> f32 { 3.0 }
+fn default_z_min() -> f32 { -8.0 }
+fn default_z_max() -> f32 { 8.0 }
 ```
 
 **使用例**:
@@ -475,9 +475,9 @@ GameConfig(
         max_fall_speed: -20.0,
     ),
     court: CourtConfig(
-        width: 10.0,
-        depth: 6.0,
-        ceiling_height: 5.0,
+        width: 12.0,
+        depth: 16.0,
+        ceiling_height: 100.0,
         max_jump_height: 5.0,
         net_height: 1.0,
         net_z: 0.0,
@@ -489,8 +489,8 @@ GameConfig(
         jump_force: 8.0,
         friction: 0.9,
         air_control_factor: 0.5,
-        z_min: -3.0,
-        z_max: 3.0,
+        z_min: -8.0,
+        z_max: 8.0,
     ),
     ball: BallConfig(
         normal_shot_speed: 10.0,
@@ -741,6 +741,16 @@ spin_physics: SpinPhysicsConfig(
 ---
 
 ## Change Log
+
+### 2026-01-08 - v3.1.0（コートサイズ調整）
+
+- **Court Config**: テニス用ゲームサイズに調整
+  - width: 10.0 → 12.0m
+  - depth: 6.0 → 16.0m（各コート側8.0m）
+  - ceiling_height: 5.0 → 100.0m（事実上無効）
+- **Player Config**: コートサイズに合わせて移動範囲を調整
+  - z_min: -3.0 → -8.0m
+  - z_max: 3.0 → 8.0m
 
 ### 2026-01-08 - v3.0.0（テニスへ変更）
 
