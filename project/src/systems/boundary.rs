@@ -25,15 +25,14 @@ impl Plugin for BoundaryPlugin {
 }
 
 /// プレイヤー境界制限システム
-/// @spec 30503_boundary_behavior.md#beh-30503-001
-/// @spec 30503_boundary_behavior.md#beh-30503-002
 /// @spec 30503_boundary_behavior.md#beh-30503-003
 ///
 /// 新座標系: X=打ち合い方向, Y=高さ, Z=コート幅
-/// プレイヤーがコート境界を超えないように制限する。
-/// - 左右壁: Position.Z を境界内にクランプ、Velocity.Z = 0（コート幅方向）
-/// - 前後壁: Position.X を境界内にクランプ、Velocity.X = 0（打ち合い方向）
-/// - ネット: 自コート側に制限
+/// NOTE: B30201-002 でコート外移動を許可
+/// - 左右壁制限(BEH-30503-001): 削除（コート外移動許可）
+/// - 前後壁制限(BEH-30503-002): 削除（コート外移動許可）
+/// - ネット: 自コート側に制限（維持）
+/// - 天井・地面: 物理制限（維持）
 pub fn player_boundary_system(
     config: Res<GameConfig>,
     mut query: Query<(&Player, &mut LogicalPosition, &mut Velocity)>,
@@ -44,30 +43,13 @@ pub fn player_boundary_system(
     for (player, mut logical_pos, mut velocity) in query.iter_mut() {
         let pos = &mut logical_pos.value;
 
-        // BEH-30503-001: 左右壁制限（Z軸=コート幅方向）
-        if pos.z < bounds.left {
-            pos.z = bounds.left;
-            if velocity.value.z < 0.0 {
-                velocity.value.z = 0.0;
-            }
-        } else if pos.z > bounds.right {
-            pos.z = bounds.right;
-            if velocity.value.z > 0.0 {
-                velocity.value.z = 0.0;
-            }
-        }
+        // NOTE: B30201-002 で左右壁制限(BEH-30503-001)を削除（コート外移動許可）
+        // NOTE: B30201-002 で前後壁制限(BEH-30503-002)を削除（コート外移動許可）
 
-        // BEH-30503-002: 前後壁制限（X軸=打ち合い方向）
+        // BEH-30503-003: ネット通過禁止（維持）
         match player.court_side {
             CourtSide::Player1 => {
-                // 1Pは X < net_x の範囲（-X側）
-                if pos.x < bounds.back_1p {
-                    pos.x = bounds.back_1p;
-                    if velocity.value.x < 0.0 {
-                        velocity.value.x = 0.0;
-                    }
-                }
-                // BEH-30503-003: ネット通過禁止（1Pは net_x 未満）
+                // 1Pは net_x を超えられない
                 if pos.x > net.x {
                     pos.x = net.x;
                     if velocity.value.x > 0.0 {
@@ -76,14 +58,7 @@ pub fn player_boundary_system(
                 }
             }
             CourtSide::Player2 => {
-                // 2Pは X > net_x の範囲（+X側）
-                if pos.x > bounds.back_2p {
-                    pos.x = bounds.back_2p;
-                    if velocity.value.x > 0.0 {
-                        velocity.value.x = 0.0;
-                    }
-                }
-                // BEH-30503-003: ネット通過禁止（2Pは net_x 超過）
+                // 2Pは net_x 未満にいけない
                 if pos.x < net.x {
                     pos.x = net.x;
                     if velocity.value.x < 0.0 {
@@ -192,49 +167,8 @@ mod tests {
         }
     }
 
-    /// TST-30504-011: プレイヤーの左右壁制限（Z軸=コート幅方向）
-    #[test]
-    fn test_beh_30503_001_player_side_wall_constraint() {
-        let config = test_config();
-        let bounds = create_court_bounds(&config.court);
-
-        // 左壁を超えた位置（Z軸方向）
-        let mut pos = Vec3::new(0.0, 0.0, -6.0);
-        let mut vel = Vec3::new(0.0, 0.0, -5.0);
-
-        // 制限適用
-        if pos.z < bounds.left {
-            pos.z = bounds.left;
-            if vel.z < 0.0 {
-                vel.z = 0.0;
-            }
-        }
-
-        assert_eq!(pos.z, -5.0); // 境界にクランプ
-        assert_eq!(vel.z, 0.0); // 壁方向の速度を0に
-    }
-
-    /// TST-30504-012: プレイヤーの前後壁制限（X軸=打ち合い方向）
-    #[test]
-    fn test_beh_30503_002_player_back_wall_constraint() {
-        let config = test_config();
-        let bounds = create_court_bounds(&config.court);
-
-        // 後壁を超えた位置（1P側、-X方向）
-        let mut pos = Vec3::new(-4.0, 0.0, 0.0);
-        let mut vel = Vec3::new(-5.0, 0.0, 0.0);
-
-        // 制限適用
-        if pos.x < bounds.back_1p {
-            pos.x = bounds.back_1p;
-            if vel.x < 0.0 {
-                vel.x = 0.0;
-            }
-        }
-
-        assert_eq!(pos.x, -3.0); // 境界にクランプ
-        assert_eq!(vel.x, 0.0); // 壁方向の速度を0に
-    }
+    // NOTE: B30201-002 で BEH-30503-001（左右壁制限）を削除（コート外移動許可）
+    // NOTE: B30201-002 で BEH-30503-002（前後壁制限）を削除（コート外移動許可）
 
     /// TST-30504-013: プレイヤーのネット通過禁止（X軸=打ち合い方向）
     #[test]

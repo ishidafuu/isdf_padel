@@ -7,14 +7,12 @@ use crate::components::{AiController, Ball, KnockbackState, LogicalPosition, Pla
 use crate::core::court::CourtSide;
 use crate::resource::config::GameConfig;
 
-use super::court_factory::create_court_bounds;
-
 /// AI移動システム
 /// @spec 30301_ai_movement_spec.md#req-30301-001
 /// @spec 30301_ai_movement_spec.md#req-30301-002
 /// @spec 30301_ai_movement_spec.md#req-30301-003
-/// @spec 30301_ai_movement_spec.md#req-30301-004
 /// @spec 30301_ai_movement_spec.md#req-30301-005
+/// NOTE: B30201-002 で境界制限(REQ-30301-004)を削除（コート外移動許可）
 pub fn ai_movement_system(
     time: Res<Time>,
     config: Res<GameConfig>,
@@ -31,7 +29,6 @@ pub fn ai_movement_system(
     >,
 ) {
     let delta = time.delta_secs();
-    let bounds = create_court_bounds(&config.court);
 
     // ボール位置を取得（存在しなければ何もしない）
     let ball_pos = match ball_query.iter().next() {
@@ -96,28 +93,9 @@ pub fn ai_movement_system(
         velocity.value.z = target_velocity.z;
 
         // 位置更新
-        let mut new_position = ai_pos + target_velocity * delta;
-
-        // REQ-30301-004: 境界制限
-        // X軸（打ち合い方向）: プレイヤーの自コート半分に制限
-        let (x_min, x_max) = get_ai_x_bounds(player.court_side, &config);
-        new_position.x = new_position.x.clamp(x_min, x_max);
-
-        // Z軸（コート幅）: コート全体の幅に制限
-        new_position.z = bounds.clamp_z(new_position.z);
-
+        // NOTE: B30201-002 で境界制限を削除（コート外移動許可）
+        let new_position = ai_pos + target_velocity * delta;
         logical_pos.value = new_position;
-    }
-}
-
-/// AIプレイヤーのX軸境界を取得（打ち合い方向）
-/// @spec 30301_ai_movement_spec.md#req-30301-004
-fn get_ai_x_bounds(court_side: CourtSide, config: &GameConfig) -> (f32, f32) {
-    match court_side {
-        // Player 1: 1Pコート側（-X側、ネットまで）
-        CourtSide::Player1 => (config.player.x_min, 0.0),
-        // Player 2: 2Pコート側（+X側、ネットから）
-        CourtSide::Player2 => (0.0, config.player.x_max),
     }
 }
 

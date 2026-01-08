@@ -5,20 +5,17 @@
 use bevy::prelude::*;
 
 use crate::components::{AiController, InputState, KnockbackState, LogicalPosition, Player, Velocity};
-use crate::core::court::CourtSide;
 use crate::core::events::PlayerMoveEvent;
 use crate::resource::config::GameConfig;
-
-use super::court_factory::create_court_bounds;
 
 /// プレイヤー移動システム
 /// @spec 30201_movement_spec.md#req-30201-001
 /// @spec 30201_movement_spec.md#req-30201-002
 /// @spec 30201_movement_spec.md#req-30201-003
-/// @spec 30201_movement_spec.md#req-30201-004
 /// @spec 30201_movement_spec.md#req-30201-005
 /// @spec 30201_movement_spec.md#req-30201-006
 /// @spec 20006_input_system.md - InputState 対応
+/// NOTE: B30201-002 で境界制限(REQ-30201-004)を削除（コート外移動許可）
 pub fn movement_system(
     time: Res<Time>,
     config: Res<GameConfig>,
@@ -28,7 +25,6 @@ pub fn movement_system(
     >,
     mut event_writer: MessageWriter<PlayerMoveEvent>,
 ) {
-    let bounds = create_court_bounds(&config.court);
     let delta = time.delta_secs();
 
     for (player, mut logical_pos, mut velocity, knockback, input_state) in query.iter_mut() {
@@ -81,18 +77,9 @@ pub fn movement_system(
         velocity.value.z = final_velocity.z;
 
         // 位置更新（論理座標を操作）
+        // NOTE: B30201-002 で境界制限を削除（コート外移動許可）
         let old_position = logical_pos.value;
-        let mut new_position = old_position + final_velocity * delta;
-
-        // REQ-30201-004: 境界でのクランプ
-        // X軸（打ち合い方向）: プレイヤーの自コート半分に制限
-        let (x_min, x_max) = get_player_x_bounds(player.court_side, &config);
-        new_position.x = new_position.x.clamp(x_min, x_max);
-
-        // Z軸（コート幅）: コート全体の幅に制限
-        new_position.z = bounds.clamp_z(new_position.z);
-
-        // 位置更新
+        let new_position = old_position + final_velocity * delta;
         logical_pos.value = new_position;
 
         // REQ-30201-006: 位置が変化した場合のみイベント発行
@@ -103,18 +90,6 @@ pub fn movement_system(
                 velocity: final_velocity,
             });
         }
-    }
-}
-
-/// プレイヤーごとのX軸境界を取得（打ち合い方向）
-/// @spec 30201_movement_spec.md#req-30201-002
-fn get_player_x_bounds(court_side: CourtSide, config: &GameConfig) -> (f32, f32) {
-    let net_x = config.court.net_x;
-    match court_side {
-        // Player 1: 1Pコート側（-X側、ネットまで）
-        CourtSide::Player1 => (config.player.x_min, net_x),
-        // Player 2: 2Pコート側（+X側、ネットから）
-        CourtSide::Player2 => (net_x, config.player.x_max),
     }
 }
 
@@ -136,23 +111,5 @@ mod tests {
         assert!((normalized.length() - 1.0).abs() < 0.001);
     }
 
-    /// 境界クランプテスト（X軸=打ち合い方向）
-    #[test]
-    fn test_x_bounds_player1() {
-        // Player 1 は -X 側（1Pコート、ネットまで）
-        let (x_min, x_max) = (-8.0_f32, 0.0_f32);
-        let test_x = 1.0_f32; // +X側に出ようとする
-        let clamped = test_x.clamp(x_min, x_max);
-        assert_eq!(clamped, 0.0); // ネット位置で止まる
-    }
-
-    /// 境界クランプテスト（X軸=打ち合い方向）
-    #[test]
-    fn test_x_bounds_player2() {
-        // Player 2 は +X 側（2Pコート、ネットから）
-        let (x_min, x_max) = (0.0_f32, 8.0_f32);
-        let test_x = -1.0_f32; // -X側に出ようとする
-        let clamped = test_x.clamp(x_min, x_max);
-        assert_eq!(clamped, 0.0); // ネット位置で止まる
-    }
+    // NOTE: B30201-002 で境界クランプテストを削除（コート外移動許可）
 }
