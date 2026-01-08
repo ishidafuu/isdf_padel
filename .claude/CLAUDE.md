@@ -14,109 +14,32 @@ spec-driven-framework/          (リポジトリルート)
 │   ├── agents/                 # エージェント定義（20種）
 │   ├── commands/               # スラッシュコマンド
 │   └── skills/                 # スキルファイル
-├── docs/                       # フレームワークドキュメント
-│   ├── tutorials/              # クイックスタート
-│   ├── concepts/               # 概念説明（エージェント、タスク等）
-│   ├── reference/              # 仕様・ツールリファレンス
-│   ├── guides/                 # 実践ガイド（レガシーコード解析等）
-│   └── index.md                # ★ ドキュメント索引（困った時はここ）
-├── tasks/                      # ★ フレームワーク開発タスク（FXXX）
-│   ├── .taskrc.yaml            # フレームワークタスク設定
-│   ├── 1_todo/                 # 未着手タスク
-│   ├── 2_in-progress/          # 実装中タスク
-│   ├── 3_in-review/            # レビュー中タスク
-│   └── 4_archive/              # 完了・キャンセル済みタスク
-│
-└── project/                    # ★★ ゲーム開発エリア
+├── docs/                       # フレームワークドキュメント（詳細は docs/index.md）
+├── tasks/                      # フレームワーク開発タスク（FXXX）
+└── project/                    # ゲーム開発エリア
     ├── docs/                   # ゲーム仕様書（番号体系適用）
-    │   ├── 1_project/          # プロジェクト定義
-    │   ├── 2_architecture/     # アーキテクチャ定義
-    │   ├── 3_ingame/           # インゲーム機能
-    │   ├── 4_outgame/          # アウトゲーム機能
-    │   ├── 8_data/             # データ定義
-    │   └── 9_reference/        # 参照資料（レガシーコード解析等）
     ├── src/                    # ゲームコード
     ├── tests/                  # テストコード
-    └── tasks/                  # ★ ゲーム開発・プロジェクト横断タスク（30XXX/PXXX）
-        ├── .taskrc.yaml        # プロジェクトタスク設定
-        ├── 1_todo/             # 未着手タスク
-        ├── 2_in-progress/      # 実装中タスク
-        ├── 3_in-review/        # レビュー中タスク
-        └── 4_archive/          # 完了・キャンセル済みタスク
+    └── tasks/                  # ゲーム開発タスク（30XXX/PXXX）
 ```
 
-**作業対象の区別：**
-- **ゲーム開発** → `project/` 配下を操作
-- **フレームワーク推敲** → `docs/`, `.claude/agents/`, `.claude/commands/`, `.claude/skills/` を操作
+**作業対象**: ゲーム開発 → `project/` 配下 / フレームワーク → `docs/`, `.claude/`
 
 ## 必ず守るルール（CRITICAL）
 
 ### 0. タスクタイプ別ワークフロー（CRITICAL）
 
-**タスクタイプによってワークフローが異なる。**
-
-#### ゲーム開発（30XXX）: 仕様書駆動
-
-```
-ユーザー: 「ジャンプ機能を作りたい」
-  ↓
-仕様書作成（spec-agent 参照）
-  - 要件定義（EARS記法）
-  - データ定義
-  - 仕様書完成・コミット
-  ↓
-タスク作成
-  - 仕様書から実装タスクを抽出
-  - 30XXX-機能名.md を作成
-  ↓
-実装（impl-agent 参照）
-```
-
-**ポイント**: 仕様書が「計画」の役割を果たすため、プランモードは不要
-
-#### バグ修正・リファクタ・フレームワーク・プロジェクト横断: プランモード経由
-
-```
-ユーザー: 「バグを修正したい」「ドキュメントを更新したい」
-  ↓
-プランモードでプラン作成
-  ↓
-プランファイル保存（~/.claude/plans/xxx.md）
-  ↓
-「プランからタスクを作成して」
-  ↓
-タスク登録（task-registration-agent.md 参照）
-  ↓
-実装
-```
-
-**ポイント**: 既存コードの修正・改善計画を立ててからタスク化
-
-#### タスクタイプ別まとめ
-
 | タスクタイプ | ワークフロー | 理由 |
 |-------------|-------------|------|
 | **ゲーム開発（30XXX）** | 仕様書作成 → タスク作成 → 実装 | 仕様書駆動が原則 |
-| **バグ修正（B30XXX）** | プランモード → タスク作成 → 実装 | 既存コードの修正計画 |
-| **リファクタ（R30XXX）** | プランモード → タスク作成 → 実装 | 既存コードの改善計画 |
-| **フレームワーク（FXXX）** | プランモード → タスク作成 → 実装 | 設計変更の計画 |
-| **プロジェクト横断（PXXX）** | プランモード → タスク作成 → 実装 | インフラ等の計画 |
+| **バグ修正（B30XXX）** | プランモード → タスク作成 → 実装 | 既存コードの修正 |
+| **リファクタ（R30XXX）** | プランモード → タスク作成 → 実装 | 既存コードの改善 |
+| **フレームワーク（FXXX）** | プランモード → タスク作成 → 実装 | 設計変更 |
+| **プロジェクト横断（PXXX）** | プランモード → タスク作成 → 実装 | インフラ等 |
 
-**共通原則:**
-- タスク駆動により作業の追跡可能性を確保
-- worktree/ブランチの自動管理による競合回避
-- 作業の開始・終了が明確になる
+**共通原則**: タスク駆動で作業追跡、worktree/ブランチ自動管理
 
-**エージェント定義の位置づけ:**
-```
-エージェント定義（.claude/agents/*.md）= 処理ガイドライン
-
-- 専門知識・処理フローを定義したドキュメント
-- メイン Claude Code が参照しながら直接実行する
-- Task tool で起動する「実行者」ではない
-```
-
-詳細: [クイックスタート](docs/tutorials/quickstart.md)、[タスク管理ガイド](docs/concepts/tasks.md)
+**エージェント定義**: `.claude/agents/*.md` = 処理ガイドライン（メインが参照して直接実行）
 
 ### 1. 仕様書駆動原則
 
@@ -131,11 +54,7 @@ spec-driven-framework/          (リポジトリルート)
 
 ### 2. test.md は作成しない（CRITICAL）
 
-**理由**: 仕様書が唯一の真実の源（Single Source of Truth）
-
-- ✅ **仕様書（spec.md）**: 要件を記述（EARS記法）
-- ✅ **実装テスト（tests/）**: 実装が仕様を満たすか検証、テスト名に REQ-ID を含める
-- ❌ **test.md**: 作成しない（冗長・メンテナンスコスト増）
+仕様書が唯一の真実の源（Single Source of Truth）。test.md は冗長なため作成禁止。
 
 ### 3. ハードコーディング禁止原則（CRITICAL）
 
@@ -149,320 +68,70 @@ velocity.y += -9.8 * time.delta_secs();  // 重力値をハードコーディン
 velocity.y += config.physics.gravity * time.delta_secs();
 ```
 
-**対象**: 物理パラメータ、移動パラメータ、サイズ、時間、ゲームバランス値など
-**配置**: `project/docs/8_data/` に定義 → RON ファイル（`.ron`）
+**対象**: 物理/移動パラメータ、サイズ、時間、ゲームバランス値など → `project/docs/8_data/` → `.ron`
 
 ### 4. ECS設計原則（CRITICAL）
 
-**ゲームオブジェクトの状態は必ずエンティティ/コンポーネントで管理する。固定識別子は絶対に使わない。**
-
-#### 禁止パターン
+**ゲームオブジェクトの状態は必ずエンティティ/コンポーネントで管理。固定識別子は絶対禁止。**
 
 ```rust
-// ❌ 固定識別子をフィールド名に埋め込む
-pub struct ShotButtonState {
-    pub player1_holding: bool,  // player1_ という固定識別子
-    pub player2_holding: bool,
-}
+// ❌ 禁止: 固定識別子をフィールド名に埋め込む
+pub struct ShotButtonState { pub player1_holding: bool, pub player2_holding: bool }
 
-// ❌ 固定識別子で分岐する
+// ❌ 禁止: 固定識別子で分岐
 match player.id { 1 => ..., 2 => ... }
 
-// ❌ ゲームオブジェクトの状態をリソースで管理
-#[derive(Resource)]
-pub struct PlayerStates { ... }  // 複数プレイヤーの状態をリソースに
+// ❌ 禁止: ゲームオブジェクトの状態をリソースで管理
+#[derive(Resource)] pub struct PlayerStates { ... }
 ```
 
-#### 正しいパターン
-
-```rust
-// ✅ 状態はエンティティごとのコンポーネント
-#[derive(Component)]
-pub struct InputState { pub holding: bool, pub hold_time: f32 }
-
-// ✅ 振る舞いの違いはマーカーコンポーネントで区別
-#[derive(Component)]
-pub struct HumanControlled { pub device_id: usize }
-
-#[derive(Component)]
-pub struct AiControlled;
-
-// ✅ リソースは「グローバルに1つだけ存在するもの」にのみ使用
-#[derive(Resource)]
-pub struct GameConfig { ... }  // 設定値（1つだけ）
-```
-
-#### 判断基準
-
-| 対象 | 管理方法 |
-|------|---------|
-| ゲームオブジェクトの状態（位置、入力、HP等） | **Component** |
-| 振る舞いの種別（人間/AI、敵/味方等） | **Marker Component** |
-| グローバルに1つだけ存在するもの（設定、時間等） | **Resource** |
-
-**違反時の問題**: エンティティ数の変更不可、動的な振る舞い切替不可、テスト困難
+**正解**: 状態は Component、振る舞いの違いは Marker Component、グローバル1つのみ Resource
 
 ### 5. 1タスク=1コミット原則
 
-**1つのタスクは1つのコミットにまとめる**
-
-- **game-dev（30XXX）**: worktree でスカッシュマージ → 1コミット
-- **framework/project-wide（FXXX/PXXX）**: 実装 → git add（ステージングのみ）→ タスクDONE処理 → git add → まとめて1コミット
-
-**フロー（framework/project-wide）:**
-```
-実装作業 → git add（ステージングのみ、コミットしない）
-   ↓
-タスクDONE処理（status更新、archive移動）
-   ↓
-git add（タスクファイルも追加）
-   ↓
-まとめて1コミット
-```
+1つのタスクは1つのコミットにまとめる（worktree: スカッシュマージ / FXXX: ステージング → DONE → 1コミット）
 
 ### 6. フェーズ管理（MVP/バージョン管理）
 
-**仕様書には全バージョンの要件を記載し、実装スコープは別途管理する**
-
-- 仕様書は「Core Requirements (MVP v0.1)」「Extended Requirements (v0.2)」でセクション分離
-- 実装時は `30009_mvp_scope.md` で対象 REQ-ID を確認
-- **impl-agent は MVP 範囲外の要件を実装しない**
-
-詳細: [docs/reference/framework-spec.md#フェーズ管理](docs/reference/framework-spec.md#フェーズ管理mvpバージョン管理)
-
-## クイックリファレンス
-
-### 困った時の参照先
-
-| 目的 | ドキュメント |
-|------|-------------|
-| **今すぐ開発を始めたい** | [クイックスタート](docs/tutorials/quickstart.md)（20分） |
-| **どのエージェントを使うか迷っている** | [エージェントガイド](docs/concepts/agents.md)（10分） |
-| **完全な仕様を見たい** | [フレームワーク仕様書](docs/reference/framework-spec.md)（60分） |
-| **仕様書の書き方を知りたい** | [仕様書執筆ガイド](docs/reference/spec-writing-guide.md)（40分） |
-| **コマンド・Skills一覧** | [ツールリファレンス](docs/reference/tools-reference.md)（20分） |
-| **番号体系の計算方法** | [番号体系](docs/reference/framework-spec.md#番号体系) |
-| **設計判断の理由を知りたい** | [設計判断集](docs/reference/design-decisions.md)（30分） |
-| **レガシーコードを解析したい** | [レガシーコード解析ガイド](docs/guides/legacy-code-analysis.md)（30分） |
-
-**迷ったら**: [docs/index.md](docs/index.md) を参照（ドキュメント索引）
-
-### 処理ガイドライン（旧エージェント）
-
-`.claude/agents/` にある各ファイルは **処理ガイドライン** です。
-メイン Claude Code がこれらを参照しながら直接ツールを実行します。
-
-詳細は [エージェントガイド](docs/concepts/agents.md) を参照。
-
-| フェーズ | ガイドライン |
-|---------|-------------|
-| 初期化 | 🔧 setup-agent |
-| 要件策定 | 💬 requirements-agent → 📋 spec-agent → 🔍 critic-agent |
-| モジュール設計 | 🧩 module-design-agent |
-| 詳細設計 | 🏗️ design-agent → ⚙️ behavior-agent → 🧪 test-agent |
-| タスク管理 | 📝 task-registration-agent, 🗂️ task-manager-agent |
-| 実装 | 💻 impl-agent → ✅ review-agent |
-| 横断 | 🏛️ architecture-agent, 🔗 deps-agent, 📊 data-agent, ♻️ refactor-agent |
-| 監査 | 🔍 audit-agent |
-| 並列セッション管理 | 🎯 session-manager-agent |
-| 参照資料 | 🔬 legacy-analyzer-agent, 🎮 game-reference-agent |
-
-**注意**: これらは Task tool で起動する「実行者」ではなく、メインが参照する「ガイドライン」です。
-
-### コマンド設計思想
-
-**原則**: 人間はコマンドを直接使わない。メインがガイドラインに従って自動的に使う。
-
-```
-人間: 「プレイヤーの仕様を作って」← 意図を伝えるだけ
-  ↓
-メイン Claude Code: ガイドラインを参照してツールを実行
-  • /id-next で自動採番
-  • /docs-validate で自動検証
-  • /deps-check で自動チェック
-  ↓
-結果: 整合性が保たれた仕様書
-```
-
-詳細: [コマンドREADME](.claude/commands/README.md)、[ツールリファレンス](docs/reference/tools-reference.md)
-
-### 人間専用コマンド（2個）
-
-| コマンド | 説明 | 使用タイミング |
-|---------|------|--------------|
-| `/handover [--task <id>]` | タスクファイルに引き継ぎ情報を記録 | セッション終了前 |
-| `/resume-handover [--task <id>]` | タスクファイルからセッションを再開 | セッション開始時 |
+仕様書は「Core Requirements (MVP)」「Extended Requirements」でセクション分離。実装時は `30009_mvp_scope.md` で対象 REQ-ID を確認。
 
 ## 並列セッション実行（IMPORTANT）
 
-**このプロジェクトは複数 Claude Code セッションの同時実行を想定しています。**
-**session-manager-agent が事前準備とマージ調整を行います。**
-
-### 並列実行ポリシー（CRITICAL）
-
-**並列実行は実装フェーズでのみ推奨。仕様策定・設計フェーズは順次実行を推奨。**
+**並列実行は実装フェーズでのみ推奨。仕様策定・設計は順次実行。**
 
 | フェーズ | 並列実行 | 理由 |
 |---------|---------|------|
-| 要件定義・仕様策定・設計 | ❌ **非推奨** | ユーザー把握、依存関係調整、一貫性が必要 |
-| **実装** | ✅ **推奨** | 仕様確定後、機械的な変換作業 |
-| レビュー | ✅ 推奨 | 検証作業、影響範囲が限定的 |
+| 要件定義・仕様策定・設計 | ❌ 非推奨 | ユーザー把握、依存関係調整 |
+| **実装** | ✅ 推奨 | 仕様確定後の機械的変換 |
+| レビュー | ✅ 推奨 | 検証作業 |
 
-**推奨ワークフロー**:
-```
-午前: 仕様策定（順次実行）
-  1. Player仕様策定 → 完了・コミット
-  2. Enemy仕様策定 → 完了・コミット
-
-午後: 実装（並列実行）
-  Terminal 1: Player実装
-  Terminal 2: Enemy実装
-```
-
-### 基本フロー（worktree方式）
-
-```
-Terminal 1で指示:
-「Player、Enemy、Stageを並列実装したい」
-
-↓ session-manager-agent が自動実行:
-- worktree作成（独立したワーキングディレクトリ）
-- ブランチ作成（auto-{PID}-{feature}）
-- フォルダロック・ID範囲の予約
-
-↓ 各Terminalで作業:
-Terminal 1: Player実装（worktree: ../spec-driven-framework-player）
-Terminal 2: Enemy実装（worktree: ../spec-driven-framework-enemy）
-
-↓ マージ調整:
-「セッションをマージしたい」
-session-manager-agent が競合検出・推奨順序を提案
-```
-
-詳細: [.claude/skills/parallel-sessions.md](.claude/skills/parallel-sessions.md)
+詳細: `.claude/skills/parallel-sessions.md`
 
 ## タスク管理（Markdownファイルベース）
 
-- タスクは **Markdownファイル** で管理する
-  - フレームワーク開発タスク（FXXX）: `/tasks/`
-  - ゲーム開発・プロジェクト横断タスク（30XXX/PXXX）: `project/tasks/`
-- 詳細は [.claude/skills/task-workflow.md](.claude/skills/task-workflow.md) を参照
+| タスク種別 | ID形式 | 配置場所 | worktree |
+|-----------|-------|---------|----------|
+| ゲーム開発 | `30XXX` | `project/tasks/` | ✅ 有効 |
+| バグ修正 | `B30XXX-NNN` | `project/tasks/` | ✅ 有効 |
+| リファクタ | `R30XXX-NNN` | `project/tasks/` | ✅ 有効 |
+| プロジェクト横断 | `PXXX` | `project/tasks/` | ❌ 無効 |
+| フレームワーク開発 | `FXXX` | `tasks/` | ❌ 無効 |
 
-### タスク種別
+詳細: `.claude/skills/task-workflow.md`
 
-Markdownタスクシステムは5種類のタスクを一元管理：
+## 人間専用コマンド
 
-| タスク種別 | ID形式 | タイトル形式 | 配置場所 | 対象範囲 | worktree対応 |
-|-----------|-------|-------------|---------|---------|------------|
-| **ゲーム開発** | `30XXX` | `30101-ジャンプ機能実装.md` | `project/tasks/` | `project/` 配下の仕様書・実装 | ✅ 有効 |
-| **バグ修正** | `B30XXX-NNN` | `B30101-001-着地判定バグ修正.md` | `project/tasks/` | 既存機能のバグ修正 | ✅ 有効 |
-| **リファクタ** | `R30XXX-NNN` | `R30101-001-ジャンプ処理最適化.md` | `project/tasks/` | 既存機能の改善・最適化 | ✅ 有効 |
-| **プロジェクト横断** | `PXXX` | `P001-CI-CD構築.md` | `project/tasks/` | リポジトリ全体（CI/CD、インフラ） | ❌ 無効 |
-| **フレームワーク開発** | `FXXX` | `F001-エージェント更新.md` | `tasks/` | `.claude/agents/`, `docs/`, `.claude/commands/`, `.claude/skills/` | ❌ 無効 |
+- `/handover [--task <id>]` - セッション終了前に引き継ぎ情報を記録
+- `/resume-handover [--task <id>]` - セッション開始時に再開
 
-**worktree対応**:
-- ゲーム開発・バグ修正・リファクタタスクはworktreeによる並列実行が可能
-- プロジェクト横断・フレームワーク開発タスクは、リポジトリ全体に影響するためworktree非対応
+## 除外設定
 
-**バグ修正/リファクタの利点**:
-- 機能ID（30XXX）を消費しない（ID枯渇防止）
-- 元機能との関連が明確（B30101 → 30101）
-- 統計・分析が容易（どの機能にバグが多いか）
+`.claudeignore` に `docs/_deprecated/` を記載し、廃止仕様書をAI探索から除外。
 
-**タスク配置ルール（CRITICAL）**:
+## 思考バジェット
 
-タスクタイプは5種類だが、配置場所は2箇所のみ：
+複雑な問題には `think` / `think hard` / `ultrathink` で思考時間を調整。
 
-1. **フレームワーク開発タスク（FXXX）**: `/tasks/` に配置
-   - 対象: `.claude/agents/`, `docs/`, `.claude/commands/`, `.claude/skills/`
-   - worktree: 無効（フレームワーク全体に影響）
+## クイックリファレンス
 
-2. **ゲーム開発・プロジェクト横断タスク（30XXX/B30XXX/R30XXX/PXXX）**: `project/tasks/` に配置
-   - ゲーム開発（30XXX）: `project/` 配下の仕様書・実装、worktree有効
-   - バグ修正（B30XXX-NNN）: 既存機能のバグ修正、worktree有効
-   - リファクタ（R30XXX-NNN）: 既存機能の改善・最適化、worktree有効
-   - プロジェクト横断（PXXX）: リポジトリ全体（CI/CD、インフラ）、worktree無効
-
-**重要**: ゲーム開発・バグ修正・リファクタ・プロジェクト横断は同じ `project/tasks/` に共存。
-
-### タスクファイル構造
-
-```
-## フレームワーク開発タスク（FXXX）
-tasks/
-├── .taskrc.yaml               # フレームワークタスク設定
-├── 1_todo/                    # 未着手タスク
-│   └── F001-ドキュメント整合性確認.md
-├── 2_in-progress/             # 実装中タスク
-├── 3_in-review/               # レビュー中タスク
-└── 4_archive/                 # 完了・キャンセル済みタスク
-
-## ゲーム開発・プロジェクト横断タスク（30XXX/PXXX）
-project/tasks/
-├── .taskrc.yaml               # タスク管理設定
-├── 1_todo/                    # 未着手タスク
-│   └── 30101-ジャンプ機能実装.md
-├── 2_in-progress/             # 実装中タスク
-│   └── P001-CI-CD構築.md
-├── 3_in-review/               # レビュー中タスク
-│   └── 30103-攻撃機能実装.md
-└── 4_archive/                 # 完了・キャンセル済みタスク
-    ├── 30100-テストタスク.md (done)
-    └── 30099-廃止機能.md (cancelled)
-```
-
-### ガイドラインに基づく処理
-
-**タスク登録（task-registration-agent.md を参照）:**
-- プランファイル → タスクファイル変換
-- ID採番（Skill: id-next）
-- 配置先決定（tasks/ or project/tasks/）
-- 初期状態設定（status: "todo"）
-
-**タスク管理（task-manager-agent.md を参照）:**
-- タスク状態遷移（todo → in-progress → in-review → done）
-- worktree作成・管理（game-devタスクのみ）
-- タスク依存関係管理（blocked_by, blocks）
-- タスク検索・フィルタリング
-
-**人間の操作:**
-- タスク登録・開始・完了の指示（メインがガイドラインに従って実行）
-
-## 除外設定（.claudeignore）
-
-プロジェクトルートに `.claudeignore` を作成し、以下を記載:
-
-```
-docs/_deprecated/
-```
-
-**理由**: 廃止された仕様書をAIの自律探索対象から除外し、古いID参照を防ぐ
-
-## スキル一覧
-
-| スキル | 用途 | 利用エージェント |
-|-------|------|-----------------|
-| `.claude/skills/ears.md` | EARS記法による要件記述 | spec-agent, requirements-agent, critic-agent |
-| `.claude/skills/task-planning.md` | プランモード → タスク登録フロー | task-manager-agent |
-| `.claude/skills/task-workflow.md` | タスク管理スキル索引 | task-manager-agent, impl-agent, review-agent |
-| `.claude/skills/task-lifecycle.md` | タスク状態遷移、親子タスク【将来実装】 | task-manager-agent |
-| `.claude/skills/task-file-format.md` | タスクファイル形式、Frontmatter | task-registration-agent |
-| `.claude/skills/task-operations.md` | タスク操作、検索、worktree管理 | task-manager-agent, impl-agent |
-| `.claude/skills/task-status.md` | 状況表示形式、アイコン定義 | 全エージェント |
-| `.claude/skills/impl-comments.md` | 実装コメント規約 | impl-agent |
-| `.claude/skills/extraction-schema.md` | 仕様抽出チェックリスト | game-reference-agent, legacy-analyzer-agent |
-| `.claude/skills/design-patterns.md` | 設計パターンガイド | module-design-agent, design-agent, behavior-agent |
-| `.claude/skills/parallel-sessions.md` | 並列セッション実行ガイド | 全エージェント |
-| `.claude/skills/deep-investigation.md` | 技術質問への詳細回答 | 全エージェント（調査時） |
-| `.claude/skills/ntfy-notification.md` | ntfy経由リモート通知 | 全エージェント（フック実行） |
-| `.claude/skills/bug-backlog.md` | バグバックログ管理 | impl-agent, review-agent, task-manager-agent |
-| `.claude/skills/code-audit.md` | コード監査手順・チェック項目 | audit-agent |
-
-**人間向け詳細**: `docs/concepts/tasks.md`（出力例、参考実装、FAQ）
-
-## 思考バジェット（複雑なタスク用）
-
-複雑な問題には以下のキーワードで思考時間を調整：
-- `think` - 基本的な計画
-- `think hard` - より深い分析
-- `ultrathink` - 最大限の思考時間
+迷ったら [docs/index.md](docs/index.md) を参照（ドキュメント索引）
