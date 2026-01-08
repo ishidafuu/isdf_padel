@@ -2,7 +2,7 @@
 id: "P003-005"
 title: "PlayerBundle色決定の外部化"
 type: "project-wide"
-status: "todo"
+status: "done"
 priority: "medium"
 related_task: "P003"
 spec_ids: []
@@ -15,7 +15,7 @@ tags: ["refactor", "config", "externalize"]
 parent_task_id: "P003"
 created_at: "2026-01-08T13:52:00"
 updated_at: "2026-01-08T13:52:00"
-completed_at: null
+completed_at: "2026-01-08T15:30:00"
 ---
 
 # Task P003-005: PlayerBundle色決定の外部化
@@ -75,10 +75,10 @@ impl PlayerBundle {
 
 ## Acceptance Criteria
 
-- [ ] PlayerVisualConfig データ定義作成
-- [ ] RON ファイル作成
-- [ ] PlayerBundle から色のハードコーディング削除
-- [ ] テスト通過
+- [x] PlayerVisualConfig データ定義作成
+- [x] RON ファイル更新（game_config.ron に追加）
+- [x] PlayerBundle から色のハードコーディング削除
+- [x] テスト通過（135 tests passed）
 
 ## Dependencies
 

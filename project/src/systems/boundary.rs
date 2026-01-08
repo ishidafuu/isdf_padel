@@ -185,6 +185,7 @@ mod tests {
             shot_attributes: ShotAttributesConfig::default(),
             ai: AiConfig::default(),
             visual_feedback: VisualFeedbackConfig::default(),
+            player_visual: PlayerVisualConfig::default(),
             serve: ServeConfig::default(),
             spin_physics: SpinPhysicsConfig::default(),
         }

@@ -76,6 +76,11 @@ GameConfig(
         ball_y_offset: 0.0,
         z_layer: -0.5,
     ),
+    player_visual: PlayerVisualConfig(
+        player1_color: (0.2, 0.4, 0.8),  // 青
+        player2_color: (0.8, 0.2, 0.2),  // 赤
+        size: (40.0, 60.0),              // 幅, 高さ
+    ),
     // @spec 30301_ai_movement_spec.md
     // @spec 30302_ai_shot_spec.md
     ai: AiConfig(

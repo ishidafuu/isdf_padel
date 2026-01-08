@@ -5,6 +5,7 @@
 use bevy::prelude::*;
 
 use crate::core::CourtSide;
+use crate::resource::config::PlayerVisualConfig;
 
 /// 論理座標コンポーネント（ゲームロジック用）
 /// X: 左右, Y: 高さ（ジャンプ）, Z: 奥行き（コート前後）
@@ -365,18 +366,20 @@ pub struct PlayerBundle {
 }
 
 impl PlayerBundle {
-    pub fn new(id: u8, position: Vec3) -> Self {
+    pub fn new(id: u8, position: Vec3, visual_config: &PlayerVisualConfig) -> Self {
         let court_side = if id == 1 {
             CourtSide::Player1
         } else {
             CourtSide::Player2
         };
-        // Player1: 青、Player2: 赤
-        let color = if id == 1 {
-            Color::srgb(0.2, 0.4, 0.8)
+        // @data 80101_game_constants.md#player-visual-config
+        let (r, g, b) = if id == 1 {
+            visual_config.player1_color
         } else {
-            Color::srgb(0.8, 0.2, 0.2)
+            visual_config.player2_color
         };
+        let color = Color::srgb(r, g, b);
+        let (width, height) = visual_config.size;
         Self {
             player: Player { id, court_side },
             logical_position: LogicalPosition { value: position },
@@ -387,7 +390,7 @@ impl PlayerBundle {
             input_state: InputState::default(),
             sprite: Sprite {
                 color,
-                custom_size: Some(Vec2::new(40.0, 60.0)),
+                custom_size: Some(Vec2::new(width, height)),
                 ..default()
             },
             transform: Transform::default(),

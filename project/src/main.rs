@@ -136,7 +136,7 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
         config.player.z_min + 1.0,
     );
     commands.spawn((
-        PlayerBundle::new(1, player1_pos),
+        PlayerBundle::new(1, player1_pos, &config.player_visual),
         HumanControlled::default(),
     ));
     info!("Player 1 (Human) spawned at {:?}", player1_pos);
@@ -154,7 +154,7 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
         config.ai.home_position_z,
     );
     commands.spawn((
-        PlayerBundle::new(2, player2_pos),
+        PlayerBundle::new(2, player2_pos, &config.player_visual),
         AiController { home_position },
     ));
     info!("Player 2 (AI) spawned at {:?}", player2_pos);

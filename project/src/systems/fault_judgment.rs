@@ -327,6 +327,7 @@ mod tests {
             shot_attributes: crate::resource::config::ShotAttributesConfig::default(),
             ai: crate::resource::config::AiConfig::default(),
             visual_feedback: crate::resource::config::VisualFeedbackConfig::default(),
+            player_visual: crate::resource::config::PlayerVisualConfig::default(),
             serve: crate::resource::config::ServeConfig::default(),
             spin_physics: crate::resource::config::SpinPhysicsConfig::default(),
         }

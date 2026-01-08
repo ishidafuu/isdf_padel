@@ -34,6 +34,9 @@ pub struct GameConfig {
     pub ai: AiConfig,
     #[serde(default)]
     pub visual_feedback: VisualFeedbackConfig,
+    /// プレイヤービジュアル設定（色、サイズ）
+    #[serde(default)]
+    pub player_visual: PlayerVisualConfig,
     /// サーブ設定
     #[serde(default)]
     pub serve: ServeConfig,
@@ -616,6 +619,43 @@ fn default_ball_color_neutral() -> (f32, f32, f32, f32) {
 }
 fn default_ball_color_slice() -> (f32, f32, f32, f32) {
     (0.2, 0.4, 1.0, 1.0) // 青
+}
+
+/// プレイヤービジュアル設定
+/// @data 80101_game_constants.md#player-visual-config
+#[derive(Deserialize, Clone, Debug)]
+pub struct PlayerVisualConfig {
+    /// Player1（1Pコート側）の色（RGB）
+    #[serde(default = "default_player1_color")]
+    pub player1_color: (f32, f32, f32),
+    /// Player2（2Pコート側）の色（RGB）
+    #[serde(default = "default_player2_color")]
+    pub player2_color: (f32, f32, f32),
+    /// プレイヤーのサイズ（幅, 高さ）ピクセル
+    #[serde(default = "default_player_size")]
+    pub size: (f32, f32),
+}
+
+impl Default for PlayerVisualConfig {
+    fn default() -> Self {
+        Self {
+            player1_color: default_player1_color(),
+            player2_color: default_player2_color(),
+            size: default_player_size(),
+        }
+    }
+}
+
+fn default_player1_color() -> (f32, f32, f32) {
+    (0.2, 0.4, 0.8) // 青
+}
+
+fn default_player2_color() -> (f32, f32, f32) {
+    (0.8, 0.2, 0.2) // 赤
+}
+
+fn default_player_size() -> (f32, f32) {
+    (40.0, 60.0)
 }
 
 /// スピン物理パラメータ
