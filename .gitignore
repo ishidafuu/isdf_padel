@@ -28,4 +28,8 @@ __pycache__/
 
 # Rust
 project/target/
+target/
 Cargo.lock
+
+# Serena MCP
+.serena/
