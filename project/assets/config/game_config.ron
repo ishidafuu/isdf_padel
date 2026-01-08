@@ -36,6 +36,7 @@ GameConfig(
         z_tolerance: 0.3,
     ),
     knockback: KnockbackConfig(
+        enabled: false,  // v0.2: 仕様確定後に再度有効化
         duration: 0.5,
         speed_multiplier: 0.5,
         invincibility_time: 1.0,

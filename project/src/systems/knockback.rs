@@ -18,6 +18,13 @@ pub fn knockback_start_system(
     mut query: Query<(Entity, &Player, &LogicalPosition, &mut KnockbackState)>,
     mut knockback_event_writer: MessageWriter<PlayerKnockbackEvent>,
 ) {
+    // ふっとばし機能が無効の場合は何もしない
+    if !config.knockback.enabled {
+        // イベントは消費しておく（キューに溜まらないように）
+        ball_hit_events.read().for_each(drop);
+        return;
+    }
+
     for event in ball_hit_events.read() {
         // 被弾したプレイヤーを検索
         for (entity, player, logical_pos, mut knockback) in query.iter_mut() {

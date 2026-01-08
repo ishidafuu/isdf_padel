@@ -202,6 +202,10 @@ fn default_z_tolerance() -> f32 {
 /// @data 80101_game_constants.md#knockback-config
 #[derive(Deserialize, Clone, Debug)]
 pub struct KnockbackConfig {
+    /// ふっとばし機能の有効/無効
+    /// false の場合、被弾してもふっとばしが発生しない
+    #[serde(default = "default_knockback_enabled")]
+    pub enabled: bool,
     #[serde(default = "default_knockback_duration")]
     pub duration: f32,
     #[serde(default = "default_speed_multiplier")]
@@ -210,6 +214,9 @@ pub struct KnockbackConfig {
     pub invincibility_time: f32,
 }
 
+fn default_knockback_enabled() -> bool {
+    true // デフォルトは有効
+}
 fn default_knockback_duration() -> f32 {
     0.5
 }

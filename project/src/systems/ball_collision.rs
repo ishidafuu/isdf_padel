@@ -34,6 +34,11 @@ pub fn ball_player_collision_system(
     player_query: Query<(Entity, &LogicalPosition, &KnockbackState, &Player), With<Player>>,
     mut event_writer: MessageWriter<BallHitEvent>,
 ) {
+    // ふっとばし機能が無効の場合、衝突判定・反射処理をスキップ
+    if !config.knockback.enabled {
+        return;
+    }
+
     let ball_radius = config.ball.radius;
     let character_radius = config.collision.character_radius;
     let z_tolerance = config.collision.z_tolerance;

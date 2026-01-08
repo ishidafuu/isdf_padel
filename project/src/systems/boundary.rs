@@ -155,6 +155,7 @@ mod tests {
                 z_tolerance: 0.3,
             },
             knockback: KnockbackConfig {
+                enabled: true,
                 duration: 0.5,
                 speed_multiplier: 0.5,
                 invincibility_time: 1.0,
