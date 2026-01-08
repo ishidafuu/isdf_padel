@@ -99,6 +99,193 @@ grep -c "^use " project/src/**/*.rs | sort -t: -k2 -rn | head -20
 
 ---
 
+### 5. メモリアロケーション（unity-ai-reviewer: gc_allocation 相当）
+
+Rust はガベージコレクションを持たないが、毎フレームのヒープアロケーションは性能劣化の原因となる。
+
+**チェック項目:**
+- `clone()` のホットパス使用
+- `Vec::new()`, `vec![]` の毎フレーム生成
+- `String::new()`, `to_string()`, `format!()` の毎フレーム使用
+- 文字列結合（`+` 演算子）
+- `collect::<Vec<_>>()` のホットパス使用
+- `Box::new()` の毎フレーム使用
+
+**深刻度:**
+| レベル | 説明 |
+|--------|------|
+| MAJOR | 毎フレーム実行されるシステム内でのアロケーション |
+| MINOR | 初期化時・イベント発火時のみのアロケーション |
+
+**検出方法:**
+```bash
+# clone() の使用箇所
+grep -rn "\.clone()" project/src/**/*.rs
+
+# Vec::new() / vec![] の使用箇所
+grep -rn "Vec::new()\|vec!\[" project/src/**/*.rs
+
+# format! / to_string の使用箇所
+grep -rn "format!\|\.to_string()" project/src/**/*.rs
+
+# 文字列結合
+grep -rn '+ "' project/src/**/*.rs
+```
+
+**許容ケース（除外対象）:**
+- `fn setup(` や `fn build(` 内（初期化時のみ実行）
+- `Added<>`, `Changed<>` フィルタ付きクエリ内
+- イベントハンドラ内（頻度が低い）
+
+---
+
+### 6. 実行時エラーリスク（unity-ai-reviewer: runtime_error 相当）
+
+予期せぬクラッシュを防ぐため、エラーハンドリングの欠如を検出。
+
+**チェック項目:**
+- `unwrap()` の未処理使用
+- `expect()` の未処理使用
+- `panic!()` の直接使用
+- 配列への直接インデックス（`arr[i]`、境界チェックなし）
+- 整数オーバーフローリスク（`-` 演算子の符号なし整数）
+
+**深刻度:**
+| レベル | 説明 |
+|--------|------|
+| CRITICAL | ユーザー入力や外部データに対する `unwrap()` |
+| MAJOR | ゲームロジック内の `unwrap()`、直接インデックス |
+| MINOR | 初期化時のみの `unwrap()`（設定ファイル読み込み等） |
+
+**検出方法:**
+```bash
+# unwrap() / expect() の使用箇所
+grep -rn "\.unwrap()\|\.expect(" project/src/**/*.rs
+
+# panic! の使用箇所
+grep -rn "panic!" project/src/**/*.rs
+
+# 直接インデックス（簡易検出）
+grep -rn "\[.*\]" project/src/**/*.rs | grep -v "impl\|where\|type"
+
+# 整数オーバーフローリスク
+grep -rn "\.saturating_sub\|\.checked_sub\|\.wrapping_sub" project/src/**/*.rs
+```
+
+**推奨対処:**
+- `unwrap()` → `unwrap_or_default()`, `ok()`, `?` 演算子
+- 直接インデックス → `.get()`, `.get_mut()`
+- 整数演算 → `saturating_sub`, `checked_sub`
+
+---
+
+### 7. 車輪の再発明（unity-ai-reviewer: wheel_reinvention 相当）
+
+標準ライブラリや Bevy のエコシステムで既に提供されている機能の再実装を検出。
+
+**チェック項目:**
+- Bevy 標準機能の再実装
+  - 独自 Timer 実装（`Res<Time>` で代替可能）
+  - 独自 EventWriter 実装
+  - 独自 State 管理（`States` で代替可能）
+- 重複ユーティリティ関数
+  - 同一機能の複数実装
+  - 似た名前の関数群
+- 既存クレートで代替可能な処理
+  - 数学ユーティリティ（`glam` で代替）
+  - 乱数処理（`rand` で代替）
+
+**深刻度:**
+| レベル | 説明 |
+|--------|------|
+| MINOR | すべて（機能的には問題ないが、メンテナンス負荷増） |
+
+**検出方法:**
+```bash
+# 独自 Timer 的なパターン
+grep -rn "elapsed\|duration\|f32.*time" project/src/**/*.rs | grep -v "bevy"
+
+# 重複関数名の検出
+grep -rn "^pub fn " project/src/**/*.rs | cut -d: -f3 | sort | uniq -d
+```
+
+---
+
+### 8. パフォーマンス（unity-ai-reviewer: efficiency 相当）
+
+ゲームループに影響するパフォーマンス問題を検出。
+
+**チェック項目:**
+- O(n²) 以上の計算量
+  - ネストした for ループ
+  - 毎フレームのソート
+- 毎フレームの重い処理
+  - 文字列パース
+  - ファイル I/O
+- 非効率なクエリパターン
+  - `Query<&Player>` のネスト（O(n²)）
+  - `Changed`/`Added` フィルタの未活用
+  - 不必要な `With<>`/`Without<>` の欠如
+
+**深刻度:**
+| レベル | 説明 |
+|--------|------|
+| MAJOR | O(n²) 以上のホットパス処理 |
+| MINOR | 非効率だが O(n) 以内の処理 |
+
+**検出方法:**
+```bash
+# ネストした for ループ
+grep -rn "for .* in" project/src/**/*.rs -A 5 | grep "for .* in"
+
+# 毎フレームソート
+grep -rn "\.sort\|\.sort_by" project/src/**/*.rs
+
+# Query のネスト（簡易検出）
+grep -rn "Query<" project/src/**/*.rs -A 10 | grep -E "for.*Query|Query.*for"
+```
+
+**推奨対処:**
+- ネストループ → `HashMap`/`HashSet` でインデックス化
+- 毎フレームソート → 変更時のみソート、`Changed<>` フィルタ活用
+- Query ネスト → `join()` または事前計算
+
+---
+
+### 9. セキュリティ（unity-ai-reviewer: security 相当）
+
+ゲームでは優先度は低いが、将来のネットワーク対応等に備えて検出。
+
+**チェック項目:**
+- `unsafe` ブロックの使用
+- 入力バリデーションの欠如
+  - ユーザー名長さチェック
+  - 数値範囲チェック
+- ファイルパス操作のサニタイズ不足
+  - パストラバーサル（`../` を含むパス）
+  - 絶対パスの直接使用
+
+**深刻度:**
+| レベル | 説明 |
+|--------|------|
+| CRITICAL | `unsafe` の不適切な使用（メモリ安全性違反） |
+| MAJOR | 外部入力に対するバリデーション欠如 |
+| MINOR | ローカルゲームでの入力チェック欠如 |
+
+**検出方法:**
+```bash
+# unsafe の使用箇所
+grep -rn "unsafe" project/src/**/*.rs
+
+# ファイルパス操作
+grep -rn "PathBuf\|Path::new\|std::fs" project/src/**/*.rs
+
+# 外部入力処理
+grep -rn "read_line\|stdin\|args()" project/src/**/*.rs
+```
+
+---
+
 ## 監査実行手順
 
 ### Step 1: 既存コマンドによる検証
@@ -146,7 +333,12 @@ grep -c "^use " project/src/**/*.rs | sort -t: -k2 -rn | head -20
 | 依存関係 | 2 | 1 | 1 | 0 |
 | コード品質 | 8 | 0 | 3 | 5 |
 | アーキテクチャ | 3 | 0 | 2 | 1 |
-| **合計** | **18** | **1** | **8** | **9** |
+| メモリアロケーション | 4 | 0 | 2 | 2 |
+| 実行時エラーリスク | 6 | 2 | 3 | 1 |
+| 車輪の再発明 | 2 | 0 | 0 | 2 |
+| パフォーマンス | 3 | 0 | 1 | 2 |
+| セキュリティ | 1 | 1 | 0 | 0 |
+| **合計** | **34** | **4** | **14** | **16** |
 
 ---
 
@@ -246,7 +438,7 @@ blocked_by: []
 blocks: []
 audit_source: "2026-01-07"  # 監査レポート日付
 severity: "major"  # critical/major/minor
-category: "code-quality"  # spec-consistency/dependency/code-quality/architecture
+category: "code-quality"  # spec-consistency/dependency/code-quality/architecture/memory/runtime-error/wheel-reinvention/performance/security
 created_at: "2026-01-07T10:00:00+09:00"
 updated_at: "2026-01-07T10:00:00+09:00"
 ---
