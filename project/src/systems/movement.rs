@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{KnockbackState, LogicalPosition, Player, Velocity};
+use crate::components::{AiController, KnockbackState, LogicalPosition, Player, Velocity};
 use crate::core::events::PlayerMoveEvent;
 use crate::resource::config::GameConfig;
 
@@ -22,32 +22,32 @@ pub struct MovementInput {
 /// 入力読み取りシステム
 /// @spec 30201_movement_spec.md#req-30201-001
 /// @spec 30201_movement_spec.md#req-30201-002
-/// NOTE: テスト用に P1/P2 を同じキーで操作（WASD または 矢印キー）
+/// Player 1のみキーボード操作（WASD または 矢印キー）
 /// 横向きコート: A/D=画面左右（打ち合い方向）、W/S=画面上下（横移動）
 pub fn read_input_system(keyboard: Res<ButtonInput<KeyCode>>, mut input: ResMut<MovementInput>) {
-    // 共通入力: WASD + Arrow keys
+    // Player 1 入力: WASD + Arrow keys
     // 横向きレイアウト用にマッピング変更
-    let mut shared_input = Vec2::ZERO;
+    let mut player1_input = Vec2::ZERO;
 
     // W/S → 論理X（画面上下）
     if keyboard.pressed(KeyCode::KeyW) || keyboard.pressed(KeyCode::ArrowUp) {
-        shared_input.x += 1.0;
+        player1_input.x += 1.0;
     }
     if keyboard.pressed(KeyCode::KeyS) || keyboard.pressed(KeyCode::ArrowDown) {
-        shared_input.x -= 1.0;
+        player1_input.x -= 1.0;
     }
 
     // A/D → 論理Z（画面左右＝打ち合い方向）
     if keyboard.pressed(KeyCode::KeyA) || keyboard.pressed(KeyCode::ArrowLeft) {
-        shared_input.y -= 1.0; // -Z方向（左＝1P側）
+        player1_input.y -= 1.0; // -Z方向（左＝1P側）
     }
     if keyboard.pressed(KeyCode::KeyD) || keyboard.pressed(KeyCode::ArrowRight) {
-        shared_input.y += 1.0; // +Z方向（右＝2P側）
+        player1_input.y += 1.0; // +Z方向（右＝2P側）
     }
 
-    // 両プレイヤーに同じ入力を設定
-    input.player1 = shared_input;
-    input.player2 = shared_input;
+    // Player 1のみ入力を設定（Player 2はAI制御）
+    input.player1 = player1_input;
+    input.player2 = Vec2::ZERO;
 }
 
 /// プレイヤー移動システム
@@ -61,7 +61,10 @@ pub fn movement_system(
     time: Res<Time>,
     config: Res<GameConfig>,
     input: Res<MovementInput>,
-    mut query: Query<(&Player, &mut LogicalPosition, &mut Velocity, &KnockbackState)>,
+    mut query: Query<
+        (&Player, &mut LogicalPosition, &mut Velocity, &KnockbackState),
+        Without<AiController>,
+    >,
     mut event_writer: MessageWriter<PlayerMoveEvent>,
 ) {
     let bounds = create_court_bounds(&config.court);
