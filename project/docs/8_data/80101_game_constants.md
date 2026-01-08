@@ -22,6 +22,7 @@ pub struct GameConfig {
     pub shot: ShotConfig,
     pub scoring: ScoringConfig,
     pub input: InputConfig,
+    pub input_keys: InputKeysConfig,
 }
 ```
 
@@ -344,6 +345,72 @@ pub struct InputConfig {
 fn default_jump_buffer_time() -> f32 { 0.1 }
 fn default_shot_buffer_time() -> f32 { 0.05 }
 ```
+
+---
+
+## Input Keys Config
+
+入力キーバインド設定
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| move_up | KeyCode | KeyW | 上移動キー |
+| move_down | KeyCode | KeyS | 下移動キー |
+| move_left | KeyCode | KeyA | 左移動キー |
+| move_right | KeyCode | KeyD | 右移動キー |
+| move_up_alt | KeyCode | ArrowUp | 上移動キー（代替） |
+| move_down_alt | KeyCode | ArrowDown | 下移動キー（代替） |
+| move_left_alt | KeyCode | ArrowLeft | 左移動キー（代替） |
+| move_right_alt | KeyCode | ArrowRight | 右移動キー（代替） |
+| jump | KeyCode | KeyB | ジャンプキー |
+| shot | KeyCode | KeyV | ショットキー |
+
+```rust
+#[derive(Deserialize, Clone, Debug)]
+pub struct InputKeysConfig {
+    #[serde(default = "default_key_move_up")]
+    pub move_up: KeyCode,
+    #[serde(default = "default_key_move_down")]
+    pub move_down: KeyCode,
+    #[serde(default = "default_key_move_left")]
+    pub move_left: KeyCode,
+    #[serde(default = "default_key_move_right")]
+    pub move_right: KeyCode,
+    #[serde(default = "default_key_move_up_alt")]
+    pub move_up_alt: KeyCode,
+    #[serde(default = "default_key_move_down_alt")]
+    pub move_down_alt: KeyCode,
+    #[serde(default = "default_key_move_left_alt")]
+    pub move_left_alt: KeyCode,
+    #[serde(default = "default_key_move_right_alt")]
+    pub move_right_alt: KeyCode,
+    #[serde(default = "default_key_jump")]
+    pub jump: KeyCode,
+    #[serde(default = "default_key_shot")]
+    pub shot: KeyCode,
+}
+
+fn default_key_move_up() -> KeyCode { KeyCode::KeyW }
+fn default_key_move_down() -> KeyCode { KeyCode::KeyS }
+fn default_key_move_left() -> KeyCode { KeyCode::KeyA }
+fn default_key_move_right() -> KeyCode { KeyCode::KeyD }
+fn default_key_move_up_alt() -> KeyCode { KeyCode::ArrowUp }
+fn default_key_move_down_alt() -> KeyCode { KeyCode::ArrowDown }
+fn default_key_move_left_alt() -> KeyCode { KeyCode::ArrowLeft }
+fn default_key_move_right_alt() -> KeyCode { KeyCode::ArrowRight }
+fn default_key_jump() -> KeyCode { KeyCode::KeyB }
+fn default_key_shot() -> KeyCode { KeyCode::KeyV }
+```
+
+**使用例**:
+```rust
+let keys = &config.input_keys;
+if keyboard.pressed(keys.move_up) || keyboard.pressed(keys.move_up_alt) {
+    movement.x += 1.0;
+}
+```
+
+**備考**: RON ファイルでの設定はオプション。省略時はデフォルト値が適用される。
 
 ---
 

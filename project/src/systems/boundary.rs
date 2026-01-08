@@ -177,6 +177,7 @@ mod tests {
                 jump_buffer_time: 0.1,
                 shot_buffer_time: 0.05,
             },
+            input_keys: InputKeysConfig::default(),
             shadow: ShadowConfig::default(),
             shot_attributes: ShotAttributesConfig::default(),
             ai: AiConfig::default(),

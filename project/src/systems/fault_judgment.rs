@@ -319,6 +319,7 @@ mod tests {
                 jump_buffer_time: 0.1,
                 shot_buffer_time: 0.05,
             },
+            input_keys: crate::resource::config::InputKeysConfig::default(),
             shadow: crate::resource::config::ShadowConfig::default(),
             shot_attributes: crate::resource::config::ShotAttributesConfig::default(),
             ai: crate::resource::config::AiConfig::default(),
