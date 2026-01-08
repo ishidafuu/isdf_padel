@@ -28,8 +28,6 @@
 
 ### 特定シナリオ
 
-- [レガシーコード解析](./guides/legacy-code-analysis.md) - 既存コードからの仕様抽出
-- [レガシーコード解析（制作者向け）](./guides/legacy-code-creator.md) - 自作ゲームの再構築
 - [ntfy 通知](../.claude/skills/ntfy-notification.md) - 承認待ち・実行完了のリモート通知
 
 ---
@@ -74,12 +72,9 @@ docs/
 │   └── ...
 │
 ├── guides/                       # 実践ガイド
-│   ├── legacy-code-analysis.md   # レガシーコード解析
-│   ├── legacy-code-creator.md    # 制作者向けワークフロー
 │   └── ...                       # 実践ガイド
 │
 ├── templates/                    # テンプレート集
-│   └── legacy-analysis/          # レガシーコード解析用
 │
 ├── framework-development/        # フレームワーク開発者向け
 │   ├── guide.md                  # 開発ガイド

@@ -43,16 +43,7 @@ project/docs/9_reference/
 
 ## 使用方法
 
-### 1. 参照ゲームの仕様記録
-
-game-reference-agent を使用して、参照ゲームの仕様を 901_reference_game/ に記録します。
-
-```
-ユーザー: 「ドラクエ1の戦闘システムを記録して」
-game-reference-agent → 901_reference_game/mechanics/battle.md
-```
-
-### 2. パターンの抽出
+### 1. パターンの抽出
 
 参照ゲームから特定のパターンを抽出し、902_patterns/ にまとめます。
 
@@ -63,7 +54,7 @@ game-reference-agent → 901_reference_game/mechanics/battle.md
 - ダメージ計算の一般形
 ```
 
-### 3. 新規ゲーム設計での参照
+### 2. 新規ゲーム設計での参照
 
 requirements-agent / spec-agent で参照資料を活用します。
 
@@ -82,70 +73,9 @@ requirements-agent / spec-agent で参照資料を活用します。
 - **不完全でOK**: 観察できた範囲で記述
 - **画像参照**: スクリーンショットへのリンクを積極的に使用
 
-## 参照ゲームの種類
-
-### 1. 既存の市販ゲーム（画像・説明ベース）
-
-**エージェント**: game-reference-agent
-
-ファミコン、スーファミなどの既存ゲームを画像やWeb情報から観察し、仕様を記録します。
-
-**入力ソース**:
-- ゲーム画面のスクリーンショット
-- ユーザーの説明
-- 攻略サイトの情報
-
-### 2. レガシーソースコード（コード解析ベース）
-
-**エージェント**: legacy-analyzer-agent
-
-過去に自分が作成したゲームのソースコードを解析し、仕様を記録します。
-
-**対象**:
-- 大規模なC++コードベース（10万行規模）
-- ドキュメントが失われたレガシーコード
-- 実行不可能だが仕様を再現したいコード
-
-**特徴**:
-- Serena MCPを活用した効率的な解析
-- 段階的な解析（Phase 1: 粗視化 → Phase 2: 詳細解析 → Phase 3: アルゴリズム抽出）
-- 制作者の記憶との協働
-
-**ワークフロー**:
-```
-レガシーコード (legacy/)
-  ↓ 解析
-legacy-analyzer-agent
-  ↓ 記録
-901_reference_game/
-  ↓ 参照
-新規仕様 (3_ingame, 4_outgame)
-```
-
-## 担当エージェント
-
-| エージェント | 役割 | 対象 |
-|-------------|------|------|
-| game-reference-agent | 既存ゲームの観察・記録（画像・説明ベース） | 市販ゲーム、プレイ可能なゲーム |
-| legacy-analyzer-agent | レガシーコードの解析・仕様化（コード解析ベース） | 自作のレガシーコード |
-
 ## 注意事項
 
 - 9_reference から他層（3_ingame 等）への参照は禁止
 - 著作権に配慮し、画像は外部リンクまたは自作のみ使用
 - 参照資料は「参考」であり、完全な仕様として扱わない
 
----
-
-## 関連ドキュメント
-
-### レガシーコード解析
-
-- [レガシーコード解析ガイド](../../../docs/guides/legacy-code-analysis.md) - Phase 1〜5の詳細な手順
-- [制作者向け手順書](../../../docs/guides/legacy-code-creator.md) - 制作者の実践的なガイド
-- [解析テンプレート](../../../docs/templates/legacy-analysis/README.md) - Phase 1〜3のテンプレート集
-
-### エージェント
-
-- [legacy-analyzer-agent](../../../.claude/agents/legacy-analyzer-agent.md) - レガシーコード解析専用エージェント
-- [game-reference-agent](../../../.claude/agents/game-reference-agent.md) - 既存ゲーム観察専用エージェント

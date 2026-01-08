@@ -211,10 +211,7 @@ agents/
 ├── review-agent.md
 ├── deps-agent.md
 ├── refactor-agent.md
-├── data-agent.md
-├── setup-agent.md
-├── legacy-analyzer-agent.md
-└── game-reference-agent.md
+└── data-agent.md
 
 commands/
 ├── id.md
@@ -913,9 +910,6 @@ Player と Enemy は **直接参照しない**。衝突判定などの相互作�
 | 🗂️ | task-manager-agent | タスクライフサイクル管理 | 状態遷移, worktree | [定義](../../.claude/agents/task-manager-agent.md) |
 | ♻️ | refactor-agent | 廃止・共有化 | 移行後の仕様書 | [定義](../../.claude/agents/refactor-agent.md) |
 | 📊 | data-agent | マスタデータ管理 | 8_data/*.md | [定義](../../.claude/agents/data-agent.md) |
-| 🔧 | setup-agent | プロジェクト初期化 | フォルダ構成 | [定義](../../.claude/agents/setup-agent.md) |
-| 🔬 | legacy-analyzer-agent | レガシーコード解析 | 9_reference/*.md | [定義](../../.claude/agents/legacy-analyzer-agent.md) |
-| 🎮 | game-reference-agent | 参照ゲーム仕様観察 | 9_reference/*.md | [定義](../../.claude/agents/game-reference-agent.md) |
 | 🔍 | audit-agent | 定期コード監査 | 診断レポート | [定義](../../.claude/agents/audit-agent.md) |
 
 **注**: 各エージェントの完全な仕様・入出力例・使用方法は上記「詳細」リンクを参照してください。

@@ -32,9 +32,6 @@ agents/
 ├── deps-agent.md             # 依存関係管理
 ├── refactor-agent.md         # リファクタリング
 ├── data-agent.md             # データテーブル管理
-├── setup-agent.md            # プロジェクト初期化
-├── legacy-analyzer-agent.md  # レガシーコード解析
-├── game-reference-agent.md   # ゲーム参照資料管理
 └── audit-agent.md            # 定期コード監査
 ```
 
@@ -56,9 +53,6 @@ agents/
 | 🗂️ | task-manager-agent | タスク管理（Markdownベース） | タスクファイル | [定義](../../.claude/agents/task-manager-agent.md) |
 | ♻️ | refactor-agent | 廃止・共有化 | 移行後の仕様書 | [定義](../../.claude/agents/refactor-agent.md) |
 | 📊 | data-agent | マスタデータ管理 | 8_data/*.md | [定義](../../.claude/agents/data-agent.md) |
-| 🔧 | setup-agent | プロジェクト初期化 | フォルダ構成 | [定義](../../.claude/agents/setup-agent.md) |
-| 🔬 | legacy-analyzer-agent | レガシーコード解析 | 9_reference/901_*/*.md | [定義](../../.claude/agents/legacy-analyzer-agent.md) |
-| 🎮 | game-reference-agent | 参照ゲーム仕様観察 | 9_reference/901_*/*.md | [定義](../../.claude/agents/game-reference-agent.md) |
 | 🔍 | audit-agent | 定期コード監査 | 診断レポート | [定義](../../.claude/agents/audit-agent.md) |
 
 **注**: 各エージェントの詳細は上記の「定義」リンクまたは [エージェントガイド](../concepts/agents.md) を参照。
@@ -302,7 +296,7 @@ argument-hint: [--all | --file <番号>]
 | task-file-format.md | タスクファイル形式、Frontmatter | task-registration-agent |
 | task-operations.md | タスク操作、検索、worktree管理 | task-manager-agent, impl-agent |
 | impl-comments.md | 実装コメント規約（@spec/@test/@data） | impl-agent |
-| extraction-schema.md | 仕様抽出チェックリスト | game-reference-agent, legacy-analyzer-agent |
+| extraction-schema.md | 仕様抽出チェックリスト | spec-agent |
 | design-patterns.md | 設計パターンガイド | module-design-agent, design-agent, behavior-agent |
 | parallel-sessions.md | 並列セッション実行ガイド | 全エージェント |
 | deep-investigation.md | 技術質問への詳細回答 | 全エージェント（調査時） |
@@ -399,7 +393,6 @@ docs/_deprecated/
 
 | フェーズ | エージェント |
 |---------|-------------|
-| 初期化 | 🔧 setup-agent |
 | 要件策定 | 💬 requirements → 📋 spec → 🔍 critic |
 | 詳細設計 | 🏗️ design → ⚙️ behavior → 🧪 test |
 | 実装 | 🐙 github → 💻 impl → ✅ review |

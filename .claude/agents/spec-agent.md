@@ -383,7 +383,6 @@ requirements-agent から引き継ぎデータを受け取った場合：
 9_reference に該当する情報がない場合：
 1. 「参考なし」と明記
 2. 独自に要件を定義
-3. 必要に応じて game-reference-agent に調査依頼を提案
 
 ## 作業中に問題を発見した場合
 
@@ -393,7 +392,6 @@ requirements-agent から引き継ぎデータを受け取った場合：
    - 要件の深掘りが必要 → requirements-agent
    - 既存仕様との矛盾 → critic-agent
    - 依存関係の問題 → deps-agent
-   - 参照資料の追加調査 → game-reference-agent
 4. ユーザー確認後、再開または中止
 
 ## 拡張性要件（Extensibility Requirements）
