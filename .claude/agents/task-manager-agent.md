@@ -318,9 +318,9 @@ task-manager-agent（MAIN側で実行）:
 >
 > タスクファイルの更新は実装のスカッシュマージと同じコミットに含める。
 
-> **MANDATORY: game-dev タスクは in-review 経由必須**
+> **MANDATORY: 全タスクで in-review 経由必須**
 >
-> game-dev タスク（30XXX/B30XXX/R30XXX）の完了は **必ず** `3_in-review/` からのみ可能。
+> 全タスク（30XXX/B30XXX/R30XXX/PXXX/FXXX）の完了は **必ず** `3_in-review/` からのみ可能。
 > `2_in-progress/` から直接完了しようとした場合は **エラーを表示して即座に中断** する。
 > **この前提条件チェックを通過しない限り、完了処理は開始しない。**
 
@@ -328,13 +328,15 @@ task-manager-agent（MAIN側で実行）:
 ユーザー: 「タスク 30101 が完了した」
   ↓
 task-manager-agent:
-  【game-devタスクの場合】
+  【全タスク共通】
   0. 前提条件チェック（MANDATORY - 必ず最初に実行）
      - タスクファイルが `3_in-review/` にあるか確認
      - `2_in-progress/` にある場合:
-       → エラー: "ERROR: game-dev タスクは in-review を経由する必要があります"
+       → エラー: "ERROR: 全タスクは in-review を経由する必要があります"
        → 処理を即座に中断（以降のステップは実行しない）
        → impl-agent によるレビュー申請を促す
+
+  【game-devタスクの場合（30XXX/B30XXX/R30XXX）】
   1. mainに切り替え、最新化
   2. スカッシュマージ（コミットせず）
   3. タスクファイル更新（status, completed_at, archive移動）
@@ -343,8 +345,7 @@ task-manager-agent:
   6. worktree削除、ブランチ削除
   7. push、完了報告
 
-  【その他タスクの場合（framework/project-wide）】
-  > NOTE: FXXX/PXXX は in-review 経由不要、直接完了可能
+  【その他タスクの場合（framework/project-wide: FXXX/PXXX）】
   > CRITICAL: 1タスク=1コミットを実現する
   1. タスクファイル読み込み
   2. status を "done" に更新
@@ -366,9 +367,9 @@ task-manager-agent:
   3. タスク一覧を整形して表示
 ```
 
-### 4. タスク状態遷移フロー（game-dev のみ）（CRITICAL / MANDATORY）
+### 4. タスク状態遷移フロー（全タスク共通）（CRITICAL / MANDATORY）
 
-**game-dev タスク（30XXX/B30XXX/R30XXX）は必ず in-review を経由する**
+**全タスク（30XXX/B30XXX/R30XXX/PXXX/FXXX）は必ず in-review を経由する**
 
 > **MANDATORY**: 直接 done への遷移は禁止。必ず in-review を経由すること。
 

@@ -556,10 +556,10 @@ review-agent ガイドラインを参照してレビューを実行。
 
 ---
 
-### FXXX/PXXX タスク: in-review 経由不要
+### 全タスク共通: in-review 経由必須（MANDATORY）
 
-> フレームワーク開発（FXXX）・プロジェクト横断（PXXX）タスクは in-review を経由せず、直接 done に遷移可能。
-> task-manager-agent でタスク完了処理を直接実行する。
+> 全タスクタイプ（30XXX/B30XXX/R30XXX/PXXX/FXXX）で in-review を経由必須。
+> レビュー後に task-manager-agent でタスク完了処理を実行する。
 
 ---
 

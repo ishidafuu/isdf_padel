@@ -100,6 +100,8 @@
 | `in-review` → `done` | `3_in-review/` → `4_archive/` |
 | `*` → `cancelled` | 現在のディレクトリ → `4_archive/` |
 
+> **NOTE**: 全タスクタイプ（game-dev/project-wide/framework）で in-review 経由必須。
+
 ---
 
 ## タスク開始の操作フロー

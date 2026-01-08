@@ -77,28 +77,28 @@ Edit(updated_at: "旧タイムスタンプ" -> "新タイムスタンプ")
 Edit(spec_ids: ["30201"] -> ["30201", "30202"])
 ```
 
-### 3.5. レビュー開始（in-progress → in-review）（game-dev のみ）
+### 3.5. レビュー開始（in-progress → in-review）（全タスク共通）
 
-**game-dev タスク（30XXX）のみ適用**
-
-> ❌ FXXX/PXXX タスクはこのセクションをスキップ（in-review 不要、直接 done へ）
+**全タスク（30XXX/B30XXX/R30XXX/PXXX/FXXX）に適用**
 
 **責務: impl-agent**
 
 impl-agent が実装・テスト完了後に実行:
 
 ```bash
-# 1. タスクファイルを移動
+# 1. タスクファイルを移動（例: game-dev タスク）
 mv project/tasks/2_in-progress/30XXX-*.md project/tasks/3_in-review/
+# または（framework タスク）
+mv tasks/2_in-progress/FXXX-*.md tasks/3_in-review/
 
 # 2. Frontmatter 更新
 Edit(status: "in-progress" -> "in-review")
 Edit(updated_at: "旧タイムスタンプ" -> "新タイムスタンプ")
 ```
 
-**注意**: game-dev タスクは実装完了 → 直接 done は禁止。必ず in-review を経由する。
+**注意**: 全タスクは実装完了 → 直接 done は禁止。必ず in-review を経由する。
 
-### 3.6. 差し戻し（in-review → in-progress）（game-dev のみ）
+### 3.6. 差し戻し（in-review → in-progress）（全タスク共通）
 
 **責務: task-manager-agent**（review-agent からの要請時）
 
@@ -134,14 +134,12 @@ else
 fi
 ```
 
-> **チェック対象（MANDATORY）**:
+> **チェック対象（MANDATORY - 全タスク）**:
 > - `30XXX-*.md` (game-dev)
 > - `B30XXX-*.md` (バグ修正)
 > - `R30XXX-*.md` (リファクタ)
->
-> **チェック対象外** (in-review 経由不要、直接完了可能):
-> - `FXXX-*.md` (framework)
 > - `PXXX-*.md` (project-wide)
+> - `FXXX-*.md` (framework)
 
 #### game-dev タスク（worktreeあり）
 
@@ -196,10 +194,10 @@ git push origin main
 
 #### project-wide / framework タスク（worktreeなし）
 
-> **NOTE: in-review 経由不要 - 直接完了可能**
+> **NOTE: in-review 経由必須**
 >
-> FXXX/PXXX タスクは前提条件チェック（in-review 確認）をスキップし、
-> `2_in-progress/` から直接 `4_archive/` に移動して完了できる。
+> FXXX/PXXX タスクも前提条件チェック（in-review 確認）を通過する必要がある。
+> `3_in-review/` から `4_archive/` に移動して完了する。
 
 > **CRITICAL: 1タスク=1コミットを実現する**
 >
