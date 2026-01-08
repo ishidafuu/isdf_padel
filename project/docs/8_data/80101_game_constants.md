@@ -1,12 +1,15 @@
 # Game Constants
 
-**Version**: 2.0.0
-**Last Updated**: 2026-01-06
+**Version**: 3.0.0
+**Last Updated**: 2026-01-08
 **Status**: Active
 
 ## 概要
 
 ゲーム全体の調整可能なパラメータ定義。**全ての値はハードコーディング禁止**。
+
+> **Note**: v3.0.0でパデルからテニスへのルール変更に伴い、壁・天井関連のパラメータは廃止されました。
+> 詳細は Change Log を参照してください。
 
 ## GameConfig 構造
 
@@ -59,16 +62,18 @@ velocity.y += config.physics.gravity * time.delta_secs();
 
 ## Court Config
 
-コートサイズ・範囲
+コートサイズ・範囲（テニス用オープンコート）
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| width | f32 | 10.0 | コート幅（m） |
-| depth | f32 | 6.0 | コート奥行き（m） |
-| ceiling_height | f32 | 5.0 | 天井高さ（m） |
-| max_jump_height | f32 | 5.0 | 最大ジャンプ高さ（m） |
-| net_height | f32 | 1.0 | ネット高さ（m） |
+| width | f32 | 10.0 | コート幅（m）- サイドライン境界 |
+| depth | f32 | 6.0 | コート奥行き（m）- ベースライン境界 |
+| ~~ceiling_height~~ | ~~f32~~ | ~~5.0~~ | ~~天井高さ（m）~~ **廃止: テニスでは天井なし** |
+| max_jump_height | f32 | 5.0 | 最大ジャンプ高さ（m）- ジャンプ制限用 |
+| net_height | f32 | 0.88 | ネット高さ（m）- テニス規格 |
 | net_z | f32 | 0.0 | ネットのZ座標位置（m） |
+
+> **変更 (v3.0.0)**: `ceiling_height` は壁システム廃止により不要。`max_jump_height` はジャンプ制限の目安として残存。
 
 ```rust
 #[derive(Deserialize, Clone, Debug)]
@@ -732,6 +737,28 @@ spin_physics: SpinPhysicsConfig(
 2. ⏳ GameConfig struct の実装（Rust）
 3. ⏳ RON ファイルの作成（`.ron`）
 4. ⏳ 各 System への `Res<GameConfig>` 依存注入
+
+---
+
+## Change Log
+
+### 2026-01-08 - v3.0.0（テニスへ変更）
+
+- **Court Config**: 天井高さ（ceiling_height）を廃止マーク
+- **概要**: テニス化による壁・天井削除の注記を追加
+- **net_height**: 0.88m（テニス規格）に調整
+- **Court境界**: サイドライン・ベースラインとしての役割を明記
+
+### 2026-01-06 - v2.0.0
+
+- Visual Feedback Config, Spin Physics Config追加
+- Input Keys Config追加
+
+### 2025-12-23 - v1.0.0（初版）
+
+- 初版作成（パデルベース）
+
+---
 
 ## 参考資料
 

@@ -1,8 +1,18 @@
 # Wall Reflection Design
 
+> **⚠️ DEPRECATED (2026-01-08)**
+>
+> この仕様書は廃止されました。
+>
+> **理由**: パデルからテニスへのルール変更に伴い、壁反射機能は不要となりました。
+> テニスではオープンコート（壁・天井なし）となり、コート外に落ちたボールはアウト判定となります。
+>
+> **代替**: [30501_court_spec.md](../3_ingame/305_court/30501_court_spec.md) のREQ-30501-007（アウト境界）を参照してください。
+
 **Version**: 1.0.0
-**Status**: Draft
+**Status**: ~~Draft~~ **DEPRECATED**
 **Last Updated**: 2025-12-23
+**Deprecated**: 2026-01-08
 
 ## 概要
 
