@@ -17,7 +17,7 @@ use super::court_factory::create_court_bounds;
 pub fn ai_movement_system(
     time: Res<Time>,
     config: Res<GameConfig>,
-    ball_query: Query<&LogicalPosition, With<Ball>>,
+    ball_query: Query<&LogicalPosition, (With<Ball>, Without<AiController>)>,
     mut ai_query: Query<
         (
             &Player,
@@ -26,7 +26,7 @@ pub fn ai_movement_system(
             &mut Velocity,
             &KnockbackState,
         ),
-        With<AiController>,
+        (With<AiController>, Without<Ball>),
     >,
 ) {
     let delta = time.delta_secs();
