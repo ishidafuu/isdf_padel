@@ -146,9 +146,13 @@ pub fn ball_wall_reflection_system(
     }
 }
 
-/// ボールアウトオブバウンズ検出システム
-/// @spec 30401_trajectory_spec.md#req-30401-005
-/// @spec 30401_trajectory_spec.md#req-30401-006
+/// ボールアウトオブバウンズ検出システム（コート外着地判定）
+/// @spec 30901_point_judgment_spec.md#req-30901-001
+///
+/// ボールがコート境界外に着地（Y <= 0 かつ コート外）した場合にアウトイベントを発行。
+/// テニスルールでは、打ったボールがコート外に着地 = アウト（打った側の失点）。
+/// 通常は壁に当たった時点でアウト（wall_hit_judgment_system）だが、
+/// 壁を超えた場合のフォールバックとして機能。
 pub fn ball_out_of_bounds_system(
     config: Res<GameConfig>,
     query: Query<(Entity, &LogicalPosition), With<Ball>>,
@@ -160,26 +164,23 @@ pub fn ball_out_of_bounds_system(
     for (entity, logical_pos) in query.iter() {
         let pos = logical_pos.value;
 
-        // REQ-30401-006: ボールが地面（Y < 0）に落下した場合
-        if pos.y < 0.0 {
-            event_writer.write(BallOutOfBoundsEvent {
-                ball: entity,
-                final_position: pos,
-            });
-            continue;
-        }
+        // @spec 30901_point_judgment_spec.md#req-30901-001
+        // ボールが地面に着地（Y <= 0）かつコート境界外の場合のみアウト
+        // コート内の着地は GroundBounceEvent（ball_ground_bounce_system）で処理
+        if pos.y <= 0.0 {
+            let out_of_bounds_x = pos.x.abs() > half_width;
+            let out_of_bounds_z = pos.z.abs() > half_depth;
 
-        // REQ-30401-005: コート範囲チェック
-        // X範囲: -Court.Width/2 〜 +Court.Width/2
-        // Z範囲: -Court.Depth/2 〜 +Court.Depth/2
-        let out_of_bounds_x = pos.x < -half_width || pos.x > half_width;
-        let out_of_bounds_z = pos.z < -half_depth || pos.z > half_depth;
-
-        if out_of_bounds_x || out_of_bounds_z {
-            event_writer.write(BallOutOfBoundsEvent {
-                ball: entity,
-                final_position: pos,
-            });
+            if out_of_bounds_x || out_of_bounds_z {
+                info!(
+                    "Ball out of bounds at {:?} (half_width: {}, half_depth: {})",
+                    pos, half_width, half_depth
+                );
+                event_writer.write(BallOutOfBoundsEvent {
+                    ball: entity,
+                    final_position: pos,
+                });
+            }
         }
     }
 }
@@ -301,7 +302,7 @@ mod tests {
     /// @spec 30402_reflection_spec.md#req-30402-003
     #[test]
     fn test_wall_reflection_velocity() {
-        use crate::core::{CourtBounds, WallReflection};
+        use crate::core::WallReflection;
         use crate::resource::CourtConfig;
 
         let config = CourtConfig {
@@ -334,7 +335,7 @@ mod tests {
     /// @spec 30402_reflection_spec.md#req-30402-006
     #[test]
     fn test_ceiling_reflection() {
-        use crate::core::{CourtBounds, WallReflection};
+        use crate::core::WallReflection;
         use crate::resource::CourtConfig;
 
         let config = CourtConfig {
@@ -367,7 +368,7 @@ mod tests {
     /// @spec 30402_reflection_spec.md#req-30402-005
     #[test]
     fn test_back_wall_reflection() {
-        use crate::core::{CourtBounds, WallReflection};
+        use crate::core::WallReflection;
         use crate::resource::CourtConfig;
 
         let config = CourtConfig {
@@ -400,6 +401,7 @@ mod tests {
     /// @spec 30402_reflection_spec.md#req-30402-007
     #[test]
     fn test_position_clamp() {
+        #[allow(unused_imports)]
         use crate::core::CourtBounds;
         use crate::resource::CourtConfig;
 

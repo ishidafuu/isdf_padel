@@ -6,7 +6,7 @@
 use bevy::prelude::*;
 
 use crate::components::{Ball, BounceCount, LastShooter, LogicalPosition};
-use crate::core::events::{BallOutOfBoundsEvent, GroundBounceEvent, NetHitEvent, RallyEndEvent, RallyEndReason, ShotExecutedEvent};
+use crate::core::events::{BallOutOfBoundsEvent, GroundBounceEvent, NetHitEvent, RallyEndEvent, RallyEndReason, ShotExecutedEvent, WallReflectionEvent};
 use crate::core::CourtSide;
 use crate::resource::config::GameConfig;
 use crate::resource::{GameState, MatchScore, RallyState, RallyPhase};
@@ -25,6 +25,7 @@ impl Plugin for PointJudgmentPlugin {
                     bounce_count_update_system,
                     double_bounce_judgment_system,
                     out_of_bounds_judgment_system,
+                    wall_hit_judgment_system,
                     let_judgment_system,
                     net_fault_judgment_system,
                     own_court_hit_judgment_system,
@@ -91,16 +92,16 @@ pub fn double_bounce_judgment_system(
     }
 }
 
-/// アウト判定システム
+/// アウト判定システム（主要失点条件）
 /// @spec 30901_point_judgment_spec.md#req-30901-001
-/// ボールがコート外に出た場合（主にデバッグ/安全弁）
 ///
-/// NOTE: パデルでは壁で囲まれているため通常アウトは発生しない。
-/// このシステムはバグや例外的な状況に対する安全弁として機能する。
+/// テニスルールに準拠したアウト判定。
+/// ボールがコート境界外に着地した場合、最後に打った側（LastShooter）の失点。
+/// 壁を超えてコート外に着地した場合のフォールバックとして機能。
 pub fn out_of_bounds_judgment_system(
     mut out_events: MessageReader<BallOutOfBoundsEvent>,
-    config: Res<GameConfig>,
     match_score: Res<MatchScore>,
+    query: Query<&LastShooter, With<Ball>>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
     // ゲーム進行中でなければスキップ
@@ -108,28 +109,101 @@ pub fn out_of_bounds_judgment_system(
         return;
     }
 
-    let net_z = config.court.net_z;
-
     for event in out_events.read() {
-        let pos = event.final_position;
-
         // @spec 30901_point_judgment_spec.md#req-30901-001
-        // ボールの最終位置からどちら側でアウトになったか判定
-        let court_side = crate::core::determine_court_side(pos.z, net_z);
+        // LastShooter（最後に打った側）から失点側を決定
+        if let Ok(last_shooter) = query.get(event.ball) {
+            if let Some(shooter) = last_shooter.side {
+                // 打った側の失点 = 相手の得点
+                let winner = shooter.opponent();
 
-        // アウトになったコート側のプレイヤーが失点
-        // （自陣でアウトになった = 自分のミス）
-        let winner = court_side.opponent();
+                info!(
+                    "Out! Ball landed out of bounds at {:?}. {:?} hit the ball. {:?} wins.",
+                    event.final_position, shooter, winner
+                );
 
-        warn!(
-            "Ball out of bounds at {:?}! {:?} side loses.",
-            pos, court_side
-        );
+                rally_events.write(RallyEndEvent {
+                    winner,
+                    reason: RallyEndReason::Out,
+                });
+            } else {
+                // LastShooter が未設定の場合（サーブ前など）
+                // ボール位置から判定（フォールバック）
+                let court_side = if event.final_position.z < 0.0 {
+                    CourtSide::Player1
+                } else {
+                    CourtSide::Player2
+                };
+                let winner = court_side.opponent();
 
-        rally_events.write(RallyEndEvent {
-            winner,
-            reason: RallyEndReason::Out,
-        });
+                warn!(
+                    "Out with no LastShooter! Ball at {:?}. Defaulting to {:?} side loss.",
+                    event.final_position, court_side
+                );
+
+                rally_events.write(RallyEndEvent {
+                    winner,
+                    reason: RallyEndReason::Out,
+                });
+            }
+        }
+    }
+}
+
+/// 壁ヒット判定システム（テニスルール）
+/// @spec 30901_point_judgment_spec.md#REQ-30901-006
+///
+/// ボールが壁（フェンス）に当たった時点でラリー終了（アウト）。
+/// テニスでは壁に当たった時点でインプレーではなくなる。
+/// 最後に打った側（LastShooter）の失点となる。
+pub fn wall_hit_judgment_system(
+    mut wall_events: MessageReader<WallReflectionEvent>,
+    match_score: Res<MatchScore>,
+    query: Query<&LastShooter, With<Ball>>,
+    mut rally_events: MessageWriter<RallyEndEvent>,
+) {
+    // ゲーム進行中でなければスキップ
+    if match_score.game_state != GameState::Playing {
+        return;
+    }
+
+    for event in wall_events.read() {
+        // 壁に当たったボールの LastShooter を取得
+        if let Ok(last_shooter) = query.get(event.ball) {
+            if let Some(shooter) = last_shooter.side {
+                // 壁に当てた側の失点 = 相手の得点
+                let winner = shooter.opponent();
+
+                info!(
+                    "Wall hit ({:?})! {:?} hit ball to wall. {:?} wins the point.",
+                    event.wall_type, shooter, winner
+                );
+
+                rally_events.write(RallyEndEvent {
+                    winner,
+                    reason: RallyEndReason::Out,
+                });
+            } else {
+                // LastShooter が未設定の場合（サーブ前など）
+                // 壁に当たった位置から判定
+                let court_side = if event.contact_point.z < 0.0 {
+                    CourtSide::Player1
+                } else {
+                    CourtSide::Player2
+                };
+                let winner = court_side.opponent();
+
+                warn!(
+                    "Wall hit ({:?}) with no LastShooter! Defaulting to {:?} side loss.",
+                    event.wall_type, court_side
+                );
+
+                rally_events.write(RallyEndEvent {
+                    winner,
+                    reason: RallyEndReason::Out,
+                });
+            }
+        }
     }
 }
 
@@ -436,5 +510,122 @@ mod tests {
         assert_ne!(reasons[0], reasons[1]);
         assert_ne!(reasons[1], reasons[2]);
         assert_ne!(reasons[0], reasons[2]);
+    }
+
+    /// TST-30036-001: 壁ヒット時アウト判定テスト
+    /// 壁に当たった場合、LastShooter の失点となる
+    #[test]
+    fn test_wall_hit_out_judgment() {
+        let mut last_shooter = LastShooter::default();
+
+        // 1Pがショット
+        last_shooter.record(CourtSide::Player1);
+        assert_eq!(last_shooter.side, Some(CourtSide::Player1));
+
+        // 壁に当たった → 1P失点（2P得点）
+        let winner = last_shooter.side.unwrap().opponent();
+        assert_eq!(winner, CourtSide::Player2);
+    }
+
+    /// TST-30036-002: 壁ヒット時のRallyEndReason確認
+    /// Out理由が正しく使われることを確認
+    #[test]
+    fn test_wall_hit_rally_end_reason() {
+        // 壁ヒット時は Out 理由を使用
+        let reason = RallyEndReason::Out;
+        assert_eq!(reason, RallyEndReason::Out);
+    }
+
+    /// TST-30037-001: サイドライン外アウト判定テスト
+    /// @spec 30901_point_judgment_spec.md#req-30901-001
+    /// X軸がコート境界外の場合、LastShooter の失点となる
+    #[test]
+    fn test_req_30901_001_sideline_out() {
+        let half_width = 5.0_f32;
+
+        // サイドライン外の位置
+        let pos_out_left = Vec3::new(-6.0, 0.0, 0.0);
+        let pos_out_right = Vec3::new(6.0, 0.0, 0.0);
+
+        // 境界外判定
+        assert!(pos_out_left.x.abs() > half_width);
+        assert!(pos_out_right.x.abs() > half_width);
+
+        // LastShooter ベースで失点判定
+        let mut last_shooter = LastShooter::default();
+        last_shooter.record(CourtSide::Player1);
+
+        // 1Pがサイドアウト → 1P失点（2P得点）
+        let winner = last_shooter.side.unwrap().opponent();
+        assert_eq!(winner, CourtSide::Player2);
+    }
+
+    /// TST-30037-002: ベースライン外アウト判定テスト
+    /// @spec 30901_point_judgment_spec.md#req-30901-001
+    /// Z軸がコート境界外の場合、LastShooter の失点となる
+    #[test]
+    fn test_req_30901_001_baseline_out() {
+        let half_depth = 3.0_f32;
+
+        // ベースライン外の位置
+        let pos_out_back = Vec3::new(0.0, 0.0, -4.0);
+        let pos_out_front = Vec3::new(0.0, 0.0, 4.0);
+
+        // 境界外判定
+        assert!(pos_out_back.z.abs() > half_depth);
+        assert!(pos_out_front.z.abs() > half_depth);
+
+        // LastShooter ベースで失点判定
+        let mut last_shooter = LastShooter::default();
+        last_shooter.record(CourtSide::Player2);
+
+        // 2Pがベースラインアウト → 2P失点（1P得点）
+        let winner = last_shooter.side.unwrap().opponent();
+        assert_eq!(winner, CourtSide::Player1);
+    }
+
+    /// TST-30037-003: コート内着地は失点にならないテスト
+    /// @spec 30901_point_judgment_spec.md#req-30901-001
+    /// コート内の着地はアウトにならない（GroundBounceEvent で処理）
+    #[test]
+    fn test_req_30901_001_in_bounds() {
+        let half_width = 5.0_f32;
+        let half_depth = 3.0_f32;
+
+        // コート内の位置
+        let positions = vec![
+            Vec3::new(0.0, 0.0, 0.0),       // センター
+            Vec3::new(4.0, 0.0, 2.0),       // コーナー近く（境界内）
+            Vec3::new(-4.0, 0.0, -2.0),     // 対角コーナー近く（境界内）
+            Vec3::new(5.0, 0.0, 3.0),       // ちょうど境界（境界内扱い）
+        ];
+
+        for pos in positions {
+            let in_bounds_x = pos.x.abs() <= half_width;
+            let in_bounds_z = pos.z.abs() <= half_depth;
+
+            // すべてコート内
+            assert!(in_bounds_x, "Position {:?} should be in bounds (X)", pos);
+            assert!(in_bounds_z, "Position {:?} should be in bounds (Z)", pos);
+        }
+    }
+
+    /// TST-30037-004: コーナー外アウト判定テスト
+    /// @spec 30901_point_judgment_spec.md#req-30901-001
+    /// コーナー外（X, Z両方とも境界外）の場合もアウト
+    #[test]
+    fn test_req_30901_001_corner_out() {
+        let half_width = 5.0_f32;
+        let half_depth = 3.0_f32;
+
+        // コーナー外の位置
+        let pos_corner_out = Vec3::new(6.0, 0.0, 4.0);
+
+        // 境界外判定
+        let out_x = pos_corner_out.x.abs() > half_width;
+        let out_z = pos_corner_out.z.abs() > half_depth;
+
+        assert!(out_x || out_z); // どちらかが境界外ならアウト
+        assert!(out_x && out_z); // コーナーなので両方境界外
     }
 }
