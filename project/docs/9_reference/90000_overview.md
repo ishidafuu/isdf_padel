@@ -71,7 +71,7 @@ requirements-agent / spec-agent で参照資料を活用します。
 ### REQ-30101-001: 戦闘コマンド選択
 - WHEN プレイヤーのターンが開始する
 - THE SYSTEM SHALL コマンドメニューを表示する
-- **参考**: [battle.md](../9_reference/901_reference_game/mechanics/battle.md)
+- **参考**: [90112_shot_system.md](901_reference_game/mechanics/90112_shot_system.md)
 ```
 
 ## 記述スタイル
