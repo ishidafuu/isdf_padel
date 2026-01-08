@@ -124,7 +124,7 @@ fn find_closest_collision(
 
         // 衝突判定 & 最も近いプレイヤーを記録
         if distance_2d <= params.collision_distance {
-            if closest.is_none() || distance_2d < closest.unwrap().2 {
+            if closest.as_ref().map_or(true, |(_, _, d)| distance_2d < *d) {
                 closest = Some((player_entity, player_pos, distance_2d));
             }
         }
