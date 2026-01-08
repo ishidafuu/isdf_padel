@@ -4,7 +4,6 @@
 use bevy::prelude::*;
 
 use crate::components::{KnockbackState, LogicalPosition, Player, Velocity};
-use crate::core::court::CourtSide;
 use crate::core::events::PlayerMoveEvent;
 use crate::resource::config::GameConfig;
 
