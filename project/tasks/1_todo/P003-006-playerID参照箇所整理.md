@@ -1,10 +1,30 @@
-# P003-006: player.id 参照箇所の整理
+---
+id: "P003-006"
+title: "player.id参照箇所の整理"
+type: "project-wide"
+status: "todo"
+priority: "low"
+related_task: "P003"
+spec_ids: []
+blocked_by: ["P003-004"]
+blocks: []
+branch_name: null
+worktree_path: null
+plan_file: null
+tags: ["refactor", "cleanup", "ECS"]
+parent_task_id: "P003"
+created_at: "2026-01-08T13:52:00"
+updated_at: "2026-01-08T13:52:00"
+completed_at: null
+---
 
-## 概要
+# Task P003-006: player.id参照箇所の整理
+
+## Summary
 
 コードベース内の `player.id` 参照を整理し、CourtSide ベースまたはマーカーコンポーネントベースに統一する。
 
-## 現状
+## Current State
 
 `player.id` を使った分岐が複数箇所に存在：
 
@@ -20,7 +40,7 @@ CourtSide::Player1 => 1,
 CourtSide::Player2 => 2,
 ```
 
-## 分類
+## Classification
 
 ### A. ログ出力用（許容）
 ```rust
@@ -39,7 +59,7 @@ match player.id { 1 => CourtSide::Player1, _ => CourtSide::Player2 }
 // → Player コンポーネントに court_side があるので直接使用可能
 ```
 
-## 対応方針
+## Implementation Plan
 
 1. **Player.id の用途を明確化**
    - ログ表示用の識別子として維持
@@ -60,24 +80,28 @@ match player.id { 1 => CourtSide::Player1, _ => CourtSide::Player2 }
    let side = player.court_side;  // 既に持っている
    ```
 
-## 影響範囲
+## Modified Files
 
-- `project/src/systems/movement.rs`
-- `project/src/systems/knockback.rs`
-- `project/src/systems/ai_movement.rs`
-- `project/src/systems/serve.rs`
-- `project/src/systems/match_flow.rs`
+| ファイル | 変更内容 |
+|---------|---------|
+| `project/src/systems/movement.rs` | CourtSide ベースに変更 |
+| `project/src/systems/knockback.rs` | CourtSide ベースに変更 |
+| `project/src/systems/ai_movement.rs` | CourtSide ベースに変更 |
+| `project/src/systems/serve.rs` | 不要な変換削除 |
+| `project/src/systems/match_flow.rs` | CourtSide ベースに変更 |
 
-## 完了条件
+## Acceptance Criteria
 
 - [ ] player.id による分岐を player.court_side に置換
 - [ ] ヘルパー関数のシグネチャを CourtSide ベースに変更
 - [ ] 不要な id ↔ CourtSide 変換を削除
 - [ ] テスト通過
 
-## メタデータ
+## Dependencies
 
-- **優先度**: 低
-- **種別**: リファクタリング
-- **依存**: P003-004（スコアリングECS化）完了後が望ましい
-- **並列実行**: 可（ただし P003-004 との競合に注意）
+- **Blocked By:** P003-004（スコアリングECS化）完了後が望ましい
+- **Blocks:** なし
+
+## Notes
+
+- P003-004 との競合に注意

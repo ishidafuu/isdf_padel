@@ -1,10 +1,30 @@
-# P003-005: PlayerBundle 色決定の外部化
+---
+id: "P003-005"
+title: "PlayerBundle色決定の外部化"
+type: "project-wide"
+status: "todo"
+priority: "medium"
+related_task: "P003"
+spec_ids: []
+blocked_by: []
+blocks: []
+branch_name: null
+worktree_path: null
+plan_file: null
+tags: ["refactor", "config", "externalize"]
+parent_task_id: "P003"
+created_at: "2026-01-08T13:52:00"
+updated_at: "2026-01-08T13:52:00"
+completed_at: null
+---
 
-## 概要
+# Task P003-005: PlayerBundle色決定の外部化
+
+## Summary
 
 PlayerBundle 内でハードコーディングされているプレイヤー色を外部データ化する。
 
-## 現状の問題
+## Current Problem
 
 ```rust
 // components/mod.rs:370-375
@@ -18,7 +38,7 @@ let color = if id == 1 {
 
 **違反**: CLAUDE.md ルール3「ハードコーディング禁止原則」
 
-## 対応方針
+## Implementation Plan
 
 ### 1. データ定義（RON ファイル）
 
@@ -45,22 +65,26 @@ impl PlayerBundle {
 }
 ```
 
-## 影響範囲
+## Modified Files
 
-- `project/src/components/mod.rs` - PlayerBundle
-- `project/src/main.rs` - プレイヤー生成箇所
-- `project/assets/config/` - 新規データファイル
+| ファイル | 変更内容 |
+|---------|---------|
+| `project/src/components/mod.rs` | PlayerBundle |
+| `project/src/main.rs` | プレイヤー生成箇所 |
+| `project/assets/config/` | 新規データファイル |
 
-## 完了条件
+## Acceptance Criteria
 
 - [ ] PlayerVisualConfig データ定義作成
 - [ ] RON ファイル作成
 - [ ] PlayerBundle から色のハードコーディング削除
 - [ ] テスト通過
 
-## メタデータ
+## Dependencies
 
-- **優先度**: 中
-- **種別**: リファクタリング
-- **依存**: なし
-- **並列実行**: 可
+- **Blocked By:** なし
+- **Blocks:** なし
+
+## Notes
+
+- 並列実行可
