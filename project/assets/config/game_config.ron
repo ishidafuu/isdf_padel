@@ -15,9 +15,9 @@ GameConfig(
         service_box_depth: 5.0,
     ),
     player: PlayerConfig(
-        move_speed: 3.0,
-        move_speed_z: 3.5,
-        max_speed: 6.0,
+        move_speed: 2.0,
+        move_speed_z: 2.5,
+        max_speed: 4.0,
         jump_force: 3.0,
         friction: 0.9,
         air_control_factor: 0.5,
@@ -25,8 +25,8 @@ GameConfig(
         z_max: 6.0,
     ),
     ball: BallConfig(
-        normal_shot_speed: 4.5,
-        power_shot_speed: 7.0,
+        normal_shot_speed: 3.0,
+        power_shot_speed: 5.0,
         bounce_factor: 0.7,
         radius: 0.2,
         min_bounce_velocity: 1.0,
@@ -70,7 +70,7 @@ GameConfig(
     // @spec 30301_ai_movement_spec.md
     // @spec 30302_ai_shot_spec.md
     ai: AiConfig(
-        move_speed: 5.0,
+        move_speed: 3.5,
         home_position_x: 0.0,
         home_position_z: 5.0,
         shot_cooldown: 0.5,

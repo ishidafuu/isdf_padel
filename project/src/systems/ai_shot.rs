@@ -3,7 +3,9 @@
 
 use bevy::prelude::*;
 
-use crate::components::{AiController, Ball, KnockbackState, LogicalPosition, Player, ShotState};
+use crate::components::{
+    AiController, Ball, KnockbackState, LastShooter, LogicalPosition, Player, ShotState,
+};
 use crate::core::events::ShotEvent;
 use crate::resource::config::GameConfig;
 
@@ -15,7 +17,7 @@ use crate::resource::config::GameConfig;
 /// @spec 30302_ai_shot_spec.md#req-30302-005
 pub fn ai_shot_system(
     config: Res<GameConfig>,
-    ball_query: Query<&LogicalPosition, With<Ball>>,
+    ball_query: Query<(&LogicalPosition, &LastShooter), With<Ball>>,
     mut ai_query: Query<
         (
             &Player,
@@ -27,15 +29,21 @@ pub fn ai_shot_system(
     >,
     mut event_writer: MessageWriter<ShotEvent>,
 ) {
-    // ボール位置を取得（存在しなければ何もしない）
-    let ball_pos = match ball_query.iter().next() {
-        Some(pos) => pos.value,
+    // ボール位置とLastShooterを取得（存在しなければ何もしない）
+    let (ball_logical_pos, last_shooter) = match ball_query.iter().next() {
+        Some(t) => t,
         None => return,
     };
+    let ball_pos = ball_logical_pos.value;
 
     for (player, ai_pos, mut shot_state, knockback) in ai_query.iter_mut() {
         // ふっとばし中はショット禁止
         if knockback.is_knockback_active() {
+            continue;
+        }
+
+        // 自分が打ったボールは打てない（相手が打ち返すまで待つ）
+        if last_shooter.side == Some(player.court_side) {
             continue;
         }
 

@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, KnockbackState, LogicalPosition, Player, ShotState};
+use crate::components::{Ball, KnockbackState, LastShooter, LogicalPosition, Player, ShotState};
 use crate::core::events::ShotEvent;
 use crate::resource::config::GameConfig;
 use crate::systems::MovementInput;
@@ -44,11 +44,11 @@ pub fn shot_input_system(
         &mut ShotState,
         &KnockbackState,
     )>,
-    ball_query: Query<&LogicalPosition, With<Ball>>,
+    ball_query: Query<(&LogicalPosition, &LastShooter), With<Ball>>,
     mut event_writer: MessageWriter<ShotEvent>,
 ) {
-    // ボールの位置を取得（存在しない場合はショット不可）
-    let ball_logical_pos = match ball_query.iter().next() {
+    // ボールの位置とLastShooterを取得（存在しない場合はショット不可）
+    let (ball_logical_pos, last_shooter) = match ball_query.iter().next() {
         Some(t) => t,
         None => return, // ボールがない場合は何もしない
     };
@@ -71,6 +71,15 @@ pub fn shot_input_system(
             info!(
                 "Player {} shot ignored: knockback active",
                 player.id
+            );
+            continue;
+        }
+
+        // 自分が打ったボールは打てない（相手が打ち返すまで待つ）
+        if last_shooter.side == Some(player.court_side) {
+            info!(
+                "Player {} shot ignored: own ball (last_shooter={:?})",
+                player.id, last_shooter.side
             );
             continue;
         }

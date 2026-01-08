@@ -92,7 +92,8 @@ pub fn track_shot_button_system(
 ) {
     let delta_ms = time.delta_secs() * 1000.0;
 
-    // Vキーの状態を追跡（両プレイヤー共通）
+    // Vキーの状態を追跡（Player1のみ）
+    // Player2（AI）はキー入力を使わないため、ホールド状態は更新しない
     if keyboard.pressed(KeyCode::KeyV) {
         if !button_state.player1_holding {
             // 押し始め
@@ -102,12 +103,9 @@ pub fn track_shot_button_system(
             // 押し続けている
             button_state.player1_hold_time += delta_ms;
         }
-        button_state.player2_holding = button_state.player1_holding;
-        button_state.player2_hold_time = button_state.player1_hold_time;
     } else {
         // 離した
         button_state.player1_holding = false;
-        button_state.player2_holding = false;
         // hold_time はショット実行時に参照されるのでリセットしない
     }
 }
