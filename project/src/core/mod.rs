@@ -3,10 +3,8 @@
 
 pub mod court;
 pub mod events;
-pub mod utils;
 pub mod wall;
 
 pub use court::*;
 pub use events::*;
-pub use utils::*;
 pub use wall::*;

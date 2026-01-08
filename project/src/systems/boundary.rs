@@ -7,7 +7,8 @@ use crate::components::{LogicalPosition, Player, Velocity};
 use crate::core::{CourtSide, NetHitEvent};
 use crate::resource::GameConfig;
 
-use super::court_factory::{create_court, create_court_bounds, create_net_info};
+use super::court_factory::{create_court_bounds, create_net_info};
+
 
 /// 境界システムプラグイン
 pub struct BoundaryPlugin;
@@ -114,7 +115,7 @@ pub fn player_boundary_system(
 mod tests {
     use super::*;
     use crate::components::BounceCount;
-    use crate::core::{Court, WallReflection};
+    use crate::core::{determine_court_side, WallReflection};
 
     fn test_config() -> GameConfig {
         use crate::resource::config::*;
@@ -252,14 +253,14 @@ mod tests {
     #[test]
     fn test_beh_30503_004_ball_wall_reflection() {
         let config = test_config();
-        let court = create_court(&config.court);
+        let bounds = create_court_bounds(&config.court);
         let bounce_factor = config.ball.bounce_factor;
 
         // 左壁に接触
         let pos = Vec3::new(-5.0, 2.0, 0.0);
         let vel = Vec3::new(-10.0, 0.0, 3.0);
 
-        let result = WallReflection::check_and_reflect(pos, vel, &court.bounds, bounce_factor);
+        let result = WallReflection::check_and_reflect(pos, vel, &bounds, bounce_factor);
 
         assert!(result.is_some());
         let r = result.unwrap();
@@ -288,16 +289,16 @@ mod tests {
     #[test]
     fn test_beh_30503_006_ball_court_side_detection() {
         let config = test_config();
-        let court = create_court(&config.court);
+        let net = create_net_info(&config.court);
 
         // 1Pコート側
-        assert_eq!(court.get_court_side(-1.0), CourtSide::Player1);
+        assert_eq!(determine_court_side(-1.0, net.z), CourtSide::Player1);
 
         // 2Pコート側
-        assert_eq!(court.get_court_side(1.0), CourtSide::Player2);
+        assert_eq!(determine_court_side(1.0, net.z), CourtSide::Player2);
 
         // ネット上は2P側扱い
-        assert_eq!(court.get_court_side(0.0), CourtSide::Player2);
+        assert_eq!(determine_court_side(0.0, net.z), CourtSide::Player2);
     }
 
     /// TST-30504-017: 境界チェックの優先順位

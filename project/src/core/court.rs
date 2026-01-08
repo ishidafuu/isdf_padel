@@ -69,6 +69,7 @@ impl CourtBounds {
     }
 
     /// 位置がコート内かチェック
+    #[allow(dead_code)] // テストで使用、将来の境界判定で使用予定
     #[inline]
     pub fn is_inside(&self, x: f32, y: f32, z: f32) -> bool {
         x >= self.left
@@ -80,18 +81,21 @@ impl CourtBounds {
     }
 
     /// X座標がコート左右境界内かチェック (REQ-30501-002)
+    #[allow(dead_code)] // テストで使用、将来の境界判定で使用予定
     #[inline]
     pub fn is_within_x(&self, x: f32) -> bool {
         x >= self.left && x <= self.right
     }
 
     /// Y座標がコート上下境界内かチェック (REQ-30501-004)
+    #[allow(dead_code)] // テストで使用、将来の境界判定で使用予定
     #[inline]
     pub fn is_within_y(&self, y: f32) -> bool {
         y >= self.ground && y <= self.ceiling
     }
 
     /// Z座標がコート前後境界内かチェック (REQ-30501-003)
+    #[allow(dead_code)] // テストで使用、将来の境界判定で使用予定
     #[inline]
     pub fn is_within_z(&self, z: f32) -> bool {
         z >= self.back_1p && z <= self.back_2p
@@ -123,6 +127,7 @@ pub struct NetInfo {
     /// ネットのZ座標（コート中央、1P/2Pの境界）
     pub z: f32,
     /// ネットの高さ
+    #[allow(dead_code)] // is_collision で使用、将来のネット衝突判定で使用予定
     pub height: f32,
 }
 
@@ -135,6 +140,7 @@ impl NetInfo {
 
     /// 指定位置がネットに衝突するかチェック
     /// ネット位置（Z座標）にいて、ネット高さ未満の場合に衝突
+    #[allow(dead_code)] // テストで使用、将来のネット衝突判定で使用予定
     #[inline]
     pub fn is_collision(&self, y: f32, z: f32, tolerance: f32) -> bool {
         (z - self.z).abs() < tolerance && y < self.height
@@ -160,28 +166,6 @@ pub fn determine_court_side(z: f32, net_z: f32) -> CourtSide {
     }
 }
 
-/// コート全体の情報を保持
-/// @spec 30501_court_spec.md
-#[derive(Debug, Clone, Copy)]
-pub struct Court {
-    pub bounds: CourtBounds,
-    pub net: NetInfo,
-}
-
-impl Court {
-    /// コート情報を生成
-    pub fn new(bounds: CourtBounds, net: NetInfo) -> Self {
-        Self { bounds, net }
-    }
-
-    /// 指定位置のコート区分を判定
-    /// @spec 30501_court_spec.md#req-30501-006
-    #[inline]
-    pub fn get_court_side(&self, z: f32) -> CourtSide {
-        determine_court_side(z, self.net.z)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -197,27 +181,22 @@ mod tests {
         NetInfo::new(0.0, 1.0)
     }
 
-    /// テスト用のコート全体を生成
-    fn test_court() -> Court {
-        Court::new(test_bounds(), test_net())
-    }
-
     /// TST-30504-001: コート座標系
     #[test]
     fn test_req_30501_001_coordinate_system() {
-        let court = test_court();
+        let bounds = test_bounds();
 
         // X軸: -5.0（左）〜 +5.0（右）
-        assert_eq!(court.bounds.left, -5.0);
-        assert_eq!(court.bounds.right, 5.0);
+        assert_eq!(bounds.left, -5.0);
+        assert_eq!(bounds.right, 5.0);
 
         // Y軸: 0（地面）〜 5.0（天井）
-        assert_eq!(court.bounds.ground, 0.0);
-        assert_eq!(court.bounds.ceiling, 5.0);
+        assert_eq!(bounds.ground, 0.0);
+        assert_eq!(bounds.ceiling, 5.0);
 
         // Z軸: -3.0（1P側）〜 +3.0（2P側）
-        assert_eq!(court.bounds.back_1p, -3.0);
-        assert_eq!(court.bounds.back_2p, 3.0);
+        assert_eq!(bounds.back_1p, -3.0);
+        assert_eq!(bounds.back_2p, 3.0);
     }
 
     /// TST-30504-002: コート境界（左右）
@@ -276,16 +255,16 @@ mod tests {
     /// TST-30504-006: コート区分（1P/2P）
     #[test]
     fn test_req_30501_006_court_side() {
-        let court = test_court();
+        let net = test_net();
 
-        // 1Pコート範囲: Z < 0
-        assert_eq!(court.get_court_side(-1.0), CourtSide::Player1);
-        assert_eq!(court.get_court_side(-3.0), CourtSide::Player1);
+        // 1Pコート範囲: Z < net.z
+        assert_eq!(determine_court_side(-1.0, net.z), CourtSide::Player1);
+        assert_eq!(determine_court_side(-3.0, net.z), CourtSide::Player1);
 
-        // 2Pコート範囲: Z >= 0
-        assert_eq!(court.get_court_side(1.0), CourtSide::Player2);
-        assert_eq!(court.get_court_side(3.0), CourtSide::Player2);
-        assert_eq!(court.get_court_side(0.0), CourtSide::Player2); // ネット上は2P側
+        // 2Pコート範囲: Z >= net.z
+        assert_eq!(determine_court_side(1.0, net.z), CourtSide::Player2);
+        assert_eq!(determine_court_side(3.0, net.z), CourtSide::Player2);
+        assert_eq!(determine_court_side(0.0, net.z), CourtSide::Player2); // ネット上は2P側
     }
 
     /// REQ-30501-007: アウトの不存在（設計検証）

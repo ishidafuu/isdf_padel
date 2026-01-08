@@ -95,6 +95,7 @@ impl WallReflection {
     ///
     /// # Returns
     /// 反射後の速度
+    #[allow(dead_code)] // テストで使用、将来の壁反射統合で使用予定
     pub fn reflect(wall_type: WallType, velocity: Vec3, bounce_factor: f32) -> Vec3 {
         match wall_type {
             WallType::LeftWall | WallType::RightWall => {
