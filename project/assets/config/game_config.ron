@@ -68,10 +68,10 @@ GameConfig(
         p2_default_direction_z: -1.0,
     ),
     shadow: ShadowConfig(
-        player_size: (50.0, 20.0),
+        player_size: (25.0, 10.0),
         player_alpha: 0.6,
-        player_y_offset: 30.0,
-        ball_size: (25.0, 10.0),
+        player_y_offset: 15.0,
+        ball_size: (12.0, 5.0),
         ball_alpha: 0.5,
         ball_y_offset: 0.0,
         z_layer: -0.5,

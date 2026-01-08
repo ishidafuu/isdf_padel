@@ -15,8 +15,9 @@ use crate::components::{Ball, HasShadow, LogicalPosition, Player, Shadow};
 use crate::resource::config::GameConfig;
 
 /// ワールド座標→ピクセル座標変換用スケール
-/// 1ワールドユニット = 100ピクセル
-pub const WORLD_SCALE: f32 = 100.0;
+/// テニスコート（12x16）が1280x720ウィンドウに収まるよう調整
+/// 16 * 50 = 800px, 12 * 50 = 600px
+pub const WORLD_SCALE: f32 = 50.0;
 
 /// 論理座標を表示用Transformに同期するシステム
 /// 論理座標系: X=横移動, Y=高さ（ジャンプ）, Z=奥行き（コート前後＝打ち合い方向）
