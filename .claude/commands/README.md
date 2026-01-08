@@ -233,38 +233,6 @@ review-agent:
 
 ---
 
-## 並列セッション管理
-
-並列セッション管理は session-manager-agent ガイドラインに従って Claude Code が自動実行します。
-詳細は `agents/session-manager-agent.md` および `skills/parallel-sessions.md` を参照。
-
-### セッション管理コマンド（3個）
-
-| コマンド | 説明 | 使用タイミング |
-|---------|------|--------------|
-| `/session-init` | 並列セッションの初期化（worktree作成、ブランチ作成） | 並列実装開始時 |
-| `/session-status` | セッション状況確認（アクティブセッション、ID予約状況） | 状態確認時 |
-| `/session-merge` | セッションマージ（競合検出、推奨順序提案） | マージ時 |
-
-### ID予約コマンド（5個）
-
-並列セッション時のID衝突を防ぐ:
-
-| コマンド | 説明 |
-|---------|------|
-| `/id-reserve` | ID範囲を予約 |
-| `/id-reserve-status` | 予約状況一覧表示 |
-| `/id-reserve-release` | 予約解放 |
-| `/id-reserve-extend` | 予約期限延長 |
-| `/id-reserve-cleanup` | 期限切れ予約削除 |
-
-**ユーザーが使う指示**:
-- 「Player、Enemy、Stageを並列実装したい」- 並列セッション開始
-- 「セッション状態を確認して」- 状態確認
-- 「セッションをマージしたい」- マージ調整
-
----
-
 ## 関連ドキュメント
 
 - `docs/reference/framework-spec.md` - フレームワーク仕様書（番号体系セクション）
