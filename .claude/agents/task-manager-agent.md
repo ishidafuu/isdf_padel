@@ -356,6 +356,36 @@ task-manager-agent:
   7. push、完了を報告
 ```
 
+### 2.1. 後続タスクの作成（CRITICAL）
+
+タスク完了時または作業中に後続タスクが必要になった場合。
+
+**必須フロー**: task-registration-agent ガイドライン経由で作成
+
+```
+後続タスクが必要
+  ↓
+プランモード開始（EnterPlanMode）
+  ↓
+プランファイル作成（~/.claude/plans/）
+  ↓
+「プランからタスクを作成して」
+  ↓
+task-registration-agent 経由でタスク作成
+  ↓
+frontmatter 付きタスクファイル生成
+```
+
+**禁止事項**:
+- ❌ タスクファイルを直接手動作成
+- ❌ frontmatter なしでのファイル生成
+- ❌ task-registration-agent を経由しない作成
+
+**理由**:
+- task-next.py が frontmatter を必要とする
+- 依存関係（blocked_by/blocks）の適切な設定
+- ID 自動採番による重複防止
+
 ### 3. タスク検索フロー
 
 ```
