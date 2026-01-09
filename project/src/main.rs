@@ -78,6 +78,8 @@ fn main() {
         .add_message::<ShotEvent>()
         .add_message::<ShotExecutedEvent>()
         .add_systems(Startup, (setup, load_config_asset))
+        // エスケープキーでウィンドウを閉じる
+        .add_systems(Update, escape_to_exit)
         .add_systems(
             Update,
             (
@@ -316,5 +318,12 @@ fn update_config_on_change(
                 }
             }
         }
+    }
+}
+
+/// エスケープキーでウィンドウを閉じる
+fn escape_to_exit(keyboard: Res<ButtonInput<KeyCode>>, mut exit: MessageWriter<AppExit>) {
+    if keyboard.just_pressed(KeyCode::Escape) {
+        exit.write(AppExit::Success);
     }
 }
