@@ -164,6 +164,7 @@ mod tests {
             player_visual: PlayerVisualConfig::default(),
             serve: ServeConfig::default(),
             spin_physics: SpinPhysicsConfig::default(),
+            trajectory: TrajectoryConfig::default(),
         }
     }
 

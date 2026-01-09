@@ -331,6 +331,7 @@ mod tests {
             player_visual: crate::resource::config::PlayerVisualConfig::default(),
             serve: crate::resource::config::ServeConfig::default(),
             spin_physics: crate::resource::config::SpinPhysicsConfig::default(),
+            trajectory: crate::resource::config::TrajectoryConfig::default(),
         }
     }
 

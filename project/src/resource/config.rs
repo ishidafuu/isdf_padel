@@ -44,6 +44,10 @@ pub struct GameConfig {
     /// @data 80101_game_constants.md#spin-physics-config
     #[serde(default)]
     pub spin_physics: SpinPhysicsConfig,
+    /// 弾道計算パラメータ
+    /// @spec 30605_trajectory_calculation_spec.md
+    #[serde(default)]
+    pub trajectory: TrajectoryConfig,
 }
 
 /// 物理演算パラメータ
@@ -713,6 +717,100 @@ fn default_spin_drag_factor() -> f32 {
 }
 fn default_spin_decay_rate() -> f32 {
     0.5
+}
+
+/// 弾道計算パラメータ
+/// @spec 30605_trajectory_calculation_spec.md
+#[derive(Deserialize, Clone, Debug)]
+pub struct TrajectoryConfig {
+    /// 着地マージン（コート端からの距離）
+    /// @spec 30605_trajectory_calculation_spec.md#req-30605-011
+    #[serde(default = "default_landing_margin")]
+    pub landing_margin: f32,
+    /// デフォルト着地深さ（ニュートラル時のサービスライン付近）
+    /// @spec 30605_trajectory_calculation_spec.md#req-30605-010
+    #[serde(default = "default_landing_depth")]
+    pub default_landing_depth: f32,
+    /// 最小発射角度（度）
+    /// @spec 30605_trajectory_calculation_spec.md#req-30605-022
+    #[serde(default = "default_min_launch_angle")]
+    pub min_launch_angle: f32,
+    /// 最大発射角度（度）
+    /// @spec 30605_trajectory_calculation_spec.md#req-30605-022
+    #[serde(default = "default_max_launch_angle")]
+    pub max_launch_angle: f32,
+    /// フラット時の初速係数
+    /// @spec 30605_trajectory_calculation_spec.md#req-30605-031
+    #[serde(default = "default_spin_speed_flat")]
+    pub spin_speed_flat: f32,
+    /// トップスピン時の初速係数
+    /// @spec 30605_trajectory_calculation_spec.md#req-30605-031
+    #[serde(default = "default_spin_speed_topspin")]
+    pub spin_speed_topspin: f32,
+    /// スライス時の初速係数
+    /// @spec 30605_trajectory_calculation_spec.md#req-30605-031
+    #[serde(default = "default_spin_speed_slice")]
+    pub spin_speed_slice: f32,
+    /// 近距離時の初速係数
+    /// @spec 30605_trajectory_calculation_spec.md#req-30605-032
+    #[serde(default = "default_distance_speed_min")]
+    pub distance_speed_min: f32,
+    /// 遠距離時の初速係数
+    /// @spec 30605_trajectory_calculation_spec.md#req-30605-032
+    #[serde(default = "default_distance_speed_max")]
+    pub distance_speed_max: f32,
+    /// 最大着地ズレ（精度100%以外での偏差）
+    /// @spec 30605_trajectory_calculation_spec.md#req-30605-040
+    #[serde(default = "default_max_landing_deviation")]
+    pub max_landing_deviation: f32,
+}
+
+impl Default for TrajectoryConfig {
+    fn default() -> Self {
+        Self {
+            landing_margin: default_landing_margin(),
+            default_landing_depth: default_landing_depth(),
+            min_launch_angle: default_min_launch_angle(),
+            max_launch_angle: default_max_launch_angle(),
+            spin_speed_flat: default_spin_speed_flat(),
+            spin_speed_topspin: default_spin_speed_topspin(),
+            spin_speed_slice: default_spin_speed_slice(),
+            distance_speed_min: default_distance_speed_min(),
+            distance_speed_max: default_distance_speed_max(),
+            max_landing_deviation: default_max_landing_deviation(),
+        }
+    }
+}
+
+fn default_landing_margin() -> f32 {
+    0.5
+}
+fn default_landing_depth() -> f32 {
+    4.0
+}
+fn default_min_launch_angle() -> f32 {
+    5.0
+}
+fn default_max_launch_angle() -> f32 {
+    60.0
+}
+fn default_spin_speed_flat() -> f32 {
+    1.0
+}
+fn default_spin_speed_topspin() -> f32 {
+    0.92
+}
+fn default_spin_speed_slice() -> f32 {
+    0.88
+}
+fn default_distance_speed_min() -> f32 {
+    1.0
+}
+fn default_distance_speed_max() -> f32 {
+    1.15
+}
+fn default_max_landing_deviation() -> f32 {
+    1.0
 }
 
 /// ショット属性パラメータ

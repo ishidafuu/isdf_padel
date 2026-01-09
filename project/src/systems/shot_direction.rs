@@ -2,6 +2,7 @@
 //! @spec 30602_shot_direction_spec.md
 //! @spec 30603_jump_shot_spec.md
 //! @spec 30604_shot_attributes_spec.md
+//! @spec 30605_trajectory_calculation_spec.md
 
 use bevy::prelude::*;
 use rand::Rng;
@@ -10,10 +11,10 @@ use crate::components::{
     Ball, BallSpin, BounceCount, BounceState, InputState, LastShooter, LogicalPosition, Player,
     Velocity,
 };
-use crate::core::CourtSide;
 use crate::core::events::{ShotEvent, ShotExecutedEvent};
 use crate::resource::config::GameConfig;
 use crate::systems::shot_attributes::{build_shot_context_from_input_state, calculate_shot_attributes};
+use crate::systems::trajectory_calculator::{TrajectoryContext, calculate_trajectory};
 
 /// ショット方向計算システム
 /// ShotEvent を受信してボールの速度を設定する
@@ -26,6 +27,7 @@ use crate::systems::shot_attributes::{build_shot_context_from_input_state, calcu
 /// @spec 30604_shot_attributes_spec.md#req-30604-068
 /// @spec 30604_shot_attributes_spec.md#req-30604-069
 /// @spec 30604_shot_attributes_spec.md#req-30604-070
+/// @spec 30605_trajectory_calculation_spec.md - 着地点逆算型弾道システム
 pub fn shot_direction_system(
     config: Res<GameConfig>,
     mut shot_events: MessageReader<ShotEvent>,
@@ -73,9 +75,6 @@ pub fn shot_direction_system(
             }
         };
 
-        // REQ-30602-001: 水平方向の計算（コートサイドに応じてZ軸方向を固定）
-        let horizontal_dir = calculate_horizontal_direction(event.direction, event.court_side);
-
         // === ショット属性計算（v0.2新機能） ===
         // @spec 30604_shot_attributes_spec.md
         // @spec 20006_input_system.md - InputState 対応
@@ -90,39 +89,59 @@ pub fn shot_direction_system(
 
         let shot_attrs = calculate_shot_attributes(&shot_context, &config.shot_attributes);
 
-        // === ショット実行への反映 ===
-
-        // REQ-30604-068: 威力のボール速度反映
-        // power は既に m/s 単位で計算されている
-        let ball_speed = shot_attrs.power;
-
-        // REQ-30604-065: 角度の発射角度反映
-        let angle_deg = shot_attrs.angle;
-
         // REQ-30604-069: 安定性によるミスショット判定
         let (is_miss_shot, miss_direction_offset) =
             check_miss_shot(shot_attrs.stability, &config.shot_attributes);
 
-        // REQ-30604-070: 精度によるコースブレ
+        // === 着地点逆算型弾道計算（v0.4新機能） ===
+        // @spec 30605_trajectory_calculation_spec.md
+
+        // 精度の計算（ミスショット時は精度を下げる）
+        let effective_accuracy = if is_miss_shot {
+            shot_attrs.accuracy * 0.3 // ミスショット時は精度30%
+        } else {
+            shot_attrs.accuracy
+        };
+
+        // 弾道計算コンテキストを構築
+        let trajectory_ctx = TrajectoryContext {
+            input: event.direction, // X=左右, Y=前後
+            court_side: event.court_side,
+            ball_position: ball_pos.value,
+            spin: shot_attrs.spin,
+            base_speed: shot_attrs.power,
+            accuracy: effective_accuracy,
+        };
+
+        // 弾道を計算
+        let trajectory_result = calculate_trajectory(&trajectory_ctx, &config);
+
+        // REQ-30604-070: 精度によるコースブレ（方向に追加のブレを適用）
         let direction_error =
             calculate_direction_error(shot_attrs.accuracy, &config.shot_attributes);
 
-        // 方向にブレを適用
-        let adjusted_horizontal_dir = if is_miss_shot {
-            // ミスショット：大きなブレを追加
-            apply_direction_offset(horizontal_dir, miss_direction_offset)
+        // ミスショット時は大きなブレを追加
+        let total_direction_offset = if is_miss_shot {
+            miss_direction_offset
         } else {
-            // 通常：精度によるブレを追加
-            apply_direction_offset(horizontal_dir, direction_error)
+            direction_error
         };
 
-        // REQ-30602-004: 打球ベクトルの計算
-        let shot_velocity = calculate_shot_velocity(adjusted_horizontal_dir, ball_speed, angle_deg);
+        // 方向にブレを適用
+        let adjusted_direction =
+            apply_direction_offset(trajectory_result.direction, total_direction_offset);
+
+        // 最終的な打球ベクトルを計算
+        let shot_velocity = adjusted_direction * trajectory_result.final_speed;
 
         // REQ-30602-005: ボール速度の設定
         info!(
-            "shot_direction: attrs={:?}, miss={}, velocity={:?}",
-            shot_attrs, is_miss_shot, shot_velocity
+            "shot_direction(v0.4): landing={:?}, angle={:.1}, speed={:.1}, miss={}, velocity={:?}",
+            trajectory_result.landing_position,
+            trajectory_result.launch_angle,
+            trajectory_result.final_speed,
+            is_miss_shot,
+            shot_velocity
         );
         ball_velocity.value = shot_velocity;
 
@@ -143,8 +162,16 @@ pub fn shot_direction_system(
         });
 
         info!(
-            "Player {} shot executed: power={:.1}, angle={:.1}, stability={:.2}, accuracy={:.2}, spin={:.2}, miss={}",
-            event.player_id, shot_attrs.power, shot_attrs.angle, shot_attrs.stability, shot_attrs.accuracy, shot_attrs.spin, is_miss_shot
+            "Player {} shot executed: power={:.1}, angle={:.1}, stability={:.2}, accuracy={:.2}, spin={:.2}, miss={}, landing=({:.1}, {:.1})",
+            event.player_id,
+            shot_attrs.power,
+            trajectory_result.launch_angle,
+            shot_attrs.stability,
+            shot_attrs.accuracy,
+            shot_attrs.spin,
+            is_miss_shot,
+            trajectory_result.landing_position.x,
+            trajectory_result.landing_position.z
         );
     }
 }
@@ -202,47 +229,48 @@ fn apply_direction_offset(horizontal_dir: Vec3, offset_deg: f32) -> Vec3 {
     Vec3::new(new_x, horizontal_dir.y, new_z).normalize()
 }
 
-/// 水平方向を計算
-/// @spec 30602_shot_direction_spec.md#req-30602-001
-/// 新座標系: X=打ち合い方向, Z=コート幅
-/// X軸方向（打ち合い）: コートサイドに応じて常に相手コート方向に固定
-/// Z軸方向（左右）: 入力で調整可能
-#[inline]
-fn calculate_horizontal_direction(direction: Vec2, court_side: CourtSide) -> Vec3 {
-    // X軸方向: コートサイドに応じて固定（常に相手コートへ）
-    // Player1側（X < net_x）にいる場合: +X方向（相手コート）
-    // Player2側（X > net_x）にいる場合: -X方向（相手コート）
-    let x_direction = match court_side {
-        CourtSide::Player1 => 1.0,
-        CourtSide::Player2 => -1.0,
-    };
-
-    // Z軸方向: 入力X値を使用（コート幅方向の打ち分け）
-    // shot_input.rs から direction.x に横入力（左右）が入る
-    let z_direction = direction.x;
-
-    // 正規化して返す
-    Vec3::new(x_direction, 0.0, z_direction).normalize()
-}
-
-/// 打球ベクトルを計算
-/// @spec 30602_shot_direction_spec.md#req-30602-004
-#[inline]
-fn calculate_shot_velocity(horizontal_dir: Vec3, speed: f32, angle_deg: f32) -> Vec3 {
-    let angle_rad = angle_deg.to_radians();
-    let cos_angle = angle_rad.cos();
-    let sin_angle = angle_rad.sin();
-
-    Vec3::new(
-        horizontal_dir.x * speed * cos_angle,
-        speed * sin_angle,
-        horizontal_dir.z * speed * cos_angle,
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::CourtSide;
+
+    /// 水平方向を計算（テスト用）
+    /// @spec 30602_shot_direction_spec.md#req-30602-001
+    /// 新座標系: X=打ち合い方向, Z=コート幅
+    /// X軸方向（打ち合い）: コートサイドに応じて常に相手コート方向に固定
+    /// Z軸方向（左右）: 入力で調整可能
+    #[inline]
+    fn calculate_horizontal_direction(direction: Vec2, court_side: CourtSide) -> Vec3 {
+        // X軸方向: コートサイドに応じて固定（常に相手コートへ）
+        // Player1側（X < net_x）にいる場合: +X方向（相手コート）
+        // Player2側（X > net_x）にいる場合: -X方向（相手コート）
+        let x_direction = match court_side {
+            CourtSide::Player1 => 1.0,
+            CourtSide::Player2 => -1.0,
+        };
+
+        // Z軸方向: 入力X値を使用（コート幅方向の打ち分け）
+        // shot_input.rs から direction.x に横入力（左右）が入る
+        let z_direction = direction.x;
+
+        // 正規化して返す
+        Vec3::new(x_direction, 0.0, z_direction).normalize()
+    }
+
+    /// 打球ベクトルを計算（テスト用）
+    /// @spec 30602_shot_direction_spec.md#req-30602-004
+    #[inline]
+    fn calculate_shot_velocity(horizontal_dir: Vec3, speed: f32, angle_deg: f32) -> Vec3 {
+        let angle_rad = angle_deg.to_radians();
+        let cos_angle = angle_rad.cos();
+        let sin_angle = angle_rad.sin();
+
+        Vec3::new(
+            horizontal_dir.x * speed * cos_angle,
+            speed * sin_angle,
+            horizontal_dir.z * speed * cos_angle,
+        )
+    }
 
     /// TST-30604-007: 水平方向計算テスト（Player1側コート、入力なし）
     /// 新座標系: X=打ち合い方向（固定）, Z=コート幅（入力）

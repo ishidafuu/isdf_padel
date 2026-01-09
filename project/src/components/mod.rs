@@ -275,6 +275,9 @@ pub struct ShotAttributes {
     pub stability: f32,
     /// 発射角度、度
     /// @spec 30604_shot_attributes_spec.md#req-30604-065
+    /// NOTE: v0.4以降は trajectory_calculator が角度を算出するため、
+    ///       このフィールドは後方互換性のために残している
+    #[allow(dead_code)]
     pub angle: f32,
     /// スピン量（正: トップスピン、負: スライス）、-1.0〜+1.0
     /// @spec 30604_shot_attributes_spec.md#req-30604-066

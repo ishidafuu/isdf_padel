@@ -19,6 +19,7 @@ mod serve;
 mod shot_attributes;
 mod shot_direction;
 mod shot_input;
+mod trajectory_calculator;
 
 pub use ai_movement::*;
 pub use ai_shot::*;
