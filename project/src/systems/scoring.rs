@@ -303,7 +303,7 @@ mod tests {
         let mut match_score = MatchScore::new();
         let win_index = 4; // point_values.len() = 4
 
-        // Player1 が 40 に到達
+        // Left側 が 40 に到達
         match_score.add_point(CourtSide::Left); // 15
         match_score.add_point(CourtSide::Left); // 30
         match_score.add_point(CourtSide::Left); // 40
@@ -382,17 +382,17 @@ mod tests {
     fn test_game_count_increment() {
         let mut match_score = MatchScore::new();
 
-        // Player1がゲームを獲得
+        // Left側がゲームを獲得
         match_score.win_game(CourtSide::Left);
         assert_eq!(match_score.get_score(CourtSide::Left).games, 1);
         assert_eq!(match_score.get_score(CourtSide::Right).games, 0);
 
-        // Player2がゲームを獲得
+        // Right側がゲームを獲得
         match_score.win_game(CourtSide::Right);
         assert_eq!(match_score.get_score(CourtSide::Left).games, 1);
         assert_eq!(match_score.get_score(CourtSide::Right).games, 1);
 
-        // Player1が再度ゲームを獲得
+        // Left側が再度ゲームを獲得
         match_score.win_game(CourtSide::Left);
         assert_eq!(match_score.get_score(CourtSide::Left).games, 2);
     }
@@ -404,13 +404,13 @@ mod tests {
         let mut match_score = MatchScore::new();
         let games_to_win = 6;
 
-        // Player1が5ゲーム獲得（まだセット勝利ではない）
+        // Left側が5ゲーム獲得（まだセット勝利ではない）
         for _ in 0..5 {
             match_score.win_game(CourtSide::Left);
         }
         assert!(!match_score.check_set_win(CourtSide::Left, games_to_win));
 
-        // Player1が6ゲーム目を獲得（セット勝利）
+        // Left側が6ゲーム目を獲得（セット勝利）
         match_score.win_game(CourtSide::Left);
         assert!(match_score.check_set_win(CourtSide::Left, games_to_win));
     }
@@ -461,14 +461,14 @@ mod tests {
     fn test_server_switch_after_game() {
         let mut match_score = MatchScore::new();
 
-        // 初期サーバーはPlayer1
+        // 初期サーバーはLeft側
         assert_eq!(match_score.server, CourtSide::Left);
 
-        // ゲーム獲得後はPlayer2がサーバー
+        // ゲーム獲得後はRight側がサーバー
         match_score.win_game(CourtSide::Left);
         assert_eq!(match_score.server, CourtSide::Right);
 
-        // 次のゲーム後はPlayer1がサーバー
+        // 次のゲーム後はLeft側がサーバー
         match_score.win_game(CourtSide::Right);
         assert_eq!(match_score.server, CourtSide::Left);
     }
@@ -479,7 +479,7 @@ mod tests {
     fn test_game_count_reset_after_set_win() {
         let mut match_score = MatchScore::new();
 
-        // Player1が6ゲーム獲得
+        // Left側が6ゲーム獲得
         for _ in 0..6 {
             match_score.win_game(CourtSide::Left);
         }
@@ -513,12 +513,12 @@ mod tests {
     fn test_set_count_increment() {
         let mut match_score = MatchScore::new();
 
-        // Player1がセットを獲得
+        // Left側がセットを獲得
         match_score.win_set(CourtSide::Left);
         assert_eq!(match_score.get_score(CourtSide::Left).sets, 1);
         assert_eq!(match_score.get_score(CourtSide::Right).sets, 0);
 
-        // Player2がセットを獲得
+        // Right側がセットを獲得
         match_score.win_set(CourtSide::Right);
         assert_eq!(match_score.get_score(CourtSide::Left).sets, 1);
         assert_eq!(match_score.get_score(CourtSide::Right).sets, 1);
@@ -534,7 +534,7 @@ mod tests {
         // セット獲得前は勝利ではない
         assert!(!match_score.check_match_win(CourtSide::Left, sets_to_win));
 
-        // Player1がセットを獲得
+        // Left側がセットを獲得
         match_score.win_set(CourtSide::Left);
 
         // 1セット獲得でマッチ勝利

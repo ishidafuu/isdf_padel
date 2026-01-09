@@ -83,9 +83,9 @@ impl PlayerGameScore {
 /// ECS設計原則: CourtSideベースの配列アクセス（固定識別子を排除）
 #[derive(Resource, Debug, Clone)]
 pub struct MatchScore {
-    /// 各サイドのポイント [Player1側, Player2側]
+    /// 各サイドのポイント [Left側, Right側]
     pub points: [PlayerPoint; 2],
-    /// 各サイドのゲーム/セットスコア [Player1側, Player2側]
+    /// 各サイドのゲーム/セットスコア [Left側, Right側]
     pub scores: [PlayerGameScore; 2],
     /// サーバー（サーブを打つ側）
     pub server: CourtSide,
@@ -421,7 +421,7 @@ mod tests {
     fn test_req_30903_001_serve_authority_init() {
         let rally_state = RallyState::new(CourtSide::Left);
 
-        // 初期サーバーはPlayer1
+        // 初期サーバーはLeft側
         assert_eq!(rally_state.server, CourtSide::Left);
         // 初期サーブサイドはデュース
         assert_eq!(rally_state.serve_side, ServeSide::Deuce);
@@ -433,14 +433,14 @@ mod tests {
     fn test_req_30903_002_server_switch_on_game_end() {
         let mut match_score = MatchScore::new();
 
-        // 初期サーバーはPlayer1
+        // 初期サーバーはLeft側
         assert_eq!(match_score.server, CourtSide::Left);
 
-        // ゲーム獲得後はPlayer2がサーバー
+        // ゲーム獲得後はRight側がサーバー
         match_score.win_game(CourtSide::Left);
         assert_eq!(match_score.server, CourtSide::Right);
 
-        // 次のゲーム後はPlayer1がサーバー
+        // 次のゲーム後はLeft側がサーバー
         match_score.win_game(CourtSide::Right);
         assert_eq!(match_score.server, CourtSide::Left);
     }

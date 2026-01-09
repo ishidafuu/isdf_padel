@@ -242,8 +242,8 @@ mod tests {
     #[inline]
     fn calculate_horizontal_direction(direction: Vec2, court_side: CourtSide) -> Vec3 {
         // X軸方向: コートサイドに応じて固定（常に相手コートへ）
-        // Player1側（X < net_x）にいる場合: +X方向（相手コート）
-        // Player2側（X > net_x）にいる場合: -X方向（相手コート）
+        // Left側（X < net_x）にいる場合: +X方向（相手コート）
+        // Right側（X > net_x）にいる場合: -X方向（相手コート）
         let x_direction = match court_side {
             CourtSide::Left => 1.0,
             CourtSide::Right => -1.0,
@@ -272,11 +272,11 @@ mod tests {
         )
     }
 
-    /// TST-30604-007: 水平方向計算テスト（Player1側コート、入力なし）
+    /// TST-30604-007: 水平方向計算テスト（Left側コート、入力なし）
     /// 新座標系: X=打ち合い方向（固定）, Z=コート幅（入力）
     #[test]
-    fn test_calculate_horizontal_direction_player1_side_no_input() {
-        // Player1側コート: 入力なし -> +X方向（相手コート方向のみ）
+    fn test_calculate_horizontal_direction_left_side_no_input() {
+        // Left側コート: 入力なし -> +X方向（相手コート方向のみ）
         let direction = Vec2::new(0.0, 0.0);
         let result = calculate_horizontal_direction(direction, CourtSide::Left);
 
@@ -285,11 +285,11 @@ mod tests {
         assert!((result.z - 0.0).abs() < 0.001);  // 横方向なし
     }
 
-    /// TST-30604-007: 水平方向計算テスト（Player2側コート、入力なし）
+    /// TST-30604-007: 水平方向計算テスト（Right側コート、入力なし）
     /// 新座標系: X=打ち合い方向（固定）, Z=コート幅（入力）
     #[test]
-    fn test_calculate_horizontal_direction_player2_side_no_input() {
-        // Player2側コート: 入力なし -> -X方向（相手コート方向のみ）
+    fn test_calculate_horizontal_direction_right_side_no_input() {
+        // Right側コート: 入力なし -> -X方向（相手コート方向のみ）
         let direction = Vec2::new(0.0, 0.0);
         let result = calculate_horizontal_direction(direction, CourtSide::Right);
 
@@ -298,11 +298,11 @@ mod tests {
         assert!((result.z - 0.0).abs() < 0.001);  // 横方向なし
     }
 
-    /// TST-30604-007: 水平方向計算テスト（Player1側コート、右入力）
+    /// TST-30604-007: 水平方向計算テスト（Left側コート、右入力）
     /// 新座標系: X=打ち合い方向（固定）, Z=コート幅（入力）
     #[test]
-    fn test_calculate_horizontal_direction_player1_side_right() {
-        // Player1側コート: 右入力(+Z) -> 右前方向
+    fn test_calculate_horizontal_direction_left_side_right() {
+        // Left側コート: 右入力(+Z) -> 右前方向
         let direction = Vec2::new(1.0, 0.0);  // X入力 → Z方向
         let result = calculate_horizontal_direction(direction, CourtSide::Left);
 
@@ -312,11 +312,11 @@ mod tests {
         assert!((result.z - expected).abs() < 0.001);  // +Z方向（右）
     }
 
-    /// TST-30604-007: 水平方向計算テスト（Player2側コート、右入力）
+    /// TST-30604-007: 水平方向計算テスト（Right側コート、右入力）
     /// 新座標系: X=打ち合い方向（固定）, Z=コート幅（入力）
     #[test]
-    fn test_calculate_horizontal_direction_player2_side_right() {
-        // Player2側コート: 右入力(+Z) -> 右後方向
+    fn test_calculate_horizontal_direction_right_side_right() {
+        // Right側コート: 右入力(+Z) -> 右後方向
         let direction = Vec2::new(1.0, 0.0);  // X入力 → Z方向
         let result = calculate_horizontal_direction(direction, CourtSide::Right);
 

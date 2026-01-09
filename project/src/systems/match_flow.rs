@@ -71,7 +71,7 @@ fn match_start_system(
     *match_score = MatchScore::new();
     match_score.game_state = GameState::Playing;
 
-    // @spec 30101_flow_spec.md#req-30101-001: サーブ権をPlayer1に設定する
+    // @spec 30101_flow_spec.md#req-30101-001: サーブ権をLeft側に設定する
     match_score.server = CourtSide::Left;
     *rally_state = RallyState::new(CourtSide::Left);
 
@@ -90,7 +90,7 @@ fn match_start_system(
 
     // @spec 30101_flow_spec.md#req-30101-001: MatchState を Serve に遷移する
     next_state.set(MatchFlowState::Serve);
-    info!("Match started! First server: Player1. State: Serve");
+    info!("Match started! First server: Left side. State: Serve");
 }
 
 /// サーブ実行検知システム
@@ -218,9 +218,9 @@ fn match_end_system(match_score: Res<MatchScore>, mut match_end_events: MessageW
 /// @spec 30101_flow_spec.md#req-30101-001
 fn get_initial_position(court_side: CourtSide, config: &GameConfig) -> Vec3 {
     match court_side {
-        // @spec 30101_flow_spec.md#req-30101-001: Player1: 1Pコート側（画面左）
+        // @spec 30101_flow_spec.md#req-30101-001: Left側（画面左）
         CourtSide::Left => Vec3::new(config.player.x_min + 1.0, 0.0, 0.0),
-        // @spec 30101_flow_spec.md#req-30101-001: Player2: 2Pコート側（画面右）
+        // @spec 30101_flow_spec.md#req-30101-001: Right側（画面右）
         CourtSide::Right => Vec3::new(config.player.x_max - 1.0, 0.0, 0.0),
     }
 }

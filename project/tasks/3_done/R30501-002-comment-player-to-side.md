@@ -2,7 +2,7 @@
 id: "R30501-002"
 title: "コメント内 Player1/Player2 → Left/Right 統一"
 type: "refactor"
-status: "todo"
+status: "done"
 priority: "low"
 blocked_by: ["R30501-003"]
 blocks: []
@@ -61,7 +61,7 @@ created_at: "2026-01-09T16:00:00+09:00"
 
 ## ステータス
 
-- [ ] コメント置換
-- [ ] テスト名更新
-- [ ] 検証
-- [ ] コミット
+- [x] コメント置換
+- [x] テスト名更新
+- [x] 検証
+- [x] コミット

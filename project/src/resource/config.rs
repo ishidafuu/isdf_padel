@@ -499,10 +499,10 @@ pub struct ServeConfig {
     /// @spec 30102_serve_spec.md#req-30102-060
     #[serde(default = "default_serve_angle")]
     pub serve_angle: f32,
-    /// Player1のデフォルトサーブ方向（X軸：打ち合い方向）
+    /// Left側のデフォルトサーブ方向（X軸：打ち合い方向）
     #[serde(default = "default_p1_default_direction_x")]
     pub p1_default_direction_x: f32,
-    /// Player2のデフォルトサーブ方向（X軸：打ち合い方向）
+    /// Right側のデフォルトサーブ方向（X軸：打ち合い方向）
     #[serde(default = "default_p2_default_direction_x")]
     pub p2_default_direction_x: f32,
     /// トスボール生成高さ（手元位置）
@@ -533,11 +533,11 @@ pub struct ServeConfig {
     /// @spec 30102_serve_spec.md#req-30102-088
     #[serde(default = "default_ai_hit_tolerance")]
     pub ai_hit_tolerance: f32,
-    /// Player1のベースライン位置
+    /// Left側のベースライン位置
     /// @spec 30102_serve_spec.md#req-30102-086
     #[serde(default = "default_serve_baseline_x_p1")]
     pub serve_baseline_x_p1: f32,
-    /// Player2のベースライン位置
+    /// Right側のベースライン位置
     /// @spec 30102_serve_spec.md#req-30102-086
     #[serde(default = "default_serve_baseline_x_p2")]
     pub serve_baseline_x_p2: f32,
@@ -601,10 +601,10 @@ fn default_ai_hit_tolerance() -> f32 {
     0.1 // m（± 許容範囲）
 }
 fn default_serve_baseline_x_p1() -> f32 {
-    -7.0 // Player1のベースライン
+    -7.0 // Left側のベースライン
 }
 fn default_serve_baseline_x_p2() -> f32 {
-    7.0 // Player2のベースライン
+    7.0 // Right側のベースライン
 }
 
 /// 影パラメータ
@@ -783,10 +783,10 @@ fn default_ball_color_slice() -> (f32, f32, f32, f32) {
 /// @data 80101_game_constants.md#player-visual-config
 #[derive(Deserialize, Clone, Debug)]
 pub struct PlayerVisualConfig {
-    /// Player1（1Pコート側）の色（RGB）
+    /// Left側（画面左）の色（RGB）
     #[serde(default = "default_player1_color")]
     pub player1_color: (f32, f32, f32),
-    /// Player2（2Pコート側）の色（RGB）
+    /// Right側（画面右）の色（RGB）
     #[serde(default = "default_player2_color")]
     pub player2_color: (f32, f32, f32),
     /// プレイヤーのサイズ（幅, 高さ）ピクセル

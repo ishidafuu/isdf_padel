@@ -61,11 +61,11 @@ pub fn calculate_landing_position(
     // コートサイドに応じた座標変換
     let (baseline_x, _net_side_x) = match ctx.court_side {
         CourtSide::Left => {
-            // Player1は+X方向に打つ → 相手側ベースライン = +half_depth
+            // Left側は+X方向に打つ → 相手側ベースライン = +half_depth
             (half_depth, net_x)
         }
         CourtSide::Right => {
-            // Player2は-X方向に打つ → 相手側ベースライン = -half_depth
+            // Right側は-X方向に打つ → 相手側ベースライン = -half_depth
             (-half_depth, net_x)
         }
     };
@@ -81,7 +81,7 @@ pub fn calculate_landing_position(
         }
     } else {
         // 入力あり: 線形補間
-        // Player1の場合: input.y=-1 → ネット際, input.y=+1 → ベースライン際
+        // Left側の場合: input.y=-1 → ネット際, input.y=+1 → ベースライン際
         let near = net_x + margin * ctx.court_side.sign();
         let far = baseline_x - margin * ctx.court_side.sign();
         let t = (ctx.input.y + 1.0) / 2.0; // -1..1 → 0..1
@@ -535,13 +535,13 @@ mod tests {
         );
     }
 
-    /// TST-30605-005: Player2の着地計算テスト
+    /// TST-30605-005: Right側の着地計算テスト
     /// @spec 30605_trajectory_calculation_spec.md#req-30605-013
     #[test]
-    fn test_player2_landing_position() {
+    fn test_right_side_landing_position() {
         let config = make_test_config();
 
-        // Player2のニュートラル入力
+        // Right側のニュートラル入力
         let ctx = TrajectoryContext {
             input: Vec2::ZERO,
             court_side: CourtSide::Right,
@@ -553,10 +553,10 @@ mod tests {
 
         let landing = calculate_landing_position(&ctx, &config.court, &config.trajectory);
 
-        // Player2のニュートラル時: X = net_x - default_landing_depth = 0 - 4.0 = -4.0
+        // Right側のニュートラル時: X = net_x - default_landing_depth = 0 - 4.0 = -4.0
         assert!(
             (landing.x - (-4.0)).abs() < 0.1,
-            "Expected X near -4.0 for Player2 neutral, got {}",
+            "Expected X near -4.0 for Right side neutral, got {}",
             landing.x
         );
 
