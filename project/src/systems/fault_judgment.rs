@@ -11,7 +11,7 @@ use crate::core::events::{
 };
 use crate::core::CourtSide;
 use crate::resource::config::{GameConfig, ServeSide};
-use crate::resource::{RallyPhase, RallyState};
+use crate::resource::{MatchFlowState, RallyPhase, RallyState};
 
 /// フォールト判定プラグイン
 /// @spec 30902_fault_spec.md
@@ -188,6 +188,7 @@ pub fn fault_processing_system(
     mut fault_events: MessageReader<FaultEvent>,
     mut rally_state: ResMut<RallyState>,
     mut double_fault_events: MessageWriter<DoubleFaultEvent>,
+    mut next_state: ResMut<NextState<MatchFlowState>>,
     ball_query: Query<Entity, With<Ball>>,
 ) {
     for event in fault_events.read() {
@@ -215,6 +216,8 @@ pub fn fault_processing_system(
         } else {
             // 1回目のフォールト → 次のサーブに戻る（セカンドサーブ）
             rally_state.next_serve();
+            // MatchFlowState を Serve に戻す
+            next_state.set(MatchFlowState::Serve);
             info!(
                 "First fault. Returning to serve. Server: {:?}, Fault count: {}",
                 event.server, rally_state.fault_count

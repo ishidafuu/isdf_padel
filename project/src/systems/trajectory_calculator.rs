@@ -238,8 +238,8 @@ pub fn calculate_launch_angle(
     let dz = target_pos.z - start_pos.z;
     let horizontal_distance = (dx * dx + dz * dz).sqrt();
 
-    // 高さの差（打点高さ - 着地高さ）
-    let h = start_pos.y - target_pos.y;
+    // 高さの差（着地高さ - 打点高さ）※発射点基準
+    let h = target_pos.y - start_pos.y;
 
     // 基準初速
     let mut v = base_speed;
