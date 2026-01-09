@@ -188,7 +188,7 @@ pub fn ai_serve_hit_system(
 
     let ball_height = toss_pos.value.y;
     let optimal_height = config.serve.hit_height_optimal;
-    let tolerance = 0.1; // ±0.1m
+    let tolerance = config.serve.ai_hit_tolerance;
 
     // @spec 30102_serve_spec.md#req-30102-088: 最適高さに達したらヒット
     if (ball_height - optimal_height).abs() > tolerance {

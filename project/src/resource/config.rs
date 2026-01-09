@@ -529,6 +529,10 @@ pub struct ServeConfig {
     /// @spec 30102_serve_spec.md#req-30102-088
     #[serde(default = "default_hit_height_optimal")]
     pub hit_height_optimal: f32,
+    /// AI用ヒット許容範囲（m）
+    /// @spec 30102_serve_spec.md#req-30102-088
+    #[serde(default = "default_ai_hit_tolerance")]
+    pub ai_hit_tolerance: f32,
     /// Player1のベースライン位置
     /// @spec 30102_serve_spec.md#req-30102-086
     #[serde(default = "default_serve_baseline_x_p1")]
@@ -553,6 +557,7 @@ impl Default for ServeConfig {
             hit_height_min: default_hit_height_min(),
             hit_height_max: default_hit_height_max(),
             hit_height_optimal: default_hit_height_optimal(),
+            ai_hit_tolerance: default_ai_hit_tolerance(),
             serve_baseline_x_p1: default_serve_baseline_x_p1(),
             serve_baseline_x_p2: default_serve_baseline_x_p2(),
         }
@@ -591,6 +596,9 @@ fn default_hit_height_max() -> f32 {
 }
 fn default_hit_height_optimal() -> f32 {
     2.2 // m（AI用）
+}
+fn default_ai_hit_tolerance() -> f32 {
+    0.1 // m（± 許容範囲）
 }
 fn default_serve_baseline_x_p1() -> f32 {
     -7.0 // Player1のベースライン

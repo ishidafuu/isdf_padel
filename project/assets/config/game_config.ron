@@ -82,6 +82,7 @@ GameConfig(
         hit_height_min: 1.8,            // ヒット可能最低高さ（m）
         hit_height_max: 2.7,            // ヒット可能最高高さ（m）
         hit_height_optimal: 2.2,        // AI用ヒット最適高さ（m）
+        ai_hit_tolerance: 0.1,          // AI用ヒット許容範囲（m）
         serve_baseline_x_p1: -7.0,      // Player1のベースライン位置
         serve_baseline_x_p2: 7.0,       // Player2のベースライン位置
     ),

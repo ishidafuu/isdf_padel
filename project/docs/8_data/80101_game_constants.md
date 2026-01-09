@@ -349,6 +349,7 @@ let angle = if is_jump_shot {
 | hit_height_min | f32 | 1.8 | ヒット可能最低高さ（m） |
 | hit_height_max | f32 | 2.7 | ヒット可能最高高さ（m） |
 | hit_height_optimal | f32 | 2.2 | AI用ヒット最適高さ（m） |
+| ai_hit_tolerance | f32 | 0.1 | AI用ヒット許容範囲（m） |
 | serve_baseline_x_p1 | f32 | -7.0 | Player1のベースライン位置 |
 | serve_baseline_x_p2 | f32 | 7.0 | Player2のベースライン位置 |
 
@@ -391,6 +392,9 @@ pub struct ServeConfig {
     /// AI用ヒット最適高さ（m）
     #[serde(default = "default_hit_height_optimal")]
     pub hit_height_optimal: f32,
+    /// AI用ヒット許容範囲（m）
+    #[serde(default = "default_ai_hit_tolerance")]
+    pub ai_hit_tolerance: f32,
     /// Player1のベースライン位置
     #[serde(default = "default_serve_baseline_x_p1")]
     pub serve_baseline_x_p1: f32,
@@ -410,6 +414,7 @@ fn default_toss_timeout() -> f32 { 3.0 }
 fn default_hit_height_min() -> f32 { 1.8 }
 fn default_hit_height_max() -> f32 { 2.7 }
 fn default_hit_height_optimal() -> f32 { 2.2 }
+fn default_ai_hit_tolerance() -> f32 { 0.1 }
 fn default_serve_baseline_x_p1() -> f32 { -7.0 }
 fn default_serve_baseline_x_p2() -> f32 { 7.0 }
 ```
@@ -760,6 +765,7 @@ GameConfig(
         hit_height_min: 1.8,
         hit_height_max: 2.7,
         hit_height_optimal: 2.2,
+        ai_hit_tolerance: 0.1,
         serve_baseline_x_p1: -7.0,
         serve_baseline_x_p2: 7.0,
     ),
@@ -1003,7 +1009,7 @@ spin_physics: SpinPhysicsConfig(
 
 - ServeConfigにトス→ヒット方式パラメータ追加
   - toss_start_offset_y, toss_velocity_y, toss_timeout
-  - hit_height_min, hit_height_max, hit_height_optimal
+  - hit_height_min, hit_height_max, hit_height_optimal, ai_hit_tolerance
   - serve_baseline_x_p1, serve_baseline_x_p2
 
 ### 2026-01-09 - v3.3.0

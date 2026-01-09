@@ -138,7 +138,7 @@
 ### REQ-30102-088: AIヒット実行
 **WHEN** ServeSubPhase == Tossing
 **AND** AI がサーバー
-**AND** ボール高さが `config.serve.hit_height_optimal` ± 0.1m
+**AND** ボール高さが `config.serve.hit_height_optimal` ± `config.serve.ai_hit_tolerance`
 **THE SYSTEM SHALL** サーブヒットを自動実行する
 **テスト**: TST-30104-088
 
@@ -183,6 +183,7 @@
 | ヒット可能最低高さ | `config.serve.hit_height_min` | 1.8 | ヒット可能な最低高さ（m） |
 | ヒット可能最高高さ | `config.serve.hit_height_max` | 2.7 | ヒット可能な最高高さ（m） |
 | ヒット最適高さ | `config.serve.hit_height_optimal` | 2.2 | AI用ヒット最適高さ（m） |
+| AIヒット許容範囲 | `config.serve.ai_hit_tolerance` | 0.1 | AI用ヒット許容範囲（m） |
 | P1ベースラインX | `config.serve.serve_baseline_x_p1` | -7.0 | Player1のベースライン位置 |
 | P2ベースラインX | `config.serve.serve_baseline_x_p2` | 7.0 | Player2のベースライン位置 |
 
