@@ -331,31 +331,34 @@ ball_speed = power  // power は既に m/s 単位
 
 ---
 
-#### REQ-30604-069: 安定性によるミスショット判定
+#### REQ-30604-069: 安定性による威力減衰
 **WHEN** ショットを実行する
 **AND** 安定性が閾値未満
-**THE SYSTEM SHALL** 確率的にミスショットを発生させる
+**THE SYSTEM SHALL** 安定性に応じて威力を減衰させる
 
 ```
-miss_probability = max(0, (stability_threshold - stability) / stability_threshold)
-if random() < miss_probability:
-    // ミスショット：角度・方向にランダムなブレを追加
+if stability < stability_threshold:
+    power_reduction = (stability_threshold - stability) / stability_threshold
+    final_power = power × (1.0 - power_reduction × 0.5)
 ```
 
 **データ**: config.shot_attributes.stability_threshold (デフォルト: 0.3)
 
+**注意**: ランダム性は導入しない（同じ入力 → 同じ出力の原則）
+
 ---
 
-#### REQ-30604-070: 精度によるコースブレ
+#### REQ-30604-070: 精度による着地位置の収束
 **WHEN** ショットを実行する
-**THE SYSTEM SHALL** 精度に応じてコースにブレを追加する
+**THE SYSTEM SHALL** 精度に応じて着地位置をコート中央寄りに収束させる
 
 ```
-direction_error = (1.0 - accuracy) × max_direction_error × random(-1, 1)
-final_direction = input_direction + direction_error
+// 精度が低いほどコート中央に寄る（狙った位置に打てない）
+convergence = 1.0 - accuracy
+final_landing = lerp(target_landing, court_center, convergence × 0.3)
 ```
 
-**データ**: config.shot_attributes.max_direction_error (デフォルト: 15°)
+**注意**: ランダム性は導入しない（同じ入力 → 同じ出力の原則）
 
 ---
 

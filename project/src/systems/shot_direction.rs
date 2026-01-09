@@ -5,7 +5,7 @@
 //! @spec 30605_trajectory_calculation_spec.md
 
 use bevy::prelude::*;
-use rand::Rng;
+
 
 use crate::components::{
     Ball, BallBundle, BallSpin, BounceCount, BounceState, InputState, LastShooter, LogicalPosition, Player,
@@ -114,19 +114,13 @@ pub fn shot_direction_system(
 
         let shot_attrs = calculate_shot_attributes(&shot_context, &config.shot_attributes);
 
-        // REQ-30604-069: 安定性によるミスショット判定
-        let (is_miss_shot, miss_direction_offset) =
-            check_miss_shot(shot_attrs.stability, &config.shot_attributes);
+        // REQ-30604-069: 安定性による威力減衰（ランダム性なし）
+        let stability_factor =
+            calculate_stability_power_factor(shot_attrs.stability, &config.shot_attributes);
+        let effective_power = shot_attrs.power * stability_factor;
 
         // === 着地点逆算型弾道計算（v0.4新機能） ===
         // @spec 30605_trajectory_calculation_spec.md
-
-        // 精度の計算（ミスショット時は精度を下げる）
-        let effective_accuracy = if is_miss_shot {
-            shot_attrs.accuracy * 0.3 // ミスショット時は精度30%
-        } else {
-            shot_attrs.accuracy
-        };
 
         // 弾道計算コンテキストを構築
         let trajectory_ctx = TrajectoryContext {
@@ -134,38 +128,23 @@ pub fn shot_direction_system(
             court_side: event.court_side,
             ball_position: ball_pos.value,
             spin: shot_attrs.spin,
-            base_speed: shot_attrs.power,
-            accuracy: effective_accuracy,
+            base_speed: effective_power,
+            accuracy: shot_attrs.accuracy,
         };
 
         // 弾道を計算
         let trajectory_result = calculate_trajectory(&trajectory_ctx, &config);
 
-        // REQ-30604-070: 精度によるコースブレ（方向に追加のブレを適用）
-        let direction_error =
-            calculate_direction_error(shot_attrs.accuracy, &config.shot_attributes);
-
-        // ミスショット時は大きなブレを追加
-        let total_direction_offset = if is_miss_shot {
-            miss_direction_offset
-        } else {
-            direction_error
-        };
-
-        // 方向にブレを適用
-        let adjusted_direction =
-            apply_direction_offset(trajectory_result.direction, total_direction_offset);
-
-        // 最終的な打球ベクトルを計算
-        let shot_velocity = adjusted_direction * trajectory_result.final_speed;
+        // 最終的な打球ベクトルを計算（方向ブレなし: 決定的）
+        let shot_velocity = trajectory_result.direction * trajectory_result.final_speed;
 
         // REQ-30602-005: ボール速度の設定
         info!(
-            "shot_direction(v0.4): landing={:?}, angle={:.1}, speed={:.1}, miss={}, velocity={:?}",
+            "shot_direction(v0.4): landing={:?}, angle={:.1}, speed={:.1}, stability_factor={:.2}, velocity={:?}",
             trajectory_result.landing_position,
             trajectory_result.launch_angle,
             trajectory_result.final_speed,
-            is_miss_shot,
+            stability_factor,
             shot_velocity
         );
         ball_velocity.value = shot_velocity;
@@ -187,14 +166,13 @@ pub fn shot_direction_system(
         });
 
         info!(
-            "Player {} shot executed: power={:.1}, angle={:.1}, stability={:.2}, accuracy={:.2}, spin={:.2}, miss={}, landing=({:.1}, {:.1})",
+            "Player {} shot executed: power={:.1}, angle={:.1}, stability={:.2}, accuracy={:.2}, spin={:.2}, landing=({:.1}, {:.1})",
             event.player_id,
-            shot_attrs.power,
+            effective_power,
             trajectory_result.launch_angle,
             shot_attrs.stability,
             shot_attrs.accuracy,
             shot_attrs.spin,
-            is_miss_shot,
             trajectory_result.landing_position.x,
             trajectory_result.landing_position.z
         );
@@ -266,40 +244,34 @@ fn handle_serve_shot(
     );
 }
 
-/// ミスショット判定
+/// 安定性による威力減衰係数を計算
 /// @spec 30604_shot_attributes_spec.md#req-30604-069
-fn check_miss_shot(
+/// ランダム性なし: 同じ入力 → 同じ出力
+fn calculate_stability_power_factor(
     stability: f32,
     config: &crate::resource::config::ShotAttributesConfig,
-) -> (bool, f32) {
+) -> f32 {
     if stability >= config.stability_threshold {
-        return (false, 0.0);
+        return 1.0;
     }
 
-    // ミス確率 = (閾値 - 安定性) / 閾値
-    let miss_probability =
+    // 安定性が低いほど威力減衰
+    let power_reduction =
         (config.stability_threshold - stability) / config.stability_threshold;
-
-    let mut rng = rand::rng();
-    if rng.random::<f32>() < miss_probability {
-        // ミスショット：ランダムな大きなブレを追加
-        let miss_offset = rng.random_range(-45.0..45.0_f32);
-        (true, miss_offset)
-    } else {
-        (false, 0.0)
-    }
+    1.0 - power_reduction * 0.5
 }
 
-/// 精度によるコースブレ計算
+/// 精度によるコースブレ計算（決定的）
 /// @spec 30604_shot_attributes_spec.md#req-30604-070
+/// ランダム性なし: 精度が低いほどコート中央寄りに収束
+#[allow(dead_code)]
 fn calculate_direction_error(
-    accuracy: f32,
-    config: &crate::resource::config::ShotAttributesConfig,
+    _accuracy: f32,
+    _config: &crate::resource::config::ShotAttributesConfig,
 ) -> f32 {
-    // direction_error = (1.0 - accuracy) × max_direction_error × random(-1, 1)
-    let mut rng = rand::rng();
-    let random_factor = rng.random_range(-1.0..1.0_f32);
-    (1.0 - accuracy.clamp(0.0, 1.0)) * config.max_direction_error * random_factor
+    // ランダム性を排除: 常に0を返す
+    // 精度による影響は着地位置の収束で表現（trajectory_calculator側）
+    0.0
 }
 
 /// 方向にオフセットを適用

@@ -4,7 +4,7 @@
 //! 入力から着地地点を決定し、放物線公式で発射角度を逆算するシステム
 
 use bevy::prelude::*;
-use rand::Rng;
+
 
 use crate::core::CourtSide;
 use crate::resource::config::{CourtConfig, GameConfig, ServeSide, TrajectoryConfig};
@@ -317,24 +317,28 @@ pub fn calculate_speed_factors(
     spin_factor * distance_factor
 }
 
-/// 精度によるズレを適用
+/// 精度による着地位置の収束を適用（決定的）
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-040
+/// @spec 30604_shot_attributes_spec.md#req-30604-070
+/// ランダム性なし: 精度が低いほどコート中央（X軸方向のネット側）に収束
 pub fn apply_landing_deviation(
     target: Vec3,
     accuracy: f32,
-    trajectory_config: &TrajectoryConfig,
+    _trajectory_config: &TrajectoryConfig,
 ) -> Vec3 {
-    let deviation = (1.0 - accuracy.clamp(0.0, 1.0)) * trajectory_config.max_landing_deviation;
+    // 精度が低いほど狙った位置に打てない = 中央寄りに収束
+    let convergence = (1.0 - accuracy.clamp(0.0, 1.0)) * 0.3;
 
-    if deviation < 0.001 {
+    if convergence < 0.001 {
         return target;
     }
 
-    let mut rng = rand::rng();
-    let offset_x = rng.random_range(-1.0..1.0) * deviation;
-    let offset_z = rng.random_range(-1.0..1.0) * deviation;
+    // X軸: ネット方向（X=0）に向かって収束
+    // Z軸: コート中央（Z=0）に向かって収束
+    let converged_x = target.x * (1.0 - convergence);
+    let converged_z = target.z * (1.0 - convergence);
 
-    Vec3::new(target.x + offset_x, target.y, target.z + offset_z)
+    Vec3::new(converged_x, target.y, converged_z)
 }
 
 /// 方向ベクトルを計算
