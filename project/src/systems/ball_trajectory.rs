@@ -203,8 +203,9 @@ pub fn ball_out_of_bounds_system(
         // ボールが地面に着地（Y <= 0）かつコート境界外の場合のみアウト
         // コート内の着地は GroundBounceEvent（ball_ground_bounce_system）で処理
         if pos.y <= 0.0 {
-            let out_of_bounds_x = pos.x.abs() > half_width;
-            let out_of_bounds_z = pos.z.abs() > half_depth;
+            // X軸は打ち合い方向（depth）、Z軸は左右幅方向（width）
+            let out_of_bounds_x = pos.x.abs() > half_depth;
+            let out_of_bounds_z = pos.z.abs() > half_width;
 
             if out_of_bounds_x || out_of_bounds_z {
                 info!(
