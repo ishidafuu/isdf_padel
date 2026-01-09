@@ -47,10 +47,15 @@ pub fn serve_position_system(
     let serve_side = ServeSide::from_point_total(total_points);
 
     // サーブサイドに応じたZ位置を決定
-    // デュースサイド: Z > 0、アドサイド: Z < 0
-    let serve_z = match serve_side {
-        ServeSide::Deuce => config.court.width / 4.0,  // +3.0 (コート幅12の1/4)
-        ServeSide::Ad => -config.court.width / 4.0,   // -3.0
+    // 両プレイヤーはネット越しに向かい合っているため、デュース/アドの位置は逆になる
+    // Left側: デュース = +Z、アド = -Z
+    // Right側: デュース = -Z、アド = +Z
+    let base_z = config.court.width / 4.0; // 3.0 (コート幅12の1/4)
+    let serve_z = match (match_score.server, serve_side) {
+        (CourtSide::Left, ServeSide::Deuce) => base_z,   // Left: デュース = +Z
+        (CourtSide::Left, ServeSide::Ad) => -base_z,     // Left: アド = -Z
+        (CourtSide::Right, ServeSide::Deuce) => -base_z, // Right: デュース = -Z（対向）
+        (CourtSide::Right, ServeSide::Ad) => base_z,     // Right: アド = +Z（対向）
     };
 
     for (player, mut pos, ai_controller) in player_query.iter_mut() {
