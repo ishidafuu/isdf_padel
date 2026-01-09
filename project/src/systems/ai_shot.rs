@@ -4,10 +4,11 @@
 use bevy::prelude::*;
 
 use crate::components::{
-    AiController, Ball, KnockbackState, LastShooter, LogicalPosition, Player, ShotState,
+    AiController, Ball, BounceCount, KnockbackState, LastShooter, LogicalPosition, Player, ShotState,
 };
 use crate::core::events::ShotEvent;
 use crate::resource::config::GameConfig;
+use crate::resource::{MatchScore, RallyPhase, RallyState};
 
 /// AIショットシステム
 /// @spec 30302_ai_shot_spec.md#req-30302-001
@@ -17,7 +18,9 @@ use crate::resource::config::GameConfig;
 /// @spec 30302_ai_shot_spec.md#req-30302-005
 pub fn ai_shot_system(
     config: Res<GameConfig>,
-    ball_query: Query<(&LogicalPosition, &LastShooter), With<Ball>>,
+    rally_state: Res<RallyState>,
+    match_score: Res<MatchScore>,
+    ball_query: Query<(&LogicalPosition, &LastShooter, &BounceCount), With<Ball>>,
     mut ai_query: Query<
         (
             &Player,
@@ -29,8 +32,8 @@ pub fn ai_shot_system(
     >,
     mut event_writer: MessageWriter<ShotEvent>,
 ) {
-    // ボール位置とLastShooterを取得（存在しなければ何もしない）
-    let (ball_logical_pos, last_shooter) = match ball_query.iter().next() {
+    // ボール位置、LastShooter、BounceCountを取得（存在しなければ何もしない）
+    let (ball_logical_pos, last_shooter, bounce_count) = match ball_query.iter().next() {
         Some(t) => t,
         None => return,
     };
@@ -40,6 +43,15 @@ pub fn ai_shot_system(
         // ふっとばし中はショット禁止
         if knockback.is_knockback_active() {
             continue;
+        }
+
+        // サーブ中でボールがまだバウンドしていない場合、リターナーはショット禁止
+        // パデルルール: サーブは必ず1バウンドしてからリターンする
+        if rally_state.phase == RallyPhase::Serving && bounce_count.count == 0 {
+            // リターナー（サーバーの相手側）のみブロック
+            if player.court_side != match_score.server {
+                continue;
+            }
         }
 
         // 自分が打ったボールは打てない（相手が打ち返すまで待つ）

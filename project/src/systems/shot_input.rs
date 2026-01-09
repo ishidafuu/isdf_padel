@@ -5,10 +5,11 @@
 use bevy::prelude::*;
 
 use crate::components::{
-    Ball, InputState, KnockbackState, LastShooter, LogicalPosition, Player, ShotState,
+    Ball, BounceCount, InputState, KnockbackState, LastShooter, LogicalPosition, Player, ShotState,
 };
 use crate::core::events::ShotEvent;
 use crate::resource::config::GameConfig;
+use crate::resource::{MatchScore, RallyPhase, RallyState};
 
 /// ショット入力処理システム
 /// @spec 30601_shot_input_spec.md#req-30601-001
@@ -20,6 +21,8 @@ use crate::resource::config::GameConfig;
 /// @spec 20006_input_system.md - InputState 対応
 pub fn shot_input_system(
     config: Res<GameConfig>,
+    rally_state: Res<RallyState>,
+    match_score: Res<MatchScore>,
     mut player_query: Query<(
         &Player,
         &LogicalPosition,
@@ -27,11 +30,11 @@ pub fn shot_input_system(
         &KnockbackState,
         &InputState,
     )>,
-    ball_query: Query<(&LogicalPosition, &LastShooter), With<Ball>>,
+    ball_query: Query<(&LogicalPosition, &LastShooter, &BounceCount), With<Ball>>,
     mut event_writer: MessageWriter<ShotEvent>,
 ) {
-    // ボールの位置とLastShooterを取得（存在しない場合はショット不可）
-    let (ball_logical_pos, last_shooter) = match ball_query.iter().next() {
+    // ボールの位置とLastShooterとBounceCountを取得（存在しない場合はショット不可）
+    let (ball_logical_pos, last_shooter, bounce_count) = match ball_query.iter().next() {
         Some(t) => t,
         None => return, // ボールがない場合は何もしない
     };
@@ -49,6 +52,19 @@ pub fn shot_input_system(
         if knockback.is_knockback_active() {
             info!("Player {} shot ignored: knockback active", player.id);
             continue;
+        }
+
+        // サーブ中でボールがまだバウンドしていない場合、リターナーはショット禁止
+        // パデルルール: サーブは必ず1バウンドしてからリターンする
+        if rally_state.phase == RallyPhase::Serving && bounce_count.count == 0 {
+            // リターナー（サーバーの相手側）のみブロック
+            if player.court_side != match_score.server {
+                info!(
+                    "Player {} shot ignored: serve must bounce first (phase={:?}, bounces={})",
+                    player.id, rally_state.phase, bounce_count.count
+                );
+                continue;
+            }
         }
 
         // 自分が打ったボールは打てない（相手が打ち返すまで待つ）
