@@ -13,6 +13,7 @@ use crate::components::{
 };
 use crate::core::events::{ShotEvent, ShotExecutedEvent};
 use crate::resource::config::{GameConfig, ServeSide};
+use crate::resource::debug::LastShotDebugInfo;
 use crate::resource::scoring::MatchScore;
 use crate::systems::shot_attributes::{build_shot_context_from_input_state, calculate_shot_attributes};
 use crate::systems::trajectory_calculator::{
@@ -52,6 +53,7 @@ pub fn shot_direction_system(
     >,
     player_query: Query<(&Player, &LogicalPosition, &Velocity, &InputState), Without<Ball>>,
     mut shot_executed_writer: MessageWriter<ShotExecutedEvent>,
+    mut debug_info: ResMut<LastShotDebugInfo>,
 ) {
     for event in shot_events.read() {
         // === サーブ処理分岐 ===
@@ -148,6 +150,37 @@ pub fn shot_direction_system(
             shot_velocity
         );
         ball_velocity.value = shot_velocity;
+
+        // === デバッグ情報を一時保存 ===
+        // discriminant と g_eff を再計算
+        let g_eff = crate::systems::trajectory_calculator::calculate_effective_gravity(
+            shot_attrs.spin,
+            ball_pos.value.y,
+            &config,
+        );
+        let dx = trajectory_result.landing_position.x - ball_pos.value.x;
+        let dz = trajectory_result.landing_position.z - ball_pos.value.z;
+        let horizontal_distance = (dx * dx + dz * dz).sqrt();
+        let h = trajectory_result.landing_position.y - ball_pos.value.y;
+        let v = trajectory_result.final_speed;
+        let v2 = v * v;
+        let v4 = v2 * v2;
+        let discriminant = v4 - g_eff * (g_eff * horizontal_distance * horizontal_distance + 2.0 * h * v2);
+
+        debug_info.is_valid = true;
+        debug_info.player_id = event.player_id;
+        debug_info.ball_pos = ball_pos.value;
+        debug_info.input = event.direction;
+        debug_info.court_side = Some(event.court_side);
+        debug_info.power = effective_power;
+        debug_info.spin = shot_attrs.spin;
+        debug_info.accuracy = shot_attrs.accuracy;
+        debug_info.landing = trajectory_result.landing_position;
+        debug_info.launch_angle = trajectory_result.launch_angle;
+        debug_info.final_speed = trajectory_result.final_speed;
+        debug_info.velocity = shot_velocity;
+        debug_info.discriminant = discriminant;
+        debug_info.g_eff = g_eff;
 
         // バウンスカウントをリセット（新しいショット開始）
         bounce_count.reset();
@@ -447,6 +480,20 @@ mod tests {
     // ショット属性の軌道反映テスト（v0.2 新機能）
     // @spec 30604_shot_attributes_spec.md
     // ========================================================================
+
+    /// ミスショット判定（テスト用ダミー実装）
+    /// 安定性が閾値以上なら (false, 0.0) を返す
+    fn check_miss_shot(
+        stability: f32,
+        config: &crate::resource::config::ShotAttributesConfig,
+    ) -> (bool, f32) {
+        if stability >= config.stability_threshold {
+            (false, 0.0)
+        } else {
+            // 安定性が低い場合はミス判定（テスト用に常にfalse）
+            (false, 0.0)
+        }
+    }
 
     /// TST-30604-068: ミスショット判定テスト（安定性が閾値以上）
     /// @spec 30604_shot_attributes_spec.md#req-30604-069

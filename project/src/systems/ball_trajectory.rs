@@ -8,6 +8,7 @@ use crate::components::{Ball, BallSpin, LogicalPosition, Velocity};
 use crate::core::events::{BallOutOfBoundsEvent, GroundBounceEvent, WallReflectionEvent};
 use crate::core::WallReflection;
 use crate::resource::config::GameConfig;
+use crate::resource::debug::LastShotDebugInfo;
 
 use super::court_factory::{create_court_bounds, create_outer_wall_bounds};
 
@@ -93,6 +94,7 @@ pub fn ball_ground_bounce_system(
     config: Res<GameConfig>,
     mut query: Query<(Entity, &mut Velocity, &mut LogicalPosition, Option<&BallSpin>), With<Ball>>,
     mut event_writer: MessageWriter<GroundBounceEvent>,
+    mut debug_info: ResMut<LastShotDebugInfo>,
 ) {
     let base_bounce_factor = config.ball.bounce_factor;
     let min_bounce_velocity = config.ball.min_bounce_velocity;
@@ -135,6 +137,9 @@ pub fn ball_ground_bounce_system(
                 bounce_point: Vec3::new(pos.x, 0.0, pos.z),
                 court_side,
             });
+
+            // デバッグマーカー用: バウンド後はデバッグ情報を無効化
+            debug_info.is_valid = false;
         }
     }
 }

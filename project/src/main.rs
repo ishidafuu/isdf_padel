@@ -21,15 +21,16 @@ use presentation::{
     sync_shadow_system, sync_transform_system, DebugUiPlugin, WORLD_SCALE,
 };
 use resource::config::{load_game_config, GameConfig, GameConfigHandle, GameConfigLoader};
+use resource::debug::LastShotDebugInfo;
 use resource::MatchFlowState;
 use systems::{
-    ai_movement_system, ai_shot_system, ceiling_collision_system, gamepad_input_system,
-    gravity_system, human_input_system, jump_system, knockback_movement_system,
-    knockback_start_system,
-    knockback_timer_system, landing_system, movement_system, shot_cooldown_system,
-    shot_direction_system, shot_input_system, vertical_movement_system, AiServePlugin,
-    BallCollisionPlugin, BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin,
-    GameSystemSet, MatchFlowPlugin, PointJudgmentPlugin, ScoringPlugin,
+    ai_movement_system, ai_shot_system, ceiling_collision_system, debug_marker_system,
+    gamepad_input_system, gravity_system, human_input_system, jump_system,
+    knockback_movement_system, knockback_start_system, knockback_timer_system, landing_system,
+    movement_system, shot_cooldown_system, shot_direction_system, shot_input_system,
+    vertical_movement_system, AiServePlugin, BallCollisionPlugin, BallTrajectoryPlugin,
+    BoundaryPlugin, FaultJudgmentPlugin, GameSystemSet, MatchFlowPlugin, PointJudgmentPlugin,
+    ScoringPlugin,
 };
 
 fn main() {
@@ -70,6 +71,7 @@ fn main() {
         .add_plugins(DebugUiPlugin)
         .add_plugins(CharacterPlugin)
         .insert_resource(config)
+        .init_resource::<LastShotDebugInfo>()
         .add_message::<PlayerMoveEvent>()
         .add_message::<PlayerJumpEvent>()
         .add_message::<PlayerLandEvent>()
@@ -129,6 +131,8 @@ fn main() {
                 // 視覚フィードバック（色変化）
                 // @spec 30802_visual_feedback_spec.md
                 (save_player_original_color_system, player_hold_visual_system, ball_spin_color_system),
+                // デバッグマーカー（Xボタンで弾道情報をログ出力）
+                debug_marker_system,
             )
                 .chain()
                 .in_set(GameSystemSet::GameLogic),
