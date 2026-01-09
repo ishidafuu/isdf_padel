@@ -449,14 +449,10 @@ pub struct ServeConfig {
     pub ball_spawn_offset_y: f32,
     /// サーブ速度（m/s）
     /// @spec 30102_serve_spec.md#req-30102-060
-    /// TODO: v0.4オーバーハンドサーブ実装で使用予定
-    #[allow(dead_code)]
     #[serde(default = "default_serve_speed")]
     pub serve_speed: f32,
     /// サーブ角度（度）
     /// @spec 30102_serve_spec.md#req-30102-060
-    /// TODO: v0.4オーバーハンドサーブ実装で使用予定
-    #[allow(dead_code)]
     #[serde(default = "default_serve_angle")]
     pub serve_angle: f32,
     /// Player1のデフォルトサーブ方向（X軸：打ち合い方向）
@@ -571,20 +567,14 @@ pub struct AiConfig {
     pub home_return_stop_distance: f32,
     /// AIサーブまでの待機時間下限（秒）
     /// @spec 30102_serve_spec.md#req-30102-070
-    /// TODO: v0.4 AI自動サーブ実装で使用予定
-    #[allow(dead_code)]
     #[serde(default = "default_ai_serve_delay_min")]
     pub serve_delay_min: f32,
     /// AIサーブまでの待機時間上限（秒）
     /// @spec 30102_serve_spec.md#req-30102-070
-    /// TODO: v0.4 AI自動サーブ実装で使用予定
-    #[allow(dead_code)]
     #[serde(default = "default_ai_serve_delay_max")]
     pub serve_delay_max: f32,
     /// AIサーブ方向バリエーション（Z軸）
     /// @spec 30102_serve_spec.md#req-30102-071
-    /// TODO: v0.4 AI自動サーブ実装で使用予定
-    #[allow(dead_code)]
     #[serde(default = "default_ai_serve_direction_variance")]
     pub serve_direction_variance: f32,
 }
