@@ -13,7 +13,7 @@ use crate::components::{
 use crate::core::CourtSide;
 
 /// パーツ分離キャラクターのパーツ設定
-/// @data 80102_character_parts.md
+/// @spec 31001_parts_spec.md
 #[derive(Debug, Clone)]
 pub struct PartConfig {
     pub kind: PartKind,
@@ -23,7 +23,7 @@ pub struct PartConfig {
 }
 
 /// デフォルトのパーツ設定を取得
-/// @data 80102_character_parts.md
+/// @spec 31001_parts_spec.md
 pub fn default_part_configs(base_color: Color) -> Vec<PartConfig> {
     vec![
         // 頭部（ボディより手前に表示: z=2）

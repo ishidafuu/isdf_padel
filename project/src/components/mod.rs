@@ -36,7 +36,7 @@ pub struct Shadow {
 pub struct HasShadow;
 
 /// プレイヤーマーカーコンポーネント
-/// @spec 30200_player_overview.md
+/// @spec 30200_overview.md
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Player {
     /// プレイヤーID（1 or 2）
@@ -86,7 +86,7 @@ pub struct InputState {
 }
 
 /// ボールマーカーコンポーネント
-/// @spec 30401_ball_spec.md
+/// @spec 30400_overview.md
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct Ball;
 
@@ -352,7 +352,7 @@ impl KnockbackState {
 
 /// プレイヤーバンドル（プレイヤー生成時に使用）
 /// 互換性維持のため残存。新規はcharacter::spawn_articulated_playerを使用
-/// @spec 30200_player_overview.md
+/// @spec 30200_overview.md
 /// @spec 30202_jump_spec.md
 /// @spec 30601_shot_input_spec.md
 /// @spec 20006_input_system.md

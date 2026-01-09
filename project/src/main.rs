@@ -119,7 +119,7 @@ fn main() {
 }
 
 /// 初期セットアップ
-/// @spec 30200_player_overview.md
+/// @spec 30200_overview.md
 fn setup(mut commands: Commands, config: Res<GameConfig>) {
     // Camera2d をスポーン
     commands.spawn(Camera2d);
