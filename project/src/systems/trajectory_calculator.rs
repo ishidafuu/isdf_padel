@@ -60,11 +60,11 @@ pub fn calculate_landing_position(
 
     // コートサイドに応じた座標変換
     let (baseline_x, _net_side_x) = match ctx.court_side {
-        CourtSide::Player1 => {
+        CourtSide::Left => {
             // Player1は+X方向に打つ → 相手側ベースライン = +half_depth
             (half_depth, net_x)
         }
-        CourtSide::Player2 => {
+        CourtSide::Right => {
             // Player2は-X方向に打つ → 相手側ベースライン = -half_depth
             (-half_depth, net_x)
         }
@@ -76,8 +76,8 @@ pub fn calculate_landing_position(
         // ニュートラル: デフォルト着地深さを使用
         let depth = trajectory_config.default_landing_depth;
         match ctx.court_side {
-            CourtSide::Player1 => net_x + depth,
-            CourtSide::Player2 => net_x - depth,
+            CourtSide::Left => net_x + depth,
+            CourtSide::Right => net_x - depth,
         }
     } else {
         // 入力あり: 線形補間
@@ -327,8 +327,8 @@ trait CourtSideExt {
 impl CourtSideExt for CourtSide {
     fn sign(&self) -> f32 {
         match self {
-            CourtSide::Player1 => 1.0,
-            CourtSide::Player2 => -1.0,
+            CourtSide::Left => 1.0,
+            CourtSide::Right => -1.0,
         }
     }
 }
@@ -422,7 +422,7 @@ mod tests {
         let config = make_test_config();
         let ctx = TrajectoryContext {
             input: Vec2::ZERO,
-            court_side: CourtSide::Player1,
+            court_side: CourtSide::Left,
             ball_position: Vec3::new(-5.0, 1.0, 0.0),
             spin: 0.0,
             base_speed: 15.0,
@@ -452,7 +452,7 @@ mod tests {
         let config = make_test_config();
         let ctx = TrajectoryContext {
             input: Vec2::new(0.0, -1.0), // ネット際
-            court_side: CourtSide::Player1,
+            court_side: CourtSide::Left,
             ball_position: Vec3::new(-5.0, 1.0, 0.0),
             spin: 0.0,
             base_speed: 15.0,
@@ -476,7 +476,7 @@ mod tests {
         let config = make_test_config();
         let ctx = TrajectoryContext {
             input: Vec2::new(0.0, 1.0), // ベースライン際
-            court_side: CourtSide::Player1,
+            court_side: CourtSide::Left,
             ball_position: Vec3::new(-5.0, 1.0, 0.0),
             spin: 0.0,
             base_speed: 15.0,
@@ -502,7 +502,7 @@ mod tests {
         // 右入力
         let ctx_right = TrajectoryContext {
             input: Vec2::new(1.0, 0.0),
-            court_side: CourtSide::Player1,
+            court_side: CourtSide::Left,
             ball_position: Vec3::new(-5.0, 1.0, 0.0),
             spin: 0.0,
             base_speed: 15.0,
@@ -520,7 +520,7 @@ mod tests {
         // 左入力
         let ctx_left = TrajectoryContext {
             input: Vec2::new(-1.0, 0.0),
-            court_side: CourtSide::Player1,
+            court_side: CourtSide::Left,
             ball_position: Vec3::new(-5.0, 1.0, 0.0),
             spin: 0.0,
             base_speed: 15.0,
@@ -544,7 +544,7 @@ mod tests {
         // Player2のニュートラル入力
         let ctx = TrajectoryContext {
             input: Vec2::ZERO,
-            court_side: CourtSide::Player2,
+            court_side: CourtSide::Right,
             ball_position: Vec3::new(5.0, 1.0, 0.0),
             spin: 0.0,
             base_speed: 15.0,

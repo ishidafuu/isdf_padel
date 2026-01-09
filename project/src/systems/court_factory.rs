@@ -20,14 +20,14 @@ use crate::resource::CourtConfig;
 ///
 /// # 座標マッピング
 /// - left/right (Z軸): -width/2 〜 +width/2（コート幅方向）
-/// - back_1p/back_2p (X軸): -depth/2 〜 +depth/2（打ち合い方向）
+/// - back_left/back_right (X軸): -depth/2 〜 +depth/2（打ち合い方向）
 #[inline]
 pub fn create_court_bounds(config: &CourtConfig) -> CourtBounds {
     CourtBounds::new(
         -config.width / 2.0,  // left (Z方向、コート幅)
         config.width / 2.0,   // right (Z方向)
-        -config.depth / 2.0,  // back_1p (X方向、1Pバックライン)
-        config.depth / 2.0,   // back_2p (X方向、2Pバックライン)
+        -config.depth / 2.0,  // back_left (X方向、1Pバックライン)
+        config.depth / 2.0,   // back_right (X方向、2Pバックライン)
         0.0,
         config.ceiling_height,
     )
@@ -65,8 +65,8 @@ mod tests {
         assert_eq!(bounds.left, -5.0);
         assert_eq!(bounds.right, 5.0);
         // X方向（打ち合い方向）: -3 〜 +3
-        assert_eq!(bounds.back_1p, -3.0);
-        assert_eq!(bounds.back_2p, 3.0);
+        assert_eq!(bounds.back_left, -3.0);
+        assert_eq!(bounds.back_right, 3.0);
         assert_eq!(bounds.ground, 0.0);
         assert_eq!(bounds.ceiling, 5.0);
     }

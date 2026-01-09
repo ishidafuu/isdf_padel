@@ -170,9 +170,9 @@ pub fn knockback_timer_system(time: Res<Time>, mut query: Query<(&Player, &mut K
 fn get_player_x_bounds(court_side: CourtSide, config: &GameConfig) -> (f32, f32) {
     match court_side {
         // Player 1: 1Pコート側（-X側、ネットまで）
-        CourtSide::Player1 => (config.player.x_min, 0.0),
+        CourtSide::Left => (config.player.x_min, 0.0),
         // Player 2: 2Pコート側（+X側、ネットから）
-        CourtSide::Player2 => (0.0, config.player.x_max),
+        CourtSide::Right => (0.0, config.player.x_max),
     }
 }
 

@@ -37,8 +37,8 @@ pub fn let_judgment_system(
             // サーブ側からネットを超えて相手コートに入ったかを判定
             let server_side = rally_state.server;
             let in_opponent_court = match server_side {
-                CourtSide::Player1 => ball_x > net_x, // 1Pサーブ → 2P側（+X）に入った
-                CourtSide::Player2 => ball_x < net_x, // 2Pサーブ → 1P側（-X）に入った
+                CourtSide::Left => ball_x > net_x, // 1Pサーブ → 2P側（+X）に入った
+                CourtSide::Right => ball_x < net_x, // 2Pサーブ → 1P側（-X）に入った
             };
 
             if in_opponent_court {
@@ -90,8 +90,8 @@ pub fn net_fault_judgment_system(
                 // @spec 30103_point_end_spec.md#req-30103-002
                 // 打ったボールがネットに当たった時点でショット元のコート側にあれば失点
                 let in_shooter_court = match shooter {
-                    CourtSide::Player1 => ball_x < net_x, // 1Pが打った → ネット手前（-X側）
-                    CourtSide::Player2 => ball_x > net_x, // 2Pが打った → ネット手前（+X側）
+                    CourtSide::Left => ball_x < net_x, // 1Pが打った → ネット手前（-X側）
+                    CourtSide::Right => ball_x > net_x, // 2Pが打った → ネット手前（+X側）
                 };
 
                 if in_shooter_court {

@@ -120,12 +120,12 @@ mod tests {
         let mut bounce_count = BounceCount::default();
 
         // 1回目のバウンド
-        bounce_count.record_bounce(CourtSide::Player1);
+        bounce_count.record_bounce(CourtSide::Left);
         assert_eq!(bounce_count.count, 1);
-        assert_eq!(bounce_count.last_court_side, Some(CourtSide::Player1));
+        assert_eq!(bounce_count.last_court_side, Some(CourtSide::Left));
 
         // 2回目のバウンド（同じコート）
-        bounce_count.record_bounce(CourtSide::Player1);
+        bounce_count.record_bounce(CourtSide::Left);
         assert_eq!(bounce_count.count, 2);
 
         // ツーバウンド判定
@@ -139,13 +139,13 @@ mod tests {
         let mut bounce_count = BounceCount::default();
 
         // 1Pコートで1回バウンド
-        bounce_count.record_bounce(CourtSide::Player1);
+        bounce_count.record_bounce(CourtSide::Left);
         assert_eq!(bounce_count.count, 1);
 
         // 2Pコートでバウンド（カウントリセット）
-        bounce_count.record_bounce(CourtSide::Player2);
+        bounce_count.record_bounce(CourtSide::Right);
         assert_eq!(bounce_count.count, 1);
-        assert_eq!(bounce_count.last_court_side, Some(CourtSide::Player2));
+        assert_eq!(bounce_count.last_court_side, Some(CourtSide::Right));
     }
 
     /// TST-30104-010: ツーバウンス失点テスト
@@ -155,17 +155,17 @@ mod tests {
         let mut bounce_count = BounceCount::default();
 
         // 1P側で2回バウンド → 1P失点（2P得点）
-        bounce_count.record_bounce(CourtSide::Player1);
-        bounce_count.record_bounce(CourtSide::Player1);
+        bounce_count.record_bounce(CourtSide::Left);
+        bounce_count.record_bounce(CourtSide::Left);
 
         assert!(bounce_count.count >= 2);
-        assert_eq!(bounce_count.last_court_side, Some(CourtSide::Player1));
+        assert_eq!(bounce_count.last_court_side, Some(CourtSide::Left));
         // 勝者は相手側
         let winner = bounce_count
             .last_court_side
             .expect("last_court_side should be set after record_bounce")
             .opponent();
-        assert_eq!(winner, CourtSide::Player2);
+        assert_eq!(winner, CourtSide::Right);
     }
 
     /// TST-30104-012: 自コート打球失点テスト
@@ -176,11 +176,11 @@ mod tests {
         let mut bounce_count = BounceCount::default();
 
         // 1Pがショット
-        last_shooter.record(CourtSide::Player1);
-        assert_eq!(last_shooter.side, Some(CourtSide::Player1));
+        last_shooter.record(CourtSide::Left);
+        assert_eq!(last_shooter.side, Some(CourtSide::Left));
 
         // 1Pコートでバウンド（自コート打球）
-        bounce_count.record_bounce(CourtSide::Player1);
+        bounce_count.record_bounce(CourtSide::Left);
 
         // 条件: 最初のバウンドで、バウンドしたコート側が打った側と同じ
         assert_eq!(bounce_count.count, 1);
@@ -191,6 +191,6 @@ mod tests {
             .side
             .expect("last_shooter.side should be set after record")
             .opponent();
-        assert_eq!(winner, CourtSide::Player2);
+        assert_eq!(winner, CourtSide::Right);
     }
 }

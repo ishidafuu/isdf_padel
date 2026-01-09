@@ -115,7 +115,7 @@ impl Default for MatchScore {
         Self {
             points: [PlayerPoint::default(), PlayerPoint::default()],
             scores: [PlayerGameScore::default(), PlayerGameScore::default()],
-            server: CourtSide::Player1,
+            server: CourtSide::Left,
             game_state: GameState::default(),
         }
     }
@@ -349,7 +349,7 @@ impl Default for RallyState {
     fn default() -> Self {
         Self {
             phase: RallyPhase::WaitingServe,
-            server: CourtSide::Player1,
+            server: CourtSide::Left,
             serve_side: ServeSide::Deuce,
             fault_count: 0,
         }
@@ -419,10 +419,10 @@ mod tests {
     /// @spec 30903_serve_authority_spec.md#req-30903-001
     #[test]
     fn test_req_30903_001_serve_authority_init() {
-        let rally_state = RallyState::new(CourtSide::Player1);
+        let rally_state = RallyState::new(CourtSide::Left);
 
         // 初期サーバーはPlayer1
-        assert_eq!(rally_state.server, CourtSide::Player1);
+        assert_eq!(rally_state.server, CourtSide::Left);
         // 初期サーブサイドはデュース
         assert_eq!(rally_state.serve_side, ServeSide::Deuce);
     }
@@ -434,15 +434,15 @@ mod tests {
         let mut match_score = MatchScore::new();
 
         // 初期サーバーはPlayer1
-        assert_eq!(match_score.server, CourtSide::Player1);
+        assert_eq!(match_score.server, CourtSide::Left);
 
         // ゲーム獲得後はPlayer2がサーバー
-        match_score.win_game(CourtSide::Player1);
-        assert_eq!(match_score.server, CourtSide::Player2);
+        match_score.win_game(CourtSide::Left);
+        assert_eq!(match_score.server, CourtSide::Right);
 
         // 次のゲーム後はPlayer1がサーバー
-        match_score.win_game(CourtSide::Player2);
-        assert_eq!(match_score.server, CourtSide::Player1);
+        match_score.win_game(CourtSide::Right);
+        assert_eq!(match_score.server, CourtSide::Left);
     }
 
     /// TST-30904-022: デュースサイド/アドサイド判定テスト
@@ -466,7 +466,7 @@ mod tests {
     /// @spec 30903_serve_authority_spec.md#req-30903-003
     #[test]
     fn test_rally_state_update_serve_side() {
-        let mut rally_state = RallyState::new(CourtSide::Player1);
+        let mut rally_state = RallyState::new(CourtSide::Left);
 
         // 初期状態: 0-0 → デュース
         assert_eq!(rally_state.serve_side, ServeSide::Deuce);

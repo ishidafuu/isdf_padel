@@ -72,8 +72,8 @@ fn match_start_system(
     match_score.game_state = GameState::Playing;
 
     // @spec 30101_flow_spec.md#req-30101-001: サーブ権をPlayer1に設定する
-    match_score.server = CourtSide::Player1;
-    *rally_state = RallyState::new(CourtSide::Player1);
+    match_score.server = CourtSide::Left;
+    *rally_state = RallyState::new(CourtSide::Left);
 
     // @spec 30101_flow_spec.md#req-30101-001: プレイヤーを配置する
     // 論理座標を設定（表示座標は sync_transform_system で自動更新）
@@ -85,7 +85,7 @@ fn match_start_system(
 
     // @spec 30101_flow_spec.md#req-30101-005: MatchStartEvent 発行
     match_start_events.write(MatchStartEvent {
-        first_server: CourtSide::Player1,
+        first_server: CourtSide::Left,
     });
 
     // @spec 30101_flow_spec.md#req-30101-001: MatchState を Serve に遷移する
@@ -219,9 +219,9 @@ fn match_end_system(match_score: Res<MatchScore>, mut match_end_events: MessageW
 fn get_initial_position(court_side: CourtSide, config: &GameConfig) -> Vec3 {
     match court_side {
         // @spec 30101_flow_spec.md#req-30101-001: Player1: 1Pコート側（画面左）
-        CourtSide::Player1 => Vec3::new(config.player.x_min + 1.0, 0.0, 0.0),
+        CourtSide::Left => Vec3::new(config.player.x_min + 1.0, 0.0, 0.0),
         // @spec 30101_flow_spec.md#req-30101-001: Player2: 2Pコート側（画面右）
-        CourtSide::Player2 => Vec3::new(config.player.x_max - 1.0, 0.0, 0.0),
+        CourtSide::Right => Vec3::new(config.player.x_max - 1.0, 0.0, 0.0),
     }
 }
 
@@ -242,7 +242,7 @@ mod tests {
     /// @spec 30101_flow_spec.md#req-30101-002
     #[test]
     fn test_req_30101_002_serve_to_rally() {
-        let mut rally_state = RallyState::new(CourtSide::Player1);
+        let mut rally_state = RallyState::new(CourtSide::Left);
 
         // サーブ開始
         rally_state.start_serve();
@@ -257,7 +257,7 @@ mod tests {
     /// @spec 30101_flow_spec.md#req-30101-003
     #[test]
     fn test_req_30101_003_rally_to_point_end() {
-        let mut rally_state = RallyState::new(CourtSide::Player1);
+        let mut rally_state = RallyState::new(CourtSide::Left);
         rally_state.start_rally();
 
         // ポイント終了
@@ -269,7 +269,7 @@ mod tests {
     /// @spec 30101_flow_spec.md#req-30101-004
     #[test]
     fn test_req_30101_004_point_end_to_serve() {
-        let mut rally_state = RallyState::new(CourtSide::Player1);
+        let mut rally_state = RallyState::new(CourtSide::Left);
         rally_state.end_point();
 
         // 次のサーブへ
@@ -284,12 +284,12 @@ mod tests {
         let mut match_score = MatchScore::new();
 
         // 試合勝利状態を設定
-        match_score.game_state = GameState::MatchWon(CourtSide::Player1);
+        match_score.game_state = GameState::MatchWon(CourtSide::Left);
 
         // MatchWon状態を確認
         assert!(matches!(
             match_score.game_state,
-            GameState::MatchWon(CourtSide::Player1)
+            GameState::MatchWon(CourtSide::Left)
         ));
     }
 

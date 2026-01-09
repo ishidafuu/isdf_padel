@@ -467,8 +467,8 @@ mod tests {
         let bounds = create_court_bounds(&config);
         let bounce_factor = 0.8_f32;
 
-        // 1P側奥壁（back_1p = -3.0）に向かう速度
-        // 新座標系: X=打ち合い方向, back_1pは-X側
+        // 1P側奥壁（back_left = -3.0）に向かう速度
+        // 新座標系: X=打ち合い方向, back_leftは-X側
         let pos = Vec3::new(-3.0, 2.5, 0.0);
         let vel = Vec3::new(-10.0, 3.0, 5.0);
 
@@ -503,7 +503,7 @@ mod tests {
 
         // 壁をはみ出した位置をクランプ
         // 新座標系: X=打ち合い方向（depth）[-3,3], Z=コート幅（width）[-5,5]
-        let out_x = -6.0_f32;  // X方向: back_1p(-3)を超える
+        let out_x = -6.0_f32;  // X方向: back_left(-3)を超える
         let out_y = 6.0_f32;   // Y方向: ceiling(5)を超える
         let out_z = 7.0_f32;   // Z方向: right(5)を超える
 
@@ -511,7 +511,7 @@ mod tests {
         let clamped_y = bounds.clamp_y(out_y);
         let clamped_z = bounds.clamp_z(out_z);
 
-        assert!((clamped_x - (-3.0)).abs() < 0.001); // クランプ: -3.0（back_1p）
+        assert!((clamped_x - (-3.0)).abs() < 0.001); // クランプ: -3.0（back_left）
         assert!((clamped_y - 5.0).abs() < 0.001);   // クランプ: 5.0（ceiling）
         assert!((clamped_z - 5.0).abs() < 0.001);   // クランプ: 5.0（right）
     }

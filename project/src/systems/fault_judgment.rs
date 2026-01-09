@@ -76,7 +76,7 @@ pub fn get_service_box(
     let service_box_depth = config.court.service_box_depth;
 
     match server {
-        CourtSide::Player1 => {
+        CourtSide::Left => {
             // 1Pがサーブ → 2Pコート側（X > 0）
             let x_min = net_x;
             let x_max = net_x + service_box_depth;
@@ -98,7 +98,7 @@ pub fn get_service_box(
                 },
             }
         }
-        CourtSide::Player2 => {
+        CourtSide::Right => {
             // 2Pがサーブ → 1Pコート側（X < 0）
             let x_min = net_x - service_box_depth;
             let x_max = net_x;
@@ -345,7 +345,7 @@ mod tests {
         let config = test_config();
 
         // 1Pがサーブ、デュースサイド → 2Pコート右半分（X>0, Z>0）
-        let service_box = get_service_box(CourtSide::Player1, ServeSide::Deuce, &config);
+        let service_box = get_service_box(CourtSide::Left, ServeSide::Deuce, &config);
         assert_eq!(service_box.x_min, 0.0);    // ネット位置
         assert_eq!(service_box.x_max, 1.5);    // サービスライン位置
         assert_eq!(service_box.z_min, 0.0);    // コート中央
@@ -367,7 +367,7 @@ mod tests {
         let config = test_config();
 
         // 1Pがサーブ、アドサイド → 2Pコート左半分（X>0, Z<0）
-        let service_box = get_service_box(CourtSide::Player1, ServeSide::Ad, &config);
+        let service_box = get_service_box(CourtSide::Left, ServeSide::Ad, &config);
         assert_eq!(service_box.x_min, 0.0);    // ネット位置
         assert_eq!(service_box.x_max, 1.5);    // サービスライン位置
         assert_eq!(service_box.z_min, -5.0);   // コート左側（-Z）
@@ -387,7 +387,7 @@ mod tests {
         let config = test_config();
 
         // 2Pがサーブ、デュースサイド → 1Pコート左半分（X<0, Z<0）
-        let service_box = get_service_box(CourtSide::Player2, ServeSide::Deuce, &config);
+        let service_box = get_service_box(CourtSide::Right, ServeSide::Deuce, &config);
         assert_eq!(service_box.x_min, -1.5);   // サービスライン位置
         assert_eq!(service_box.x_max, 0.0);    // ネット位置
         assert_eq!(service_box.z_min, -5.0);   // コート左側（-Z）
@@ -403,7 +403,7 @@ mod tests {
     /// @spec 30902_fault_spec.md#req-30902-002
     #[test]
     fn test_req_30902_002_double_fault() {
-        let mut rally_state = RallyState::new(CourtSide::Player1);
+        let mut rally_state = RallyState::new(CourtSide::Left);
 
         // 初期状態: fault_count = 0
         assert_eq!(rally_state.fault_count, 0);
@@ -424,7 +424,7 @@ mod tests {
     /// @spec 30902_fault_spec.md#req-30902-003
     #[test]
     fn test_req_30902_003_fault_counter_management() {
-        let mut rally_state = RallyState::new(CourtSide::Player1);
+        let mut rally_state = RallyState::new(CourtSide::Left);
 
         // 初期状態: fault_count = 0
         assert_eq!(rally_state.fault_count, 0);

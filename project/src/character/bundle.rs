@@ -95,9 +95,9 @@ pub fn spawn_articulated_player(
     base_color: Color,
 ) -> Entity {
     let court_side = if player_id == 1 {
-        CourtSide::Player1
+        CourtSide::Left
     } else {
-        CourtSide::Player2
+        CourtSide::Right
     };
 
     // 親エンティティ（キャラクター本体）をスポーン

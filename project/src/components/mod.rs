@@ -381,9 +381,9 @@ pub struct PlayerBundle {
 impl PlayerBundle {
     pub fn new(id: u8, position: Vec3, visual_config: &PlayerVisualConfig) -> Self {
         let court_side = if id == 1 {
-            CourtSide::Player1
+            CourtSide::Left
         } else {
-            CourtSide::Player2
+            CourtSide::Right
         };
         // @data 80101_game_constants.md#player-visual-config
         let (r, g, b) = if id == 1 {

@@ -47,8 +47,8 @@ pub fn ai_movement_system(
         // REQ-30301-005: ボールが自分側にあるかチェック
         // 論理座標系: X=打ち合い方向（Player1: -X側, Player2: +X側）
         let ball_on_my_side = match player.court_side {
-            CourtSide::Player1 => ball_pos.x < 0.0,
-            CourtSide::Player2 => ball_pos.x > 0.0,
+            CourtSide::Left => ball_pos.x < 0.0,
+            CourtSide::Right => ball_pos.x > 0.0,
         };
 
         // ターゲット位置を決定

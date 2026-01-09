@@ -48,7 +48,7 @@ pub fn player_boundary_system(
 
         // BEH-30503-003: ネット通過禁止（維持）
         match player.court_side {
-            CourtSide::Player1 => {
+            CourtSide::Left => {
                 // 1Pは net_x を超えられない
                 if pos.x > net.x {
                     pos.x = net.x;
@@ -57,7 +57,7 @@ pub fn player_boundary_system(
                     }
                 }
             }
-            CourtSide::Player2 => {
+            CourtSide::Right => {
                 // 2Pは net_x 未満にいけない
                 if pos.x < net.x {
                     pos.x = net.x;
@@ -182,10 +182,10 @@ mod tests {
         // 1Pがネットを超えようとしている（+X方向へ）
         let mut pos = Vec3::new(0.5, 0.0, 0.0);
         let mut vel = Vec3::new(5.0, 0.0, 0.0);
-        let court_side = CourtSide::Player1;
+        let court_side = CourtSide::Left;
 
         // 1Pの場合、net_x より大きくなれない
-        if court_side == CourtSide::Player1 && pos.x > net.x {
+        if court_side == CourtSide::Left && pos.x > net.x {
             pos.x = net.x;
             if vel.x > 0.0 {
                 vel.x = 0.0;
@@ -239,13 +239,13 @@ mod tests {
         let net = create_net_info(&config.court);
 
         // 1Pコート側（X < 0）
-        assert_eq!(determine_court_side(-1.0, net.x), CourtSide::Player1);
+        assert_eq!(determine_court_side(-1.0, net.x), CourtSide::Left);
 
         // 2Pコート側（X > 0）
-        assert_eq!(determine_court_side(1.0, net.x), CourtSide::Player2);
+        assert_eq!(determine_court_side(1.0, net.x), CourtSide::Right);
 
         // ネット上（X = 0）は2P側扱い
-        assert_eq!(determine_court_side(0.0, net.x), CourtSide::Player2);
+        assert_eq!(determine_court_side(0.0, net.x), CourtSide::Right);
     }
 
     /// TST-30504-017: 境界チェックの優先順位
@@ -262,18 +262,18 @@ mod tests {
         let mut bc = BounceCount::default();
 
         // 最初のバウンス
-        bc.record_bounce(CourtSide::Player1);
+        bc.record_bounce(CourtSide::Left);
         assert_eq!(bc.count, 1);
-        assert_eq!(bc.last_court_side, Some(CourtSide::Player1));
+        assert_eq!(bc.last_court_side, Some(CourtSide::Left));
 
         // 同じコートで2回目
-        bc.record_bounce(CourtSide::Player1);
+        bc.record_bounce(CourtSide::Left);
         assert_eq!(bc.count, 2);
 
         // 別のコートでバウンス
-        bc.record_bounce(CourtSide::Player2);
+        bc.record_bounce(CourtSide::Right);
         assert_eq!(bc.count, 1);
-        assert_eq!(bc.last_court_side, Some(CourtSide::Player2));
+        assert_eq!(bc.last_court_side, Some(CourtSide::Right));
 
         // リセット
         bc.reset();

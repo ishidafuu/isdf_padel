@@ -65,11 +65,11 @@ fn update_debug_ui(
     let point_values = &config.scoring.point_values;
 
     // スコア表示
-    let p1_point = match_score.get_point_display(CourtSide::Player1, point_values);
-    let p2_point = match_score.get_point_display(CourtSide::Player2, point_values);
+    let p1_point = match_score.get_point_display(CourtSide::Left, point_values);
+    let p2_point = match_score.get_point_display(CourtSide::Right, point_values);
 
-    let p1_score = match_score.get_score(CourtSide::Player1);
-    let p2_score = match_score.get_score(CourtSide::Player2);
+    let p1_score = match_score.get_score(CourtSide::Left);
+    let p2_score = match_score.get_score(CourtSide::Right);
 
     let score_text = format!(
         "Score: {} - {} (G: {}-{}, S: {}-{})",
@@ -90,15 +90,15 @@ fn update_debug_ui(
     };
 
     let server_text = match rally_state.server {
-        CourtSide::Player1 => "P1",
-        CourtSide::Player2 => "P2",
+        CourtSide::Left => "P1",
+        CourtSide::Right => "P2",
     };
 
     // ボールバウンス状態
     let bounce_text = if let Some(bounce) = ball_query.iter().next() {
         let side = match bounce.last_court_side {
-            Some(CourtSide::Player1) => "P1",
-            Some(CourtSide::Player2) => "P2",
+            Some(CourtSide::Left) => "P1",
+            Some(CourtSide::Right) => "P2",
             None => "-",
         };
         format!("Bounce: {} ({})", bounce.count, side)

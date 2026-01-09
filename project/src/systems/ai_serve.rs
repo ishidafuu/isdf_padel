@@ -205,8 +205,8 @@ pub fn ai_serve_hit_system(
 
     // サーブ方向（ランダムバリエーション付き）
     let base_direction_x = match match_score.server {
-        CourtSide::Player1 => config.serve.p1_default_direction_x,
-        CourtSide::Player2 => config.serve.p2_default_direction_x,
+        CourtSide::Left => config.serve.p1_default_direction_x,
+        CourtSide::Right => config.serve.p2_default_direction_x,
     };
     let direction = Vec2::new(base_direction_x, ai_serve_timer.direction_z_offset);
 

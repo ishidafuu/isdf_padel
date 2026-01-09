@@ -153,17 +153,17 @@ impl WallReflection {
         }
 
         // 優先順位2: 前後壁（X方向、打ち合い方向）
-        if position.x <= bounds.back_1p && velocity.x < 0.0 {
+        if position.x <= bounds.back_left && velocity.x < 0.0 {
             return Some(WallReflectionResult {
                 wall_type: WallType::BackWall1P,
-                contact_point: Vec3::new(bounds.back_1p, position.y, position.z),
+                contact_point: Vec3::new(bounds.back_left, position.y, position.z),
                 reflected_velocity: Self::reflect_back_wall(velocity, bounce_factor),
             });
         }
-        if position.x >= bounds.back_2p && velocity.x > 0.0 {
+        if position.x >= bounds.back_right && velocity.x > 0.0 {
             return Some(WallReflectionResult {
                 wall_type: WallType::BackWall2P,
-                contact_point: Vec3::new(bounds.back_2p, position.y, position.z),
+                contact_point: Vec3::new(bounds.back_right, position.y, position.z),
                 reflected_velocity: Self::reflect_back_wall(velocity, bounce_factor),
             });
         }
@@ -187,7 +187,7 @@ mod tests {
 
     /// テスト用の境界を生成
     /// - Z方向（コート幅）: left=-5, right=5
-    /// - X方向（打ち合い方向）: back_1p=-3, back_2p=3
+    /// - X方向（打ち合い方向）: back_left=-3, back_right=3
     /// - Y方向: ground=0, ceiling=5
     fn test_bounds() -> CourtBounds {
         CourtBounds::new(-5.0, 5.0, -3.0, 3.0, 0.0, 5.0)
@@ -252,13 +252,13 @@ mod tests {
         assert_eq!(right.z, -2.4);
 
         // 後壁（1P側）（X成分のみ反転・減衰、打ち合い方向）
-        let back_1p = WallReflection::reflect(WallType::BackWall1P, velocity, bounce_factor);
-        assert_eq!(back_1p.x, -8.0);
-        assert_eq!(back_1p.z, 3.0);  // 維持
+        let back_left = WallReflection::reflect(WallType::BackWall1P, velocity, bounce_factor);
+        assert_eq!(back_left.x, -8.0);
+        assert_eq!(back_left.z, 3.0);  // 維持
 
         // 後壁（2P側）（X成分のみ反転・減衰）
-        let back_2p = WallReflection::reflect(WallType::BackWall2P, velocity, bounce_factor);
-        assert_eq!(back_2p.x, -8.0);
+        let back_right = WallReflection::reflect(WallType::BackWall2P, velocity, bounce_factor);
+        assert_eq!(back_right.x, -8.0);
 
         // 天井（Y成分のみ反転・減衰）
         let ceiling = WallReflection::reflect(WallType::Ceiling, velocity, bounce_factor);

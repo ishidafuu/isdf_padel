@@ -245,8 +245,8 @@ mod tests {
         // Player1側（X < net_x）にいる場合: +X方向（相手コート）
         // Player2側（X > net_x）にいる場合: -X方向（相手コート）
         let x_direction = match court_side {
-            CourtSide::Player1 => 1.0,
-            CourtSide::Player2 => -1.0,
+            CourtSide::Left => 1.0,
+            CourtSide::Right => -1.0,
         };
 
         // Z軸方向: 入力X値を使用（コート幅方向の打ち分け）
@@ -278,7 +278,7 @@ mod tests {
     fn test_calculate_horizontal_direction_player1_side_no_input() {
         // Player1側コート: 入力なし -> +X方向（相手コート方向のみ）
         let direction = Vec2::new(0.0, 0.0);
-        let result = calculate_horizontal_direction(direction, CourtSide::Player1);
+        let result = calculate_horizontal_direction(direction, CourtSide::Left);
 
         assert!((result.x - 1.0).abs() < 0.001);  // +X方向（2Pコートへ）
         assert!((result.y - 0.0).abs() < 0.001);
@@ -291,7 +291,7 @@ mod tests {
     fn test_calculate_horizontal_direction_player2_side_no_input() {
         // Player2側コート: 入力なし -> -X方向（相手コート方向のみ）
         let direction = Vec2::new(0.0, 0.0);
-        let result = calculate_horizontal_direction(direction, CourtSide::Player2);
+        let result = calculate_horizontal_direction(direction, CourtSide::Right);
 
         assert!((result.x - -1.0).abs() < 0.001); // -X方向（1Pコートへ）
         assert!((result.y - 0.0).abs() < 0.001);
@@ -304,7 +304,7 @@ mod tests {
     fn test_calculate_horizontal_direction_player1_side_right() {
         // Player1側コート: 右入力(+Z) -> 右前方向
         let direction = Vec2::new(1.0, 0.0);  // X入力 → Z方向
-        let result = calculate_horizontal_direction(direction, CourtSide::Player1);
+        let result = calculate_horizontal_direction(direction, CourtSide::Left);
 
         let expected = 1.0 / 2.0_f32.sqrt();
         assert!((result.x - expected).abs() < 0.001);  // +X方向
@@ -318,7 +318,7 @@ mod tests {
     fn test_calculate_horizontal_direction_player2_side_right() {
         // Player2側コート: 右入力(+Z) -> 右後方向
         let direction = Vec2::new(1.0, 0.0);  // X入力 → Z方向
-        let result = calculate_horizontal_direction(direction, CourtSide::Player2);
+        let result = calculate_horizontal_direction(direction, CourtSide::Right);
 
         let expected = 1.0 / 2.0_f32.sqrt();
         assert!((result.x - -expected).abs() < 0.001); // -X方向（1Pコートへ）

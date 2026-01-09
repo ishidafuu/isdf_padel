@@ -112,8 +112,8 @@ fn handle_game_win(
     info!(
         "Game won by {:?}! Games: P1={}, P2={}",
         scorer,
-        match_score.get_score(CourtSide::Player1).games,
-        match_score.get_score(CourtSide::Player2).games
+        match_score.get_score(CourtSide::Left).games,
+        match_score.get_score(CourtSide::Right).games
     );
 
     game_events.write(GameWonEvent {
@@ -149,8 +149,8 @@ fn handle_set_win(
     info!(
         "Set won by {:?}! Sets: P1={}, P2={}",
         scorer,
-        match_score.get_score(CourtSide::Player1).sets,
-        match_score.get_score(CourtSide::Player2).sets
+        match_score.get_score(CourtSide::Left).sets,
+        match_score.get_score(CourtSide::Right).sets
     );
 
     set_events.write(SetWonEvent {
@@ -186,8 +186,8 @@ fn handle_point_scored(
     info!(
         "Point scored by {:?}! Score: {} - {}",
         scorer,
-        match_score.get_point_display(CourtSide::Player1, point_values),
-        match_score.get_point_display(CourtSide::Player2, point_values),
+        match_score.get_point_display(CourtSide::Left, point_values),
+        match_score.get_point_display(CourtSide::Right, point_values),
     );
 
     point_events.write(PointScoredEvent {
@@ -228,11 +228,11 @@ pub fn score_display_system(
     mut last_display: Local<Option<String>>,
 ) {
     let point_values = &config.scoring.point_values;
-    let p1_point = match_score.get_point_display(CourtSide::Player1, point_values);
-    let p2_point = match_score.get_point_display(CourtSide::Player2, point_values);
+    let p1_point = match_score.get_point_display(CourtSide::Left, point_values);
+    let p2_point = match_score.get_point_display(CourtSide::Right, point_values);
 
-    let p1_score = match_score.get_score(CourtSide::Player1);
-    let p2_score = match_score.get_score(CourtSide::Player2);
+    let p1_score = match_score.get_score(CourtSide::Left);
+    let p2_score = match_score.get_score(CourtSide::Right);
 
     let score_text = format!(
         "P1: {} (G:{} S:{}) - P2: {} (G:{} S:{})",
@@ -260,8 +260,8 @@ mod tests {
     #[test]
     fn test_point_initialization() {
         let match_score = MatchScore::new();
-        assert_eq!(match_score.get_point(CourtSide::Player1).index, 0);
-        assert_eq!(match_score.get_point(CourtSide::Player2).index, 0);
+        assert_eq!(match_score.get_point(CourtSide::Left).index, 0);
+        assert_eq!(match_score.get_point(CourtSide::Right).index, 0);
     }
 
     /// TST-30705-002: ポイント加算テスト
@@ -272,26 +272,26 @@ mod tests {
         let point_values = vec![0, 15, 30, 40];
 
         // 0 -> 15
-        match_score.add_point(CourtSide::Player1);
-        assert_eq!(match_score.get_point_index(CourtSide::Player1), 1);
+        match_score.add_point(CourtSide::Left);
+        assert_eq!(match_score.get_point_index(CourtSide::Left), 1);
         assert_eq!(
-            match_score.get_point_display(CourtSide::Player1, &point_values),
+            match_score.get_point_display(CourtSide::Left, &point_values),
             "15"
         );
 
         // 15 -> 30
-        match_score.add_point(CourtSide::Player1);
-        assert_eq!(match_score.get_point_index(CourtSide::Player1), 2);
+        match_score.add_point(CourtSide::Left);
+        assert_eq!(match_score.get_point_index(CourtSide::Left), 2);
         assert_eq!(
-            match_score.get_point_display(CourtSide::Player1, &point_values),
+            match_score.get_point_display(CourtSide::Left, &point_values),
             "30"
         );
 
         // 30 -> 40
-        match_score.add_point(CourtSide::Player1);
-        assert_eq!(match_score.get_point_index(CourtSide::Player1), 3);
+        match_score.add_point(CourtSide::Left);
+        assert_eq!(match_score.get_point_index(CourtSide::Left), 3);
         assert_eq!(
-            match_score.get_point_display(CourtSide::Player1, &point_values),
+            match_score.get_point_display(CourtSide::Left, &point_values),
             "40"
         );
     }
@@ -304,16 +304,16 @@ mod tests {
         let win_index = 4; // point_values.len() = 4
 
         // Player1 が 40 に到達
-        match_score.add_point(CourtSide::Player1); // 15
-        match_score.add_point(CourtSide::Player1); // 30
-        match_score.add_point(CourtSide::Player1); // 40
+        match_score.add_point(CourtSide::Left); // 15
+        match_score.add_point(CourtSide::Left); // 30
+        match_score.add_point(CourtSide::Left); // 40
 
         // まだ勝利ではない
-        assert!(!match_score.check_game_win(CourtSide::Player1, win_index));
+        assert!(!match_score.check_game_win(CourtSide::Left, win_index));
 
         // 40 -> Game
-        match_score.add_point(CourtSide::Player1);
-        assert!(match_score.check_game_win(CourtSide::Player1, win_index));
+        match_score.add_point(CourtSide::Left);
+        assert!(match_score.check_game_win(CourtSide::Left, win_index));
     }
 
     /// TST-30705-004: ポイント表示テスト
@@ -324,22 +324,22 @@ mod tests {
         let point_values = vec![0, 15, 30, 40];
 
         assert_eq!(
-            match_score.get_point_display(CourtSide::Player1, &point_values),
+            match_score.get_point_display(CourtSide::Left, &point_values),
             "0"
         );
 
-        match_score.add_point(CourtSide::Player1);
+        match_score.add_point(CourtSide::Left);
         assert_eq!(
-            match_score.get_point_display(CourtSide::Player1, &point_values),
+            match_score.get_point_display(CourtSide::Left, &point_values),
             "15"
         );
 
         // Game表示（インデックス超過時）
-        match_score.add_point(CourtSide::Player1); // 30
-        match_score.add_point(CourtSide::Player1); // 40
-        match_score.add_point(CourtSide::Player1); // Game
+        match_score.add_point(CourtSide::Left); // 30
+        match_score.add_point(CourtSide::Left); // 40
+        match_score.add_point(CourtSide::Left); // Game
         assert_eq!(
-            match_score.get_point_display(CourtSide::Player1, &point_values),
+            match_score.get_point_display(CourtSide::Left, &point_values),
             "Game"
         );
     }
@@ -351,14 +351,14 @@ mod tests {
         let mut match_score = MatchScore::new();
 
         // ポイントを獲得
-        match_score.add_point(CourtSide::Player1);
-        match_score.add_point(CourtSide::Player2);
+        match_score.add_point(CourtSide::Left);
+        match_score.add_point(CourtSide::Right);
 
         // リセット
         match_score.reset_points();
 
-        assert_eq!(match_score.get_point(CourtSide::Player1).index, 0);
-        assert_eq!(match_score.get_point(CourtSide::Player2).index, 0);
+        assert_eq!(match_score.get_point(CourtSide::Left).index, 0);
+        assert_eq!(match_score.get_point(CourtSide::Right).index, 0);
     }
 
     // ========================================
@@ -370,10 +370,10 @@ mod tests {
     #[test]
     fn test_game_count_initialization() {
         let match_score = MatchScore::new();
-        assert_eq!(match_score.get_score(CourtSide::Player1).games, 0);
-        assert_eq!(match_score.get_score(CourtSide::Player2).games, 0);
-        assert_eq!(match_score.get_score(CourtSide::Player1).sets, 0);
-        assert_eq!(match_score.get_score(CourtSide::Player2).sets, 0);
+        assert_eq!(match_score.get_score(CourtSide::Left).games, 0);
+        assert_eq!(match_score.get_score(CourtSide::Right).games, 0);
+        assert_eq!(match_score.get_score(CourtSide::Left).sets, 0);
+        assert_eq!(match_score.get_score(CourtSide::Right).sets, 0);
     }
 
     /// TST-30706-002: ゲームカウント加算テスト
@@ -383,18 +383,18 @@ mod tests {
         let mut match_score = MatchScore::new();
 
         // Player1がゲームを獲得
-        match_score.win_game(CourtSide::Player1);
-        assert_eq!(match_score.get_score(CourtSide::Player1).games, 1);
-        assert_eq!(match_score.get_score(CourtSide::Player2).games, 0);
+        match_score.win_game(CourtSide::Left);
+        assert_eq!(match_score.get_score(CourtSide::Left).games, 1);
+        assert_eq!(match_score.get_score(CourtSide::Right).games, 0);
 
         // Player2がゲームを獲得
-        match_score.win_game(CourtSide::Player2);
-        assert_eq!(match_score.get_score(CourtSide::Player1).games, 1);
-        assert_eq!(match_score.get_score(CourtSide::Player2).games, 1);
+        match_score.win_game(CourtSide::Right);
+        assert_eq!(match_score.get_score(CourtSide::Left).games, 1);
+        assert_eq!(match_score.get_score(CourtSide::Right).games, 1);
 
         // Player1が再度ゲームを獲得
-        match_score.win_game(CourtSide::Player1);
-        assert_eq!(match_score.get_score(CourtSide::Player1).games, 2);
+        match_score.win_game(CourtSide::Left);
+        assert_eq!(match_score.get_score(CourtSide::Left).games, 2);
     }
 
     /// TST-30706-003: セット勝利判定テスト（6ゲーム先取）
@@ -406,13 +406,13 @@ mod tests {
 
         // Player1が5ゲーム獲得（まだセット勝利ではない）
         for _ in 0..5 {
-            match_score.win_game(CourtSide::Player1);
+            match_score.win_game(CourtSide::Left);
         }
-        assert!(!match_score.check_set_win(CourtSide::Player1, games_to_win));
+        assert!(!match_score.check_set_win(CourtSide::Left, games_to_win));
 
         // Player1が6ゲーム目を獲得（セット勝利）
-        match_score.win_game(CourtSide::Player1);
-        assert!(match_score.check_set_win(CourtSide::Player1, games_to_win));
+        match_score.win_game(CourtSide::Left);
+        assert!(match_score.check_set_win(CourtSide::Left, games_to_win));
     }
 
     /// TST-30706-004: ポイントリセット確認（ゲーム獲得後）
@@ -422,18 +422,18 @@ mod tests {
         let mut match_score = MatchScore::new();
 
         // ポイントを獲得
-        match_score.add_point(CourtSide::Player1);
-        match_score.add_point(CourtSide::Player1);
-        assert_eq!(match_score.get_point_index(CourtSide::Player1), 2);
+        match_score.add_point(CourtSide::Left);
+        match_score.add_point(CourtSide::Left);
+        assert_eq!(match_score.get_point_index(CourtSide::Left), 2);
 
         // ゲーム獲得（ポイントもリセットされる）
-        match_score.win_game(CourtSide::Player1);
+        match_score.win_game(CourtSide::Left);
 
         // ポイントがリセットされていることを確認
-        assert_eq!(match_score.get_point(CourtSide::Player1).index, 0);
-        assert_eq!(match_score.get_point(CourtSide::Player2).index, 0);
+        assert_eq!(match_score.get_point(CourtSide::Left).index, 0);
+        assert_eq!(match_score.get_point(CourtSide::Right).index, 0);
         // ゲームカウントが増えていることを確認
-        assert_eq!(match_score.get_score(CourtSide::Player1).games, 1);
+        assert_eq!(match_score.get_score(CourtSide::Left).games, 1);
     }
 
     /// TST-30706-005: ゲームカウント表示テスト
@@ -443,16 +443,16 @@ mod tests {
         let mut match_score = MatchScore::new();
 
         // 初期状態
-        assert_eq!(match_score.get_score(CourtSide::Player1).games, 0);
-        assert_eq!(match_score.get_score(CourtSide::Player2).games, 0);
+        assert_eq!(match_score.get_score(CourtSide::Left).games, 0);
+        assert_eq!(match_score.get_score(CourtSide::Right).games, 0);
 
         // ゲーム獲得後の表示
-        match_score.win_game(CourtSide::Player1);
-        match_score.win_game(CourtSide::Player1);
-        match_score.win_game(CourtSide::Player2);
+        match_score.win_game(CourtSide::Left);
+        match_score.win_game(CourtSide::Left);
+        match_score.win_game(CourtSide::Right);
 
-        assert_eq!(match_score.get_score(CourtSide::Player1).games, 2);
-        assert_eq!(match_score.get_score(CourtSide::Player2).games, 1);
+        assert_eq!(match_score.get_score(CourtSide::Left).games, 2);
+        assert_eq!(match_score.get_score(CourtSide::Right).games, 1);
     }
 
     /// TST-30706-006: サーバー交代テスト（ゲーム獲得後）
@@ -462,15 +462,15 @@ mod tests {
         let mut match_score = MatchScore::new();
 
         // 初期サーバーはPlayer1
-        assert_eq!(match_score.server, CourtSide::Player1);
+        assert_eq!(match_score.server, CourtSide::Left);
 
         // ゲーム獲得後はPlayer2がサーバー
-        match_score.win_game(CourtSide::Player1);
-        assert_eq!(match_score.server, CourtSide::Player2);
+        match_score.win_game(CourtSide::Left);
+        assert_eq!(match_score.server, CourtSide::Right);
 
         // 次のゲーム後はPlayer1がサーバー
-        match_score.win_game(CourtSide::Player2);
-        assert_eq!(match_score.server, CourtSide::Player1);
+        match_score.win_game(CourtSide::Right);
+        assert_eq!(match_score.server, CourtSide::Left);
     }
 
     /// TST-30706-007: セット獲得後のゲームカウントリセットテスト
@@ -481,16 +481,16 @@ mod tests {
 
         // Player1が6ゲーム獲得
         for _ in 0..6 {
-            match_score.win_game(CourtSide::Player1);
+            match_score.win_game(CourtSide::Left);
         }
-        assert_eq!(match_score.get_score(CourtSide::Player1).games, 6);
+        assert_eq!(match_score.get_score(CourtSide::Left).games, 6);
 
         // セット獲得
-        match_score.win_set(CourtSide::Player1);
+        match_score.win_set(CourtSide::Left);
 
         // ゲームカウントがリセットされ、セット数が増加
-        assert_eq!(match_score.get_score(CourtSide::Player1).games, 0);
-        assert_eq!(match_score.get_score(CourtSide::Player1).sets, 1);
+        assert_eq!(match_score.get_score(CourtSide::Left).games, 0);
+        assert_eq!(match_score.get_score(CourtSide::Left).sets, 1);
     }
 
     // ========================================
@@ -503,8 +503,8 @@ mod tests {
     fn test_set_count_initialization() {
         let match_score = MatchScore::new();
         // @spec 30703_set_spec.md#req-30703-001: 両プレイヤーのセットカウントを0に初期化
-        assert_eq!(match_score.get_score(CourtSide::Player1).sets, 0);
-        assert_eq!(match_score.get_score(CourtSide::Player2).sets, 0);
+        assert_eq!(match_score.get_score(CourtSide::Left).sets, 0);
+        assert_eq!(match_score.get_score(CourtSide::Right).sets, 0);
     }
 
     /// TST-30707-002: セットカウント加算テスト
@@ -514,14 +514,14 @@ mod tests {
         let mut match_score = MatchScore::new();
 
         // Player1がセットを獲得
-        match_score.win_set(CourtSide::Player1);
-        assert_eq!(match_score.get_score(CourtSide::Player1).sets, 1);
-        assert_eq!(match_score.get_score(CourtSide::Player2).sets, 0);
+        match_score.win_set(CourtSide::Left);
+        assert_eq!(match_score.get_score(CourtSide::Left).sets, 1);
+        assert_eq!(match_score.get_score(CourtSide::Right).sets, 0);
 
         // Player2がセットを獲得
-        match_score.win_set(CourtSide::Player2);
-        assert_eq!(match_score.get_score(CourtSide::Player1).sets, 1);
-        assert_eq!(match_score.get_score(CourtSide::Player2).sets, 1);
+        match_score.win_set(CourtSide::Right);
+        assert_eq!(match_score.get_score(CourtSide::Left).sets, 1);
+        assert_eq!(match_score.get_score(CourtSide::Right).sets, 1);
     }
 
     /// TST-30707-003: マッチ勝利判定テスト（1セット制）
@@ -532,15 +532,15 @@ mod tests {
         let sets_to_win = 1; // 1セット制
 
         // セット獲得前は勝利ではない
-        assert!(!match_score.check_match_win(CourtSide::Player1, sets_to_win));
+        assert!(!match_score.check_match_win(CourtSide::Left, sets_to_win));
 
         // Player1がセットを獲得
-        match_score.win_set(CourtSide::Player1);
+        match_score.win_set(CourtSide::Left);
 
         // 1セット獲得でマッチ勝利
-        assert!(match_score.check_match_win(CourtSide::Player1, sets_to_win));
+        assert!(match_score.check_match_win(CourtSide::Left, sets_to_win));
         // 相手はまだ勝利ではない
-        assert!(!match_score.check_match_win(CourtSide::Player2, sets_to_win));
+        assert!(!match_score.check_match_win(CourtSide::Right, sets_to_win));
     }
 
     /// TST-30707-004: セットカウント表示テスト
@@ -550,13 +550,13 @@ mod tests {
         let mut match_score = MatchScore::new();
 
         // 初期状態: 0-0
-        assert_eq!(match_score.get_score(CourtSide::Player1).sets, 0);
-        assert_eq!(match_score.get_score(CourtSide::Player2).sets, 0);
+        assert_eq!(match_score.get_score(CourtSide::Left).sets, 0);
+        assert_eq!(match_score.get_score(CourtSide::Right).sets, 0);
 
         // セット獲得後
-        match_score.win_set(CourtSide::Player1);
+        match_score.win_set(CourtSide::Left);
         // 表示: "1" - "0"
-        assert_eq!(match_score.get_score(CourtSide::Player1).sets, 1);
-        assert_eq!(match_score.get_score(CourtSide::Player2).sets, 0);
+        assert_eq!(match_score.get_score(CourtSide::Left).sets, 1);
+        assert_eq!(match_score.get_score(CourtSide::Right).sets, 0);
     }
 }

@@ -167,8 +167,8 @@ pub fn serve_hit_input_system(
         raw_direction.normalize()
     } else {
         match match_score.server {
-            CourtSide::Player1 => Vec2::new(config.serve.p1_default_direction_x, 0.0),
-            CourtSide::Player2 => Vec2::new(config.serve.p2_default_direction_x, 0.0),
+            CourtSide::Left => Vec2::new(config.serve.p1_default_direction_x, 0.0),
+            CourtSide::Right => Vec2::new(config.serve.p2_default_direction_x, 0.0),
         }
     };
 
@@ -267,8 +267,8 @@ pub fn serve_double_fault_system(
     info!(
         "Double fault! Point to {:?}. Score: P1={}, P2={}",
         receiver,
-        match_score.get_point_index(CourtSide::Player1),
-        match_score.get_point_index(CourtSide::Player2)
+        match_score.get_point_index(CourtSide::Left),
+        match_score.get_point_index(CourtSide::Right)
     );
 
     // ServeStateリセット

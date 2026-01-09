@@ -104,8 +104,8 @@ pub fn movement_system(
         // @spec 30102_serve_spec.md#req-30102-086: サーブ待機中のサーバーはX座標をベースラインに固定
         if is_serve_state && is_server && serve_state.phase == ServeSubPhase::Waiting {
             let baseline_x = match player.court_side {
-                crate::core::CourtSide::Player1 => config.serve.serve_baseline_x_p1,
-                crate::core::CourtSide::Player2 => config.serve.serve_baseline_x_p2,
+                crate::core::CourtSide::Left => config.serve.serve_baseline_x_p1,
+                crate::core::CourtSide::Right => config.serve.serve_baseline_x_p2,
             };
             new_position.x = baseline_x;
         }

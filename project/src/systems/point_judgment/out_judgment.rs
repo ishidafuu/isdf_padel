@@ -46,9 +46,9 @@ pub fn out_of_bounds_judgment_system(
                 // LastShooter が未設定の場合（サーブ前など）
                 // ボール位置から判定（フォールバック）
                 let court_side = if event.final_position.z < 0.0 {
-                    CourtSide::Player1
+                    CourtSide::Left
                 } else {
-                    CourtSide::Player2
+                    CourtSide::Right
                 };
                 let winner = court_side.opponent();
 
@@ -103,9 +103,9 @@ pub fn wall_hit_judgment_system(
                 // LastShooter が未設定の場合（サーブ前など）
                 // 壁に当たった位置から判定
                 let court_side = if event.contact_point.z < 0.0 {
-                    CourtSide::Player1
+                    CourtSide::Left
                 } else {
-                    CourtSide::Player2
+                    CourtSide::Right
                 };
                 let winner = court_side.opponent();
 
@@ -137,12 +137,12 @@ mod tests {
         // 1Pコート側でアウト（X < 0）
         let pos_1p = Vec3::new(-2.0, -1.0, 0.0);
         let court_side_1p = crate::core::determine_court_side(pos_1p.x, net_x);
-        assert_eq!(court_side_1p, CourtSide::Player1);
+        assert_eq!(court_side_1p, CourtSide::Left);
 
         // 2Pコート側でアウト（X > 0）
         let pos_2p = Vec3::new(2.0, -1.0, 0.0);
         let court_side_2p = crate::core::determine_court_side(pos_2p.x, net_x);
-        assert_eq!(court_side_2p, CourtSide::Player2);
+        assert_eq!(court_side_2p, CourtSide::Right);
     }
 
     /// TST-30904-004: コート境界取得テスト
@@ -166,11 +166,11 @@ mod tests {
 
         // 境界座標の確認
         // Z軸（コート幅）: left=-5, right=5
-        // X軸（打ち合い方向）: back_1p=-3, back_2p=3
+        // X軸（打ち合い方向）: back_left=-3, back_right=3
         assert_eq!(bounds.left, -5.0);
         assert_eq!(bounds.right, 5.0);
-        assert_eq!(bounds.back_1p, -3.0);
-        assert_eq!(bounds.back_2p, 3.0);
+        assert_eq!(bounds.back_left, -3.0);
+        assert_eq!(bounds.back_right, 3.0);
     }
 
     /// TST-30036-001: 壁ヒット時アウト判定テスト
@@ -180,15 +180,15 @@ mod tests {
         let mut last_shooter = LastShooter::default();
 
         // 1Pがショット
-        last_shooter.record(CourtSide::Player1);
-        assert_eq!(last_shooter.side, Some(CourtSide::Player1));
+        last_shooter.record(CourtSide::Left);
+        assert_eq!(last_shooter.side, Some(CourtSide::Left));
 
         // 壁に当たった → 1P失点（2P得点）
         let winner = last_shooter
             .side
             .expect("last_shooter.side should be set after record")
             .opponent();
-        assert_eq!(winner, CourtSide::Player2);
+        assert_eq!(winner, CourtSide::Right);
     }
 
     /// TST-30036-002: 壁ヒット時のRallyEndReason確認
@@ -217,14 +217,14 @@ mod tests {
 
         // LastShooter ベースで失点判定
         let mut last_shooter = LastShooter::default();
-        last_shooter.record(CourtSide::Player1);
+        last_shooter.record(CourtSide::Left);
 
         // 1Pがサイドアウト → 1P失点（2P得点）
         let winner = last_shooter
             .side
             .expect("last_shooter.side should be set after record")
             .opponent();
-        assert_eq!(winner, CourtSide::Player2);
+        assert_eq!(winner, CourtSide::Right);
     }
 
     /// TST-30037-002: ベースライン外アウト判定テスト
@@ -244,14 +244,14 @@ mod tests {
 
         // LastShooter ベースで失点判定
         let mut last_shooter = LastShooter::default();
-        last_shooter.record(CourtSide::Player2);
+        last_shooter.record(CourtSide::Right);
 
         // 2Pがベースラインアウト → 2P失点（1P得点）
         let winner = last_shooter
             .side
             .expect("last_shooter.side should be set after record")
             .opponent();
-        assert_eq!(winner, CourtSide::Player1);
+        assert_eq!(winner, CourtSide::Left);
     }
 
     /// TST-30037-003: コート内着地は失点にならないテスト

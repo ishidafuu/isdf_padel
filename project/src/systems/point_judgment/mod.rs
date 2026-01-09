@@ -54,8 +54,8 @@ pub fn update_last_shooter_system(
     for event in shot_events.read() {
         // プレイヤーIDからCourtSideを決定
         let shooter = match event.player_id {
-            1 => CourtSide::Player1,
-            _ => CourtSide::Player2,
+            1 => CourtSide::Left,
+            _ => CourtSide::Right,
         };
 
         for mut last_shooter in query.iter_mut() {
