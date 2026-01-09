@@ -351,10 +351,12 @@ impl KnockbackState {
 }
 
 /// プレイヤーバンドル（プレイヤー生成時に使用）
+/// 互換性維持のため残存。新規はcharacter::spawn_articulated_playerを使用
 /// @spec 30200_player_overview.md
 /// @spec 30202_jump_spec.md
 /// @spec 30601_shot_input_spec.md
 /// @spec 20006_input_system.md
+#[allow(dead_code)]
 #[derive(Bundle)]
 pub struct PlayerBundle {
     pub player: Player,
@@ -368,6 +370,7 @@ pub struct PlayerBundle {
     pub transform: Transform,
 }
 
+#[allow(dead_code)]
 impl PlayerBundle {
     pub fn new(id: u8, position: Vec3, visual_config: &PlayerVisualConfig) -> Self {
         let court_side = if id == 1 {

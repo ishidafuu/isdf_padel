@@ -1,0 +1,280 @@
+// Character Animations Data
+// @spec 31002_animation_spec.md
+(
+    idle: Some((
+        duration: 1.5,
+        looping: true,
+        keyframes: (
+            // 浮遊感のあるゆったりした上下動
+            head: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.375, position: (0.0, 6.0, 0.0), rotation: 2.0),
+                (time: 0.75, position: (0.0, 8.0, 0.0), rotation: 0.0),
+                (time: 1.125, position: (0.0, 6.0, 0.0), rotation: -2.0),
+                (time: 1.5, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            torso: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.375, position: (0.0, 5.0, 0.0), rotation: 0.0),
+                (time: 0.75, position: (0.0, 7.0, 0.0), rotation: 0.0),
+                (time: 1.125, position: (0.0, 5.0, 0.0), rotation: 0.0),
+                (time: 1.5, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            left_hand: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.375, position: (-2.0, 4.0, 0.0), rotation: -10.0),
+                (time: 0.75, position: (-3.0, 6.0, 0.0), rotation: -15.0),
+                (time: 1.125, position: (-2.0, 4.0, 0.0), rotation: -10.0),
+                (time: 1.5, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            right_hand: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.375, position: (2.0, 4.0, 0.0), rotation: 10.0),
+                (time: 0.75, position: (3.0, 6.0, 0.0), rotation: 15.0),
+                (time: 1.125, position: (2.0, 4.0, 0.0), rotation: 10.0),
+                (time: 1.5, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            left_knee: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.375, position: (0.0, 3.0, 0.0), rotation: 5.0),
+                (time: 0.75, position: (0.0, 5.0, 0.0), rotation: 8.0),
+                (time: 1.125, position: (0.0, 3.0, 0.0), rotation: 5.0),
+                (time: 1.5, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            right_knee: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.375, position: (0.0, 3.0, 0.0), rotation: -5.0),
+                (time: 0.75, position: (0.0, 5.0, 0.0), rotation: -8.0),
+                (time: 1.125, position: (0.0, 3.0, 0.0), rotation: -5.0),
+                (time: 1.5, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            left_foot: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.375, position: (-1.0, 2.0, 0.0), rotation: 0.0),
+                (time: 0.75, position: (-2.0, 4.0, 0.0), rotation: 0.0),
+                (time: 1.125, position: (-1.0, 2.0, 0.0), rotation: 0.0),
+                (time: 1.5, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            right_foot: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.375, position: (1.0, 2.0, 0.0), rotation: 0.0),
+                (time: 0.75, position: (2.0, 4.0, 0.0), rotation: 0.0),
+                (time: 1.125, position: (1.0, 2.0, 0.0), rotation: 0.0),
+                (time: 1.5, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+        ),
+    )),
+    // 歩行アニメーション - 足を交互に動かす
+    walk: Some((
+        duration: 0.6,
+        looping: true,
+        keyframes: (
+            head: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.15, position: (0.0, 2.0, 0.0), rotation: 3.0),
+                (time: 0.3, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.45, position: (0.0, 2.0, 0.0), rotation: -3.0),
+                (time: 0.6, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            torso: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.15, position: (0.0, 1.5, 0.0), rotation: 2.0),
+                (time: 0.3, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.45, position: (0.0, 1.5, 0.0), rotation: -2.0),
+                (time: 0.6, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            left_hand: Some([
+                (time: 0.0, position: (5.0, 0.0, 0.0), rotation: 20.0),
+                (time: 0.15, position: (3.0, 3.0, 0.0), rotation: 10.0),
+                (time: 0.3, position: (-5.0, 0.0, 0.0), rotation: -20.0),
+                (time: 0.45, position: (-3.0, -3.0, 0.0), rotation: -10.0),
+                (time: 0.6, position: (5.0, 0.0, 0.0), rotation: 20.0),
+            ]),
+            right_hand: Some([
+                (time: 0.0, position: (-5.0, 0.0, 0.0), rotation: -20.0),
+                (time: 0.15, position: (-3.0, -3.0, 0.0), rotation: -10.0),
+                (time: 0.3, position: (5.0, 0.0, 0.0), rotation: 20.0),
+                (time: 0.45, position: (3.0, 3.0, 0.0), rotation: 10.0),
+                (time: 0.6, position: (-5.0, 0.0, 0.0), rotation: -20.0),
+            ]),
+            left_knee: Some([
+                (time: 0.0, position: (-3.0, 6.0, 0.0), rotation: 30.0),
+                (time: 0.15, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.3, position: (3.0, -6.0, 0.0), rotation: -30.0),
+                (time: 0.45, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.6, position: (-3.0, 6.0, 0.0), rotation: 30.0),
+            ]),
+            right_knee: Some([
+                (time: 0.0, position: (3.0, -6.0, 0.0), rotation: -30.0),
+                (time: 0.15, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.3, position: (-3.0, 6.0, 0.0), rotation: 30.0),
+                (time: 0.45, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.6, position: (3.0, -6.0, 0.0), rotation: -30.0),
+            ]),
+            left_foot: Some([
+                (time: 0.0, position: (-5.0, 8.0, 0.0), rotation: 15.0),
+                (time: 0.15, position: (-2.0, 2.0, 0.0), rotation: 5.0),
+                (time: 0.3, position: (5.0, -8.0, 0.0), rotation: -15.0),
+                (time: 0.45, position: (2.0, -2.0, 0.0), rotation: -5.0),
+                (time: 0.6, position: (-5.0, 8.0, 0.0), rotation: 15.0),
+            ]),
+            right_foot: Some([
+                (time: 0.0, position: (5.0, -8.0, 0.0), rotation: -15.0),
+                (time: 0.15, position: (2.0, -2.0, 0.0), rotation: -5.0),
+                (time: 0.3, position: (-5.0, 8.0, 0.0), rotation: 15.0),
+                (time: 0.45, position: (-2.0, 2.0, 0.0), rotation: 5.0),
+                (time: 0.6, position: (5.0, -8.0, 0.0), rotation: -15.0),
+            ]),
+        ),
+    )),
+    // ジャンプアニメーション - 上昇ポーズ
+    jump: Some((
+        duration: 0.3,
+        looping: false,
+        keyframes: (
+            head: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.15, position: (0.0, 4.0, 0.0), rotation: -5.0),
+                (time: 0.3, position: (0.0, 6.0, 0.0), rotation: -8.0),
+            ]),
+            torso: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.15, position: (0.0, 3.0, 0.0), rotation: -3.0),
+                (time: 0.3, position: (0.0, 5.0, 0.0), rotation: -5.0),
+            ]),
+            left_hand: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.15, position: (-5.0, 8.0, 0.0), rotation: -30.0),
+                (time: 0.3, position: (-8.0, 12.0, 0.0), rotation: -45.0),
+            ]),
+            right_hand: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.15, position: (5.0, 8.0, 0.0), rotation: 30.0),
+                (time: 0.3, position: (8.0, 12.0, 0.0), rotation: 45.0),
+            ]),
+            left_knee: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.15, position: (-3.0, 5.0, 0.0), rotation: 20.0),
+                (time: 0.3, position: (-5.0, 8.0, 0.0), rotation: 35.0),
+            ]),
+            right_knee: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.15, position: (3.0, 5.0, 0.0), rotation: -20.0),
+                (time: 0.3, position: (5.0, 8.0, 0.0), rotation: -35.0),
+            ]),
+            left_foot: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.15, position: (-4.0, 6.0, 0.0), rotation: 10.0),
+                (time: 0.3, position: (-6.0, 10.0, 0.0), rotation: 20.0),
+            ]),
+            right_foot: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.15, position: (4.0, 6.0, 0.0), rotation: -10.0),
+                (time: 0.3, position: (6.0, 10.0, 0.0), rotation: -20.0),
+            ]),
+        ),
+    )),
+    // 落下アニメーション - 下降ポーズ
+    fall: Some((
+        duration: 0.4,
+        looping: false,
+        keyframes: (
+            head: Some([
+                (time: 0.0, position: (0.0, 6.0, 0.0), rotation: -8.0),
+                (time: 0.2, position: (0.0, 3.0, 0.0), rotation: 5.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            torso: Some([
+                (time: 0.0, position: (0.0, 5.0, 0.0), rotation: -5.0),
+                (time: 0.2, position: (0.0, 2.0, 0.0), rotation: 3.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            left_hand: Some([
+                (time: 0.0, position: (-8.0, 12.0, 0.0), rotation: -45.0),
+                (time: 0.2, position: (-4.0, 5.0, 0.0), rotation: -20.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            right_hand: Some([
+                (time: 0.0, position: (8.0, 12.0, 0.0), rotation: 45.0),
+                (time: 0.2, position: (4.0, 5.0, 0.0), rotation: 20.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            left_knee: Some([
+                (time: 0.0, position: (-5.0, 8.0, 0.0), rotation: 35.0),
+                (time: 0.2, position: (-2.0, 4.0, 0.0), rotation: 15.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            right_knee: Some([
+                (time: 0.0, position: (5.0, 8.0, 0.0), rotation: -35.0),
+                (time: 0.2, position: (2.0, 4.0, 0.0), rotation: -15.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            left_foot: Some([
+                (time: 0.0, position: (-6.0, 10.0, 0.0), rotation: 20.0),
+                (time: 0.2, position: (-3.0, 5.0, 0.0), rotation: 10.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            right_foot: Some([
+                (time: 0.0, position: (6.0, 10.0, 0.0), rotation: -20.0),
+                (time: 0.2, position: (3.0, 5.0, 0.0), rotation: -10.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+        ),
+    )),
+    // ショットアニメーション - ラケットを振る
+    shot: Some((
+        duration: 0.4,
+        looping: false,
+        keyframes: (
+            head: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.1, position: (0.0, -2.0, 0.0), rotation: 10.0),
+                (time: 0.25, position: (0.0, 2.0, 0.0), rotation: -15.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            torso: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.1, position: (0.0, -3.0, 0.0), rotation: 15.0),
+                (time: 0.25, position: (0.0, 3.0, 0.0), rotation: -20.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            // 右手（ラケット側）が大きく振る
+            left_hand: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.1, position: (-3.0, -2.0, 0.0), rotation: -10.0),
+                (time: 0.25, position: (-2.0, 2.0, 0.0), rotation: -5.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            right_hand: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.1, position: (10.0, -5.0, 0.0), rotation: 60.0),
+                (time: 0.25, position: (-5.0, 10.0, 0.0), rotation: -45.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            left_knee: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.1, position: (-2.0, 3.0, 0.0), rotation: 10.0),
+                (time: 0.25, position: (2.0, -2.0, 0.0), rotation: -10.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            right_knee: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.1, position: (3.0, 5.0, 0.0), rotation: -15.0),
+                (time: 0.25, position: (-3.0, -3.0, 0.0), rotation: 15.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            left_foot: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.1, position: (-3.0, 4.0, 0.0), rotation: 5.0),
+                (time: 0.25, position: (2.0, -2.0, 0.0), rotation: -5.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+            right_foot: Some([
+                (time: 0.0, position: (0.0, 0.0, 0.0), rotation: 0.0),
+                (time: 0.1, position: (4.0, 6.0, 0.0), rotation: -10.0),
+                (time: 0.25, position: (-2.0, -3.0, 0.0), rotation: 10.0),
+                (time: 0.4, position: (0.0, 0.0, 0.0), rotation: 0.0),
+            ]),
+        ),
+    )),
+)

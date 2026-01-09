@@ -1,6 +1,7 @@
 //! Padel Game - MVP v0.1
 //! @spec 20000_overview.md
 
+mod character;
 mod components;
 mod core;
 mod presentation;
@@ -8,7 +9,8 @@ mod resource;
 mod systems;
 
 use bevy::{asset::AssetPlugin, prelude::*};
-use components::{AiController, HumanControlled, PlayerBundle};
+use character::CharacterPlugin;
+use components::{AiController, HumanControlled};
 use core::{
     BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent,
     ShotEvent, ShotExecutedEvent,
@@ -65,6 +67,7 @@ fn main() {
         // @spec 30102_serve_spec.md#req-30102-070: AI自動サーブ
         .add_plugins(AiServePlugin)
         .add_plugins(DebugUiPlugin)
+        .add_plugins(CharacterPlugin)
         .insert_resource(config)
         .add_message::<PlayerMoveEvent>()
         .add_message::<PlayerJumpEvent>()
@@ -132,19 +135,21 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
     // Player 1 をスポーン（1Pコート側: 画面左側）- 人間操作
     // 論理座標系: X=打ち合い方向, Y=高さ, Z=コート幅
     // @spec 20006_input_system.md
+    // @spec 31001_parts_spec.md - パーツ分離キャラクター
     let player1_pos = Vec3::new(
         config.player.x_min + 1.0, // 1Pコート側（-X方向）
         0.0,                       // 地面
         0.0,                       // コート中央
     );
-    commands.spawn((
-        PlayerBundle::new(1, player1_pos, &config.player_visual),
-        HumanControlled::default(),
-    ));
-    info!("Player 1 (Human) spawned at {:?}", player1_pos);
+    let (r, g, b) = config.player_visual.player1_color;
+    let player1_color = Color::srgb(r, g, b);
+    let player1_entity = character::spawn_articulated_player(&mut commands, 1, player1_pos, player1_color);
+    commands.entity(player1_entity).insert(HumanControlled::default());
+    info!("Player 1 (Human/Articulated) spawned at {:?}", player1_pos);
 
     // Player 2 をスポーン（2Pコート側: 画面右側）- AI制御
     // @spec 30301_ai_movement_spec.md
+    // @spec 31001_parts_spec.md - パーツ分離キャラクター
     let player2_pos = Vec3::new(
         config.player.x_max - 1.0, // 2Pコート側（+X方向）
         0.0,                       // 地面
@@ -155,11 +160,12 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
         0.0,
         0.0, // コート中央
     );
-    commands.spawn((
-        PlayerBundle::new(2, player2_pos, &config.player_visual),
-        AiController { home_position },
-    ));
-    info!("Player 2 (AI) spawned at {:?}", player2_pos);
+    let (r, g, b) = config.player_visual.player2_color;
+    let player2_color = Color::srgb(r, g, b);
+    let player2_entity = character::spawn_articulated_player(&mut commands, 2, player2_pos, player2_color);
+    commands.entity(player2_entity).insert(AiController { home_position });
+    info!("Player 2 (AI/Articulated) spawned at {:?}", player2_pos);
+
 }
 
 /// コートの境界線とネットを描画（横向き：左右の打ち合い）
