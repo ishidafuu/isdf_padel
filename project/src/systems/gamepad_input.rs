@@ -1,6 +1,8 @@
 //! ゲームパッド入力システム
 //! HumanControlled マーカーを持つプレイヤーの InputState をゲームパッドで更新
-//! device_id=0 はキーボード入力との併用（論理和）
+//! device_id=0: キーボード入力との併用（OR演算）
+//!
+//! 実行順序: human_input_system → gamepad_input_system
 //! @spec 20006_input_system.md#req-20006-050
 
 use bevy::prelude::*;
@@ -73,18 +75,22 @@ pub fn gamepad_input_system(
             // キーボードとゲームパッドのOR演算
             input_state.shot_pressed = input_state.shot_pressed || gamepad_shot_just_pressed;
 
-            // ホールド状態の追跡：ゲームパッドでホールド中ならゲームパッドの状態を使用
+            // ホールド状態の追跡
+            // human_input_system が先に実行され、キーボード入力に基づいて holding/hold_time を設定済み
+            // ゲームパッドでホールド中ならその状態を上書き/継続
             if gamepad_shot_pressed {
-                if !input_state.holding {
-                    // 押し始め
-                    input_state.holding = true;
-                    input_state.hold_time = 0.0;
-                } else {
-                    // 押し続けている
+                input_state.holding = true;
+                if !gamepad_shot_just_pressed {
+                    // ゲームパッドでホールド継続（2フレーム目以降）
                     input_state.hold_time += delta_ms;
                 }
+                // gamepad_shot_just_pressed の場合:
+                // - hold_time == 0.0 → 新規ホールド開始（そのまま）
+                // - hold_time > 0.0 → キーボードでホールド中だった（hold_timeを維持）
             }
-            // キーボードでホールド中の場合は human_input_system で処理済み
+            // ゲームパッドが離されている場合:
+            // - キーボードでホールド中 → holding = true のまま（human_input_system で設定済み）
+            // - キーボードも離されている → holding = false（human_input_system で設定済み）
         } else {
             input_state.shot_pressed = gamepad_shot_just_pressed;
 

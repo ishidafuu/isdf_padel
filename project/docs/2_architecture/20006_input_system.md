@@ -331,27 +331,28 @@ pub fn gamepad_input_system(
 
 ### デバイス割当
 
-| device_id | デバイス | 対象プレイヤー |
-|-----------|---------|----------------|
-| 0 | キーボード | Player1 |
-| 1 | ゲームパッド | Player2 |
+| device_id | デバイス | 動作 |
+|-----------|---------|------|
+| 0 | キーボード+ゲームパッド併用 | キーボード入力とゲームパッド入力のOR演算 |
+| 1以上 | 将来の拡張用 | 現在未使用 |
+
+**v0.4実装**: Player1（device_id=0）がキーボードとゲームパッド両方で操作可能。Player2はAI操作。
 
 ### 要件
 
 #### REQ-20006-050: ゲームパッド入力読み取り
 
-- WHEN device_id=1のHumanControlledエンティティが存在する
+- WHEN device_id=0のHumanControlledエンティティが存在する
 - AND ゲームパッドが接続されている
-- THE SYSTEM SHALL ゲームパッド入力をInputStateに反映する
-- WITH 左スティック → movement
-- WITH Southボタン → jump_pressed
-- WITH Eastボタン → shot_pressed, holding
+- THE SYSTEM SHALL ゲームパッド入力をキーボード入力とOR演算でInputStateに反映する
+- WITH 左スティック → movement（ゲームパッド入力があれば優先）
+- WITH Southボタン → jump_pressed（キーボードとのOR）
+- WITH Eastボタン → shot_pressed, holding（キーボードとのOR）
 
 #### REQ-20006-051: ゲームパッド未接続時
 
 - IF ゲームパッドが未接続
-- AND device_id=1のHumanControlledエンティティが存在する
-- THEN THE SYSTEM SHALL InputStateを更新しない
+- THEN THE SYSTEM SHALL キーボード入力のみを使用する
 
 #### REQ-20006-052: アナログスティック正規化
 
@@ -368,6 +369,7 @@ pub fn gamepad_input_system(
 
 ```rust
 /// ゲームパッド入力読み取りシステム
+/// device_id=0: キーボード入力との併用（OR演算）
 /// @spec 20006_input_system.md#req-20006-050
 pub fn gamepad_input_system(
     gamepads: Query<&Gamepad>,
@@ -378,44 +380,49 @@ pub fn gamepad_input_system(
     let delta_ms = time.delta_secs() * 1000.0;
     let gamepad_config = &config.gamepad_buttons;
 
+    // 最初に見つかったゲームパッドを使用
+    let Some(gamepad) = gamepads.iter().next() else {
+        return; // 未接続時はキーボード入力のみ
+    };
+
     for (human, mut input_state) in query.iter_mut() {
-        // device_id=1のみゲームパッド対応
-        if human.device_id != 1 {
+        // device_id=0のみ対応（キーボード+ゲームパッド併用）
+        if human.device_id != 0 {
             continue;
         }
-
-        // 最初に見つかったゲームパッドを使用
-        let Some(gamepad) = gamepads.iter().next() else {
-            continue;
-        };
 
         // 左スティック入力（デッドゾーン適用）
         let left_stick = gamepad.left_stick();
-        let mut movement = Vec2::new(left_stick.x, left_stick.y);
-        if movement.length() < gamepad_config.stick_deadzone {
-            movement = Vec2::ZERO;
+        let mut gp_movement = Vec2::new(left_stick.x, left_stick.y);
+        if gp_movement.length() < gamepad_config.stick_deadzone {
+            gp_movement = Vec2::ZERO;
         }
-        input_state.movement = movement * config.input.input_sensitivity;
+        gp_movement *= config.input.input_sensitivity;
 
-        // ジャンプ入力
-        input_state.jump_pressed = gamepad.just_pressed(gamepad_config.jump);
+        // ゲームパッド入力があればそちらを優先
+        if gp_movement.length_squared() > 0.0 {
+            input_state.movement = gp_movement;
+        }
 
-        // ショット入力
-        let shot_pressed = gamepad.pressed(gamepad_config.shot);
-        let shot_just_pressed = gamepad.just_pressed(gamepad_config.shot);
+        // ジャンプ入力（OR演算）
+        input_state.jump_pressed = input_state.jump_pressed || gamepad.just_pressed(gamepad_config.jump);
 
-        input_state.shot_pressed = shot_just_pressed;
+        // ショット入力（OR演算）
+        let gp_shot_pressed = gamepad.pressed(gamepad_config.shot);
+        let gp_shot_just_pressed = gamepad.just_pressed(gamepad_config.shot);
+        input_state.shot_pressed = input_state.shot_pressed || gp_shot_just_pressed;
 
-        // ホールド状態追跡
-        if shot_pressed {
+        // ホールド状態追跡（ゲームパッドでホールド中の場合）
+        if gp_shot_pressed {
             if !input_state.holding {
                 input_state.holding = true;
                 input_state.hold_time = 0.0;
             } else {
                 input_state.hold_time += delta_ms;
             }
-        } else {
-            input_state.holding = false;
+        } else if !input_state.holding {
+            // キーボードでもゲームパッドでもホールドしていない場合のみリセット
+            // human_input_systemで既にキーボードのholding状態は処理済み
         }
     }
 }
