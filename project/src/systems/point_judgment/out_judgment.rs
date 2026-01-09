@@ -160,6 +160,8 @@ mod tests {
             net_height: 1.0,
             net_x: 0.0,
             service_box_depth: 1.5,
+            outer_wall_z: 8.0,
+            outer_wall_x: 10.0,
         };
 
         let bounds = create_court_bounds(&config);

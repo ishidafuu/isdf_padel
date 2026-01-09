@@ -13,6 +13,10 @@ GameConfig(
         net_height: 1.0,
         net_x: 0.0,
         service_box_depth: 5.0,
+        // 外壁位置（コートラインより外側）
+        // @spec 30503_boundary_behavior.md#beh-30503-008
+        outer_wall_z: 10.0,  // Z方向（コート幅方向）、コートライン ±6.0 より外側
+        outer_wall_x: 12.0,  // X方向（打ち合い方向）、コートライン ±8.0 より外側
     ),
     player: PlayerConfig(
         move_speed: 3.0,

@@ -441,6 +441,8 @@ mod tests {
                 net_height: 1.0,
                 net_x: 0.0,
                 service_box_depth: 5.0,
+                outer_wall_z: 10.0,
+                outer_wall_x: 12.0,
             },
             player: PlayerConfig {
                 move_speed: 5.0,

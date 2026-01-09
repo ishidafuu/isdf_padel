@@ -96,6 +96,14 @@ pub struct CourtConfig {
     /// @spec 30902_fault_spec.md#req-30902-001
     #[serde(default = "default_service_box_depth")]
     pub service_box_depth: f32,
+    /// 外壁位置（コート幅方向、Z軸）
+    /// @spec 30503_boundary_behavior.md#beh-30503-001
+    #[serde(default = "default_outer_wall_z")]
+    pub outer_wall_z: f32,
+    /// 外壁位置（打ち合い方向、X軸）
+    /// @spec 30503_boundary_behavior.md#beh-30503-002
+    #[serde(default = "default_outer_wall_x")]
+    pub outer_wall_x: f32,
 }
 
 fn default_court_width() -> f32 {
@@ -118,6 +126,12 @@ fn default_net_x() -> f32 {
 }
 fn default_service_box_depth() -> f32 {
     1.5
+}
+fn default_outer_wall_z() -> f32 {
+    8.0 // コートライン（width/2=5.0）より外側
+}
+fn default_outer_wall_x() -> f32 {
+    10.0 // コートライン（depth/2=3.0）より外側
 }
 
 /// プレイヤー移動パラメータ

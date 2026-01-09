@@ -9,7 +9,7 @@ use crate::core::events::{BallOutOfBoundsEvent, GroundBounceEvent, WallReflectio
 use crate::core::WallReflection;
 use crate::resource::config::GameConfig;
 
-use super::court_factory::create_court_bounds;
+use super::court_factory::{create_court_bounds, create_outer_wall_bounds};
 
 /// ボール軌道プラグイン
 /// @spec 30401_trajectory_spec.md
@@ -139,7 +139,8 @@ pub fn ball_ground_bounce_system(
     }
 }
 
-/// 壁・天井反射システム
+/// 壁・天井反射システム（外壁接触で即アウト判定用イベント発行）
+/// @spec 30503_boundary_behavior.md#beh-30503-008
 /// @spec 30402_reflection_spec.md#req-30402-003
 /// @spec 30402_reflection_spec.md#req-30402-004
 /// @spec 30402_reflection_spec.md#req-30402-005
@@ -150,7 +151,8 @@ pub fn ball_wall_reflection_system(
     mut query: Query<(Entity, &mut Velocity, &mut LogicalPosition), With<Ball>>,
     mut event_writer: MessageWriter<WallReflectionEvent>,
 ) {
-    let bounds = create_court_bounds(&config.court);
+    // 外壁位置で判定（コートラインではなく）
+    let bounds = create_outer_wall_bounds(&config.court);
     let bounce_factor = config.ball.wall_bounce_factor;
 
     for (entity, mut velocity, mut logical_pos) in query.iter_mut() {
@@ -397,6 +399,8 @@ mod tests {
             net_height: 1.0,
             net_x: 0.0,
             service_box_depth: 1.5,
+            outer_wall_z: 8.0,
+            outer_wall_x: 10.0,
         };
         let bounds = create_court_bounds(&config);
         let bounce_factor = 0.8_f32;
@@ -430,6 +434,8 @@ mod tests {
             net_height: 1.0,
             net_x: 0.0,
             service_box_depth: 1.5,
+            outer_wall_z: 8.0,
+            outer_wall_x: 10.0,
         };
         let bounds = create_court_bounds(&config);
         let bounce_factor = 0.8_f32;
@@ -463,6 +469,8 @@ mod tests {
             net_height: 1.0,
             net_x: 0.0,
             service_box_depth: 1.5,
+            outer_wall_z: 8.0,
+            outer_wall_x: 10.0,
         };
         let bounds = create_court_bounds(&config);
         let bounce_factor = 0.8_f32;
@@ -498,6 +506,8 @@ mod tests {
             net_height: 1.0,
             net_x: 0.0,
             service_box_depth: 1.5,
+            outer_wall_z: 8.0,
+            outer_wall_x: 10.0,
         };
         let bounds = create_court_bounds(&config);
 

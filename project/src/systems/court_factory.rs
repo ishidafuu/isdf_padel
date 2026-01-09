@@ -33,6 +33,26 @@ pub fn create_court_bounds(config: &CourtConfig) -> CourtBounds {
     )
 }
 
+/// CourtConfigから外壁境界（CourtBounds）を生成
+/// @spec 30503_boundary_behavior.md#beh-30503-001
+/// @spec 30503_boundary_behavior.md#beh-30503-002
+///
+/// 外壁はコートラインより外側にあり、ボールが接触すると即アウトとなる
+/// # 座標マッピング
+/// - left/right (Z軸): -outer_wall_z 〜 +outer_wall_z（コート幅方向）
+/// - back_left/back_right (X軸): -outer_wall_x 〜 +outer_wall_x（打ち合い方向）
+#[inline]
+pub fn create_outer_wall_bounds(config: &CourtConfig) -> CourtBounds {
+    CourtBounds::new(
+        -config.outer_wall_z, // left (Z方向、外壁)
+        config.outer_wall_z,  // right (Z方向、外壁)
+        -config.outer_wall_x, // back_left (X方向、外壁)
+        config.outer_wall_x,  // back_right (X方向、外壁)
+        0.0,
+        config.ceiling_height,
+    )
+}
+
 /// CourtConfigからNetInfoを生成
 /// @spec 30501_court_spec.md#req-30501-005
 #[inline]
@@ -53,6 +73,8 @@ mod tests {
             net_height: 1.0,
             net_x: 0.0,    // ネットのX座標
             service_box_depth: 1.5,
+            outer_wall_z: 8.0,  // 外壁（Z方向）
+            outer_wall_x: 10.0, // 外壁（X方向）
         }
     }
 
