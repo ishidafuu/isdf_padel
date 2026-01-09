@@ -3,7 +3,7 @@
 
 use bevy::{
     asset::{io::Reader, AssetLoader, LoadContext},
-    input::keyboard::KeyCode,
+    input::{gamepad::GamepadButton, keyboard::KeyCode},
     prelude::*,
 };
 use serde::Deserialize;
@@ -26,6 +26,10 @@ pub struct GameConfig {
     /// 入力キーバインド設定
     #[serde(default)]
     pub input_keys: InputKeysConfig,
+    /// ゲームパッドボタン設定
+    /// @spec 20006_input_system.md#req-20006-053
+    #[serde(default)]
+    pub gamepad_buttons: GamepadButtonsConfig,
     #[serde(default)]
     pub shadow: ShadowConfig,
     #[serde(default)]
@@ -440,6 +444,42 @@ fn default_key_jump() -> KeyCode {
 }
 fn default_key_shot() -> KeyCode {
     KeyCode::KeyV
+}
+
+/// ゲームパッドボタン設定
+/// @spec 20006_input_system.md#req-20006-053
+/// @data 80101_game_constants.md#gamepad-buttons-config
+#[derive(Deserialize, Clone, Debug)]
+pub struct GamepadButtonsConfig {
+    /// ジャンプボタン（デフォルト: South = A on Xbox, × on PlayStation）
+    #[serde(default = "default_gamepad_jump")]
+    pub jump: GamepadButton,
+    /// ショットボタン（デフォルト: East = B on Xbox, ○ on PlayStation）
+    #[serde(default = "default_gamepad_shot")]
+    pub shot: GamepadButton,
+    /// スティックデッドゾーン（入力が無視される範囲）
+    #[serde(default = "default_stick_deadzone")]
+    pub stick_deadzone: f32,
+}
+
+impl Default for GamepadButtonsConfig {
+    fn default() -> Self {
+        Self {
+            jump: default_gamepad_jump(),
+            shot: default_gamepad_shot(),
+            stick_deadzone: default_stick_deadzone(),
+        }
+    }
+}
+
+fn default_gamepad_jump() -> GamepadButton {
+    GamepadButton::South
+}
+fn default_gamepad_shot() -> GamepadButton {
+    GamepadButton::East
+}
+fn default_stick_deadzone() -> f32 {
+    0.1
 }
 
 /// サーブパラメータ

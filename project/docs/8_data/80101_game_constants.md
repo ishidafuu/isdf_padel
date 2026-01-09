@@ -28,6 +28,7 @@ pub struct GameConfig {
     pub scoring: ScoringConfig,
     pub input: InputConfig,
     pub input_keys: InputKeysConfig,
+    pub gamepad_buttons: GamepadButtonsConfig,
 }
 ```
 
@@ -543,6 +544,65 @@ if keyboard.pressed(keys.move_up) || keyboard.pressed(keys.move_up_alt) {
 
 ---
 
+## Gamepad Buttons Config
+
+ゲームパッドボタン設定（v0.4追加）
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| jump | GamepadButton | South | ジャンプボタン（Xbox: A, PS: ×） |
+| shot | GamepadButton | East | ショットボタン（Xbox: B, PS: ○） |
+| stick_deadzone | f32 | 0.1 | スティックデッドゾーン |
+
+```rust
+/// ゲームパッドボタン設定
+/// @spec 20006_input_system.md#req-20006-053
+#[derive(Deserialize, Clone, Debug)]
+pub struct GamepadButtonsConfig {
+    /// ジャンプボタン（デフォルト: South = A on Xbox, × on PlayStation）
+    #[serde(default = "default_gamepad_jump")]
+    pub jump: GamepadButton,
+    /// ショットボタン（デフォルト: East = B on Xbox, ○ on PlayStation）
+    #[serde(default = "default_gamepad_shot")]
+    pub shot: GamepadButton,
+    /// スティックデッドゾーン（入力が無視される範囲）
+    #[serde(default = "default_stick_deadzone")]
+    pub stick_deadzone: f32,
+}
+
+fn default_gamepad_jump() -> GamepadButton { GamepadButton::South }
+fn default_gamepad_shot() -> GamepadButton { GamepadButton::East }
+fn default_stick_deadzone() -> f32 { 0.1 }
+```
+
+**使用例**:
+```rust
+// ゲームパッド入力システム
+if gamepad.just_pressed(config.gamepad_buttons.jump) {
+    input_state.jump_pressed = true;
+}
+
+// デッドゾーン適用
+let stick = gamepad.left_stick();
+if stick.length() < config.gamepad_buttons.stick_deadzone {
+    movement = Vec2::ZERO;
+}
+```
+
+**RONファイル追加**:
+```ron
+gamepad_buttons: GamepadButtonsConfig(
+    jump: South,
+    shot: East,
+    stick_deadzone: 0.1,
+),
+```
+
+**関連仕様**:
+- [20006_input_system.md](../2_architecture/20006_input_system.md#req-20006-053) - ボタンマッピング設定
+
+---
+
 ## Scoring Config
 
 スコアリングパラメータ
@@ -881,6 +941,11 @@ spin_physics: SpinPhysicsConfig(
 ---
 
 ## Change Log
+
+### 2026-01-09 - v3.3.0
+
+- GamepadButtonsConfig追加（ゲームパッド対応）
+- GameConfig構造体にgamepad_buttonsフィールド追加
 
 ### 2026-01-09 - v3.2.0
 

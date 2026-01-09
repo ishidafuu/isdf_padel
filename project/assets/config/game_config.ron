@@ -61,6 +61,12 @@ GameConfig(
         normalization_threshold: 1.0,
         input_sensitivity: 1.0,
     ),
+    // @spec 20006_input_system.md#req-20006-053
+    gamepad_buttons: GamepadButtonsConfig(
+        jump: South,      // A button (Xbox) / × button (PlayStation)
+        shot: East,       // B button (Xbox) / ○ button (PlayStation)
+        stick_deadzone: 0.1,
+    ),
     // @spec 30102_serve_spec.md#req-30102-060
     serve: ServeConfig(
         ball_spawn_offset_y: 2.0,       // オーバーハンドサーブの打点高さ

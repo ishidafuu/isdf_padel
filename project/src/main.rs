@@ -10,7 +10,7 @@ mod systems;
 
 use bevy::{asset::AssetPlugin, prelude::*};
 use character::CharacterPlugin;
-use components::{AiController, HumanControlled};
+use components::HumanControlled;
 use core::{
     BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent,
     ShotEvent, ShotExecutedEvent,
@@ -23,8 +23,9 @@ use presentation::{
 use resource::config::{load_game_config, GameConfig, GameConfigHandle, GameConfigLoader};
 use resource::MatchFlowState;
 use systems::{
-    ai_movement_system, ai_shot_system, ceiling_collision_system, gravity_system,
-    human_input_system, jump_system, knockback_movement_system, knockback_start_system,
+    ai_movement_system, ai_shot_system, ceiling_collision_system, gamepad_input_system,
+    gravity_system, human_input_system, jump_system, knockback_movement_system,
+    knockback_start_system,
     knockback_timer_system, landing_system, movement_system, shot_cooldown_system,
     shot_direction_system, shot_input_system, vertical_movement_system, AiServePlugin,
     BallCollisionPlugin, BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin,
@@ -85,6 +86,9 @@ fn main() {
                 // 人間入力読み取り（HumanControlled を持つプレイヤーの InputState を更新）
                 // @spec 20006_input_system.md
                 human_input_system,
+                // ゲームパッド入力読み取り（device_id=1 の HumanControlled）
+                // @spec 20006_input_system.md#req-20006-050
+                gamepad_input_system,
                 // ふっとばし開始（BallHitEvent を処理）
                 knockback_start_system,
                 // ジャンプ・重力
@@ -147,7 +151,7 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
     commands.entity(player1_entity).insert(HumanControlled::default());
     info!("Player 1 (Human/Articulated) spawned at {:?}", player1_pos);
 
-    // Player 2 をスポーン（2Pコート側: 画面右側）- AI制御
+    // Player 2 をスポーン（2Pコート側: 画面右側）- AI操作
     // @spec 30301_ai_movement_spec.md
     // @spec 31001_parts_spec.md - パーツ分離キャラクター
     let player2_pos = Vec3::new(
@@ -155,16 +159,13 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
         0.0,                       // 地面
         0.0,                       // コート中央
     );
-    let home_position = Vec3::new(
-        config.ai.home_position_x, // 打ち合い方向
-        0.0,
-        0.0, // コート中央
-    );
     let (r, g, b) = config.player_visual.player2_color;
     let player2_color = Color::srgb(r, g, b);
     let player2_entity = character::spawn_articulated_player(&mut commands, 2, player2_pos, player2_color);
-    commands.entity(player2_entity).insert(AiController { home_position });
-    info!("Player 2 (AI/Articulated) spawned at {:?}", player2_pos);
+    commands.entity(player2_entity).insert(components::AiController {
+        home_position: player2_pos,
+    });
+    info!("Player 2 (AI) spawned at {:?}", player2_pos);
 
 }
 

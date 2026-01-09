@@ -327,6 +327,102 @@ pub fn gamepad_input_system(
 
 ---
 
+## ゲームパッド対応（v0.4）
+
+### デバイス割当
+
+| device_id | デバイス | 対象プレイヤー |
+|-----------|---------|----------------|
+| 0 | キーボード | Player1 |
+| 1 | ゲームパッド | Player2 |
+
+### 要件
+
+#### REQ-20006-050: ゲームパッド入力読み取り
+
+- WHEN device_id=1のHumanControlledエンティティが存在する
+- AND ゲームパッドが接続されている
+- THE SYSTEM SHALL ゲームパッド入力をInputStateに反映する
+- WITH 左スティック → movement
+- WITH Southボタン → jump_pressed
+- WITH Eastボタン → shot_pressed, holding
+
+#### REQ-20006-051: ゲームパッド未接続時
+
+- IF ゲームパッドが未接続
+- AND device_id=1のHumanControlledエンティティが存在する
+- THEN THE SYSTEM SHALL InputStateを更新しない
+
+#### REQ-20006-052: アナログスティック正規化
+
+- WHILE 左スティック入力がある
+- THE SYSTEM SHALL movement値を-1.0〜1.0に正規化する
+- WITH デッドゾーン適用（設定値: stick_deadzone）
+
+#### REQ-20006-053: ボタンマッピング設定
+
+- THE SYSTEM SHALL ゲームパッドボタン割当をGameConfigから読み取る
+- WITH デフォルト: South=ジャンプ, East=ショット
+
+### gamepad_input_system 実装例
+
+```rust
+/// ゲームパッド入力読み取りシステム
+/// @spec 20006_input_system.md#req-20006-050
+pub fn gamepad_input_system(
+    gamepads: Query<&Gamepad>,
+    time: Res<Time>,
+    config: Res<GameConfig>,
+    mut query: Query<(&HumanControlled, &mut InputState)>,
+) {
+    let delta_ms = time.delta_secs() * 1000.0;
+    let gamepad_config = &config.gamepad_buttons;
+
+    for (human, mut input_state) in query.iter_mut() {
+        // device_id=1のみゲームパッド対応
+        if human.device_id != 1 {
+            continue;
+        }
+
+        // 最初に見つかったゲームパッドを使用
+        let Some(gamepad) = gamepads.iter().next() else {
+            continue;
+        };
+
+        // 左スティック入力（デッドゾーン適用）
+        let left_stick = gamepad.left_stick();
+        let mut movement = Vec2::new(left_stick.x, left_stick.y);
+        if movement.length() < gamepad_config.stick_deadzone {
+            movement = Vec2::ZERO;
+        }
+        input_state.movement = movement * config.input.input_sensitivity;
+
+        // ジャンプ入力
+        input_state.jump_pressed = gamepad.just_pressed(gamepad_config.jump);
+
+        // ショット入力
+        let shot_pressed = gamepad.pressed(gamepad_config.shot);
+        let shot_just_pressed = gamepad.just_pressed(gamepad_config.shot);
+
+        input_state.shot_pressed = shot_just_pressed;
+
+        // ホールド状態追跡
+        if shot_pressed {
+            if !input_state.holding {
+                input_state.holding = true;
+                input_state.hold_time = 0.0;
+            } else {
+                input_state.hold_time += delta_ms;
+            }
+        } else {
+            input_state.holding = false;
+        }
+    }
+}
+```
+
+---
+
 ## 次のステップ
 
 1. ✅ 入力システム設計（このドキュメント）
@@ -335,7 +431,7 @@ pub fn gamepad_input_system(
 4. ✅ human_input_system 実装
 5. ✅ movement_system, jump_system, shot_input_system との統合
 6. ⏳ 入力バッファの実装（先行入力対応）
-7. ⏳ ゲームパッド対応
+7. ✅ ゲームパッド対応（v0.4）
 8. ⏳ 旧リソース（MovementInput, JumpInput, ShotInput, ShotButtonState）の削除
 
 ## 参考資料
