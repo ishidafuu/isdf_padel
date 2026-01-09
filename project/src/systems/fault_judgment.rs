@@ -60,12 +60,12 @@ impl ServiceBox {
 /// @spec 30902_fault_spec.md#req-30902-001
 ///
 /// 論理座標系: X=打ち合い方向, Y=高さ, Z=コート幅
-/// - 1Pがサーブする場合: 2Pコート側（X > 0）にサーブ
-///   - デュース側: 奥半分（Z > 0）
-///   - アド側: 手前半分（Z < 0）
-/// - 2Pがサーブする場合: 1Pコート側（X < 0）にサーブ
-///   - デュース側: 手前半分（Z < 0）
-///   - アド側: 奥半分（Z > 0）
+///
+/// テニスルール: サーブはクロス（対角線）に打つ
+/// - サーバーがデュースサイド（Z > 0）からサーブ → 相手のデュースサイドサービスボックス（Z < 0）
+/// - サーバーがアドサイド（Z < 0）からサーブ → 相手のアドサイドサービスボックス（Z > 0）
+///
+/// 結果: サービスボックスのZ座標はサーバーのZ座標と逆符号になる
 pub fn get_service_box(
     server: CourtSide,
     serve_side: ServeSide,
@@ -81,20 +81,21 @@ pub fn get_service_box(
             let x_min = net_x;
             let x_max = net_x + service_box_depth;
 
+            // クロス: サーバーと対角線上のサービスボックス
             match serve_side {
                 ServeSide::Deuce => ServiceBox {
-                    // デュース側: 奥半分（Z > 0）
-                    x_min,
-                    x_max,
-                    z_min: 0.0,
-                    z_max: half_width,
-                },
-                ServeSide::Ad => ServiceBox {
-                    // アド側: 手前半分（Z < 0）
+                    // サーバーはデュース側（Z > 0）→ サービスボックスは Z < 0（クロス）
                     x_min,
                     x_max,
                     z_min: -half_width,
                     z_max: 0.0,
+                },
+                ServeSide::Ad => ServiceBox {
+                    // サーバーはアド側（Z < 0）→ サービスボックスは Z > 0（クロス）
+                    x_min,
+                    x_max,
+                    z_min: 0.0,
+                    z_max: half_width,
                 },
             }
         }
@@ -103,20 +104,21 @@ pub fn get_service_box(
             let x_min = net_x - service_box_depth;
             let x_max = net_x;
 
+            // クロス: サーバーと対角線上のサービスボックス
             match serve_side {
                 ServeSide::Deuce => ServiceBox {
-                    // デュース側: 手前半分（Z < 0）
-                    x_min,
-                    x_max,
-                    z_min: -half_width,
-                    z_max: 0.0,
-                },
-                ServeSide::Ad => ServiceBox {
-                    // アド側: 奥半分（Z > 0）
+                    // サーバーはデュース側（Z < 0）→ サービスボックスは Z > 0（クロス）
                     x_min,
                     x_max,
                     z_min: 0.0,
                     z_max: half_width,
+                },
+                ServeSide::Ad => ServiceBox {
+                    // サーバーはアド側（Z > 0）→ サービスボックスは Z < 0（クロス）
+                    x_min,
+                    x_max,
+                    z_min: -half_width,
+                    z_max: 0.0,
                 },
             }
         }
