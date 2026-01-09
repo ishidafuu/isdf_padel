@@ -13,8 +13,8 @@ use crate::resource::scoring::ServeState;
 use crate::resource::{GameConfig, GameState, MatchFlowState, MatchScore, RallyState};
 use super::{
     serve_double_fault_system, serve_hit_input_system, serve_init_system,
-    serve_toss_input_system, serve_toss_physics_system, serve_toss_timeout_system,
-    GameSystemSet,
+    serve_position_system, serve_toss_input_system, serve_toss_physics_system,
+    serve_toss_timeout_system, GameSystemSet,
 };
 
 /// 試合フロープラグイン
@@ -27,7 +27,7 @@ impl Plugin for MatchFlowPlugin {
             .init_resource::<ServeState>()
             .add_message::<MatchStartEvent>()
             .add_systems(OnEnter(MatchFlowState::MatchStart), match_start_system)
-            .add_systems(OnEnter(MatchFlowState::Serve), serve_init_system)
+            .add_systems(OnEnter(MatchFlowState::Serve), (serve_init_system, serve_position_system))
             // @spec 30102_serve_spec.md: トス→ヒット方式サーブシステム（Serve状態でのみ動作）
             // GameSystemSet::GameLogic に配置し、入力読み取り後に実行されることを保証
             .add_systems(

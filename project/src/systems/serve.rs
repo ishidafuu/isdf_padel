@@ -9,8 +9,9 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, InputState, LogicalPosition, Player, TossBall, TossBallBundle, Velocity};
+use crate::components::{AiController, Ball, InputState, LogicalPosition, Player, TossBall, TossBallBundle, Velocity};
 use crate::core::{CourtSide, ShotEvent};
+use crate::resource::config::ServeSide;
 use crate::resource::scoring::{MatchFlowState, ServeState, ServeSubPhase};
 use crate::resource::{GameConfig, MatchScore};
 
@@ -30,6 +31,51 @@ pub fn serve_init_system(
     if serve_state.is_none() {
         commands.insert_resource(ServeState::new());
     }
+}
+
+/// サーブ開始時のプレイヤー位置設定システム
+/// カウントに応じてサーバーとレシーバーをクロスポジションに配置
+pub fn serve_position_system(
+    config: Res<GameConfig>,
+    match_score: Res<MatchScore>,
+    mut player_query: Query<(&Player, &mut LogicalPosition, Option<&mut AiController>)>,
+) {
+    // サーブサイドを計算
+    let server_points = match_score.get_point_index(match_score.server);
+    let receiver_points = match_score.get_point_index(match_score.server.opponent());
+    let total_points = server_points + receiver_points;
+    let serve_side = ServeSide::from_point_total(total_points);
+
+    // サーブサイドに応じたZ位置を決定
+    // デュースサイド: Z > 0、アドサイド: Z < 0
+    let serve_z = match serve_side {
+        ServeSide::Deuce => config.court.width / 4.0,  // +3.0 (コート幅12の1/4)
+        ServeSide::Ad => -config.court.width / 4.0,   // -3.0
+    };
+
+    for (player, mut pos, ai_controller) in player_query.iter_mut() {
+        let is_server = player.court_side == match_score.server;
+
+        // X位置はそのまま維持、Z位置をサーブサイドに合わせる
+        // サーバーとレシーバーは対角線上（クロス）に配置
+        let target_z = if is_server {
+            serve_z  // サーバーはサーブサイドに
+        } else {
+            -serve_z  // レシーバーは対角線上（逆サイド）に
+        };
+
+        pos.value.z = target_z;
+
+        // AIのホームポジションも更新
+        if let Some(mut ai) = ai_controller {
+            ai.home_position.z = target_z;
+        }
+    }
+
+    info!(
+        "Serve position set: side={:?}, server={:?}, z={:.1}",
+        serve_side, match_score.server, serve_z
+    );
 }
 
 /// トス入力システム（1回目ボタン）
