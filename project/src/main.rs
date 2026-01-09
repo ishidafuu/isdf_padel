@@ -24,9 +24,9 @@ use systems::{
     ai_movement_system, ai_shot_system, ceiling_collision_system, gravity_system,
     human_input_system, jump_system, knockback_movement_system, knockback_start_system,
     knockback_timer_system, landing_system, movement_system, shot_cooldown_system,
-    shot_direction_system, shot_input_system, vertical_movement_system, BallCollisionPlugin,
-    BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin, MatchFlowPlugin,
-    PointJudgmentPlugin, ScoringPlugin,
+    shot_direction_system, shot_input_system, vertical_movement_system, AiServePlugin,
+    BallCollisionPlugin, BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin,
+    MatchFlowPlugin, PointJudgmentPlugin, ScoringPlugin,
 };
 
 fn main() {
@@ -62,6 +62,8 @@ fn main() {
         .add_plugins(PointJudgmentPlugin)
         .add_plugins(FaultJudgmentPlugin)
         .add_plugins(MatchFlowPlugin)
+        // @spec 30102_serve_spec.md#req-30102-070: AI自動サーブ
+        .add_plugins(AiServePlugin)
         .add_plugins(DebugUiPlugin)
         .insert_resource(config)
         .add_message::<PlayerMoveEvent>()

@@ -61,9 +61,11 @@ GameConfig(
         normalization_threshold: 1.0,
         input_sensitivity: 1.0,
     ),
-    // @spec 30102_serve_spec.md
+    // @spec 30102_serve_spec.md#req-30102-060
     serve: ServeConfig(
-        ball_spawn_offset_y: 0.5,
+        ball_spawn_offset_y: 2.0,       // オーバーハンドサーブの打点高さ
+        serve_speed: 4.0,               // m/s
+        serve_angle: 20.0,              // 度
         p1_default_direction_x: 1.0,
         p2_default_direction_x: -1.0,
     ),
@@ -83,11 +85,15 @@ GameConfig(
     ),
     // @spec 30301_ai_movement_spec.md
     // @spec 30302_ai_shot_spec.md
+    // @spec 30102_serve_spec.md#req-30102-070
     ai: AiConfig(
         move_speed: 4.5,
         home_position_x: 7.0,
         shot_cooldown: 0.5,
         home_return_stop_distance: 0.3,
+        serve_delay_min: 0.5,           // AIサーブ待機時間下限（秒）
+        serve_delay_max: 1.5,           // AIサーブ待機時間上限（秒）
+        serve_direction_variance: 0.5,  // AIサーブ方向バリエーション（Z軸）
     ),
     // @spec 30401_trajectory_spec.md#req-30401-100
     // @spec 30401_trajectory_spec.md#req-30401-101

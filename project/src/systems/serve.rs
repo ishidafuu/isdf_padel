@@ -60,10 +60,10 @@ pub fn serve_execute_system(
     let ball_spawn_offset_y = config.serve.ball_spawn_offset_y;
     let ball_pos = logical_pos.value + Vec3::new(0.0, ball_spawn_offset_y, 0.0);
 
-    // サーブ時は通常ショットの速度と角度を使用
+    // @spec 30102_serve_spec.md#req-30102-060: オーバーハンドサーブの弾道計算
     // commands.spawn() は遅延適用されるため、ここで直接速度を計算する
-    let speed = config.ball.normal_shot_speed;
-    let angle_rad = config.shot.normal_shot_angle.to_radians();
+    let speed = config.serve.serve_speed;
+    let angle_rad = config.serve.serve_angle.to_radians();
     let cos_angle = angle_rad.cos();
     let sin_angle = angle_rad.sin();
 

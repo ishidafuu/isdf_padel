@@ -2,6 +2,7 @@
 //! @spec 20001_layers.md#layer-4-systems
 
 mod ai_movement;
+mod ai_serve;
 mod ai_shot;
 mod ball_collision;
 mod ball_trajectory;
@@ -22,6 +23,7 @@ mod shot_input;
 mod trajectory_calculator;
 
 pub use ai_movement::*;
+pub use ai_serve::*;
 pub use ai_shot::*;
 pub use ball_collision::*;
 pub use ball_trajectory::*;

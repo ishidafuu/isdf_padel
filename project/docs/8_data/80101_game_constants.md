@@ -1,7 +1,7 @@
 # Game Constants
 
-**Version**: 3.1.0
-**Last Updated**: 2026-01-08
+**Version**: 3.2.0
+**Last Updated**: 2026-01-09
 **Status**: Active
 
 ## 概要
@@ -23,6 +23,8 @@ pub struct GameConfig {
     pub collision: CollisionConfig,
     pub knockback: KnockbackConfig,
     pub shot: ShotConfig,
+    pub serve: ServeConfig,
+    pub ai: AiConfig,
     pub scoring: ScoringConfig,
     pub input: InputConfig,
     pub input_keys: InputKeysConfig,
@@ -329,6 +331,128 @@ let angle = if is_jump_shot {
 
 ---
 
+## Serve Config
+
+サーブパラメータ
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| ball_spawn_offset_y | f32 | 2.0 | オーバーハンドサーブの打点高さオフセット（m） |
+| serve_speed | f32 | 4.0 | サーブ速度（m/s） |
+| serve_angle | f32 | 20.0 | サーブ角度（度） |
+| p1_default_direction_x | f32 | 1.0 | Player1のデフォルトサーブ方向X成分 |
+| p2_default_direction_x | f32 | -1.0 | Player2のデフォルトサーブ方向X成分 |
+
+```rust
+/// サーブ設定
+/// @spec 30102_serve_spec.md#req-30102-060
+#[derive(Deserialize, Clone, Debug)]
+pub struct ServeConfig {
+    /// オーバーハンドサーブの打点高さオフセット（m）
+    #[serde(default = "default_ball_spawn_offset_y")]
+    pub ball_spawn_offset_y: f32,
+    /// サーブ速度（m/s）
+    #[serde(default = "default_serve_speed")]
+    pub serve_speed: f32,
+    /// サーブ角度（度）
+    #[serde(default = "default_serve_angle")]
+    pub serve_angle: f32,
+    /// Player1のデフォルトサーブ方向X成分
+    #[serde(default = "default_p1_direction_x")]
+    pub p1_default_direction_x: f32,
+    /// Player2のデフォルトサーブ方向X成分
+    #[serde(default = "default_p2_direction_x")]
+    pub p2_default_direction_x: f32,
+}
+
+fn default_ball_spawn_offset_y() -> f32 { 2.0 }
+fn default_serve_speed() -> f32 { 4.0 }
+fn default_serve_angle() -> f32 { 20.0 }
+fn default_p1_direction_x() -> f32 { 1.0 }
+fn default_p2_direction_x() -> f32 { -1.0 }
+```
+
+**使用例**:
+```rust
+// オーバーハンドサーブのボール生成位置
+let ball_pos = player_pos + Vec3::new(0.0, config.serve.ball_spawn_offset_y, 0.0);
+
+// サーブ速度と角度
+let speed = config.serve.serve_speed;
+let angle_rad = config.serve.serve_angle.to_radians();
+let velocity = Vec3::new(
+    direction.x * speed * angle_rad.cos(),
+    speed * angle_rad.sin(),
+    direction.z * speed * angle_rad.cos(),
+);
+```
+
+---
+
+## AI Config
+
+AI動作パラメータ
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| move_speed | f32 | 4.5 | AI移動速度（m/s） |
+| home_position_x | f32 | 7.0 | ホームポジションX座標 |
+| shot_cooldown | f32 | 0.5 | ショットクールダウン時間（秒） |
+| home_return_stop_distance | f32 | 0.3 | ホーム帰還停止距離（m） |
+| serve_delay_min | f32 | 0.5 | AIサーブまでの待機時間下限（秒） |
+| serve_delay_max | f32 | 1.5 | AIサーブまでの待機時間上限（秒） |
+| serve_direction_variance | f32 | 0.5 | AIサーブ方向バリエーション（Z軸） |
+
+```rust
+/// AI設定
+/// @spec 30102_serve_spec.md#req-30102-070
+/// @spec 30302_ai_shot_spec.md
+#[derive(Deserialize, Clone, Debug)]
+pub struct AiConfig {
+    /// AI移動速度（m/s）
+    #[serde(default = "default_ai_move_speed")]
+    pub move_speed: f32,
+    /// ホームポジションX座標
+    #[serde(default = "default_home_position_x")]
+    pub home_position_x: f32,
+    /// ショットクールダウン時間（秒）
+    #[serde(default = "default_ai_shot_cooldown")]
+    pub shot_cooldown: f32,
+    /// ホーム帰還停止距離（m）
+    #[serde(default = "default_home_return_stop_distance")]
+    pub home_return_stop_distance: f32,
+    /// AIサーブまでの待機時間下限（秒）
+    #[serde(default = "default_serve_delay_min")]
+    pub serve_delay_min: f32,
+    /// AIサーブまでの待機時間上限（秒）
+    #[serde(default = "default_serve_delay_max")]
+    pub serve_delay_max: f32,
+    /// AIサーブ方向バリエーション（Z軸）
+    #[serde(default = "default_serve_direction_variance")]
+    pub serve_direction_variance: f32,
+}
+
+fn default_ai_move_speed() -> f32 { 4.5 }
+fn default_home_position_x() -> f32 { 7.0 }
+fn default_ai_shot_cooldown() -> f32 { 0.5 }
+fn default_home_return_stop_distance() -> f32 { 0.3 }
+fn default_serve_delay_min() -> f32 { 0.5 }
+fn default_serve_delay_max() -> f32 { 1.5 }
+fn default_serve_direction_variance() -> f32 { 0.5 }
+```
+
+**使用例**:
+```rust
+// AIサーブタイマー設定
+let delay = rng.random_range(config.ai.serve_delay_min..config.ai.serve_delay_max);
+
+// サーブ方向ランダム化
+let z_variance = rng.random_range(-config.ai.serve_direction_variance..config.ai.serve_direction_variance);
+let direction = Vec2::new(config.serve.p2_default_direction_x, z_variance);
+```
+
+---
+
 ## Input Config
 
 入力パラメータ
@@ -514,6 +638,22 @@ GameConfig(
         normal_shot_angle: 45.0,
         jump_shot_angle: 30.0,
         jump_threshold: 0.5,
+    ),
+    serve: ServeConfig(
+        ball_spawn_offset_y: 2.0,
+        serve_speed: 4.0,
+        serve_angle: 20.0,
+        p1_default_direction_x: 1.0,
+        p2_default_direction_x: -1.0,
+    ),
+    ai: AiConfig(
+        move_speed: 4.5,
+        home_position_x: 7.0,
+        shot_cooldown: 0.5,
+        home_return_stop_distance: 0.3,
+        serve_delay_min: 0.5,
+        serve_delay_max: 1.5,
+        serve_direction_variance: 0.5,
     ),
     input: InputConfig(
         jump_buffer_time: 0.1,
@@ -741,6 +881,12 @@ spin_physics: SpinPhysicsConfig(
 ---
 
 ## Change Log
+
+### 2026-01-09 - v3.2.0
+
+- ServeConfig追加（オーバーハンドサーブ対応）
+- AiConfig追加（AIサーブ対応）
+- GameConfig構造体にserve, aiフィールド追加
 
 ### 2026-01-08 - v3.1.0（コートサイズ調整）
 

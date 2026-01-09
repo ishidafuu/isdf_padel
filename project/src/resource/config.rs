@@ -168,6 +168,8 @@ fn default_x_max() -> f32 {
 /// @data 80101_game_constants.md#ball-config
 #[derive(Deserialize, Clone, Debug)]
 pub struct BallConfig {
+    /// TODO: v0.4着地点逆算型弾道システムで使用予定
+    #[allow(dead_code)]
     #[serde(default = "default_normal_shot_speed")]
     pub normal_shot_speed: f32,
     /// TODO: v0.2ショット属性システムで使用予定
@@ -261,6 +263,8 @@ pub struct ShotConfig {
     pub max_height_diff: f32,
     #[serde(default = "default_cooldown_time")]
     pub cooldown_time: f32,
+    /// TODO: v0.4着地点逆算型弾道システムで使用予定
+    #[allow(dead_code)]
     #[serde(default = "default_normal_shot_angle")]
     pub normal_shot_angle: f32,
     /// TODO: v0.2ショット属性システムで使用予定
@@ -436,12 +440,25 @@ fn default_key_shot() -> KeyCode {
 }
 
 /// サーブパラメータ
-/// @spec 30102_serve_spec.md
+/// @spec 30102_serve_spec.md#req-30102-060
 #[derive(Deserialize, Clone, Debug)]
 pub struct ServeConfig {
-    /// ボール生成時のY方向オフセット（プレイヤー足元からの高さ）
+    /// オーバーハンドサーブの打点高さオフセット（m）
+    /// @spec 30102_serve_spec.md#req-30102-060
     #[serde(default = "default_ball_spawn_offset_y")]
     pub ball_spawn_offset_y: f32,
+    /// サーブ速度（m/s）
+    /// @spec 30102_serve_spec.md#req-30102-060
+    /// TODO: v0.4オーバーハンドサーブ実装で使用予定
+    #[allow(dead_code)]
+    #[serde(default = "default_serve_speed")]
+    pub serve_speed: f32,
+    /// サーブ角度（度）
+    /// @spec 30102_serve_spec.md#req-30102-060
+    /// TODO: v0.4オーバーハンドサーブ実装で使用予定
+    #[allow(dead_code)]
+    #[serde(default = "default_serve_angle")]
+    pub serve_angle: f32,
     /// Player1のデフォルトサーブ方向（X軸：打ち合い方向）
     #[serde(default = "default_p1_default_direction_x")]
     pub p1_default_direction_x: f32,
@@ -454,6 +471,8 @@ impl Default for ServeConfig {
     fn default() -> Self {
         Self {
             ball_spawn_offset_y: default_ball_spawn_offset_y(),
+            serve_speed: default_serve_speed(),
+            serve_angle: default_serve_angle(),
             p1_default_direction_x: default_p1_default_direction_x(),
             p2_default_direction_x: default_p2_default_direction_x(),
         }
@@ -461,7 +480,13 @@ impl Default for ServeConfig {
 }
 
 fn default_ball_spawn_offset_y() -> f32 {
-    0.5
+    2.0 // オーバーハンドサーブの打点高さ
+}
+fn default_serve_speed() -> f32 {
+    4.0 // m/s
+}
+fn default_serve_angle() -> f32 {
+    20.0 // 度
 }
 fn default_p1_default_direction_x() -> f32 {
     1.0 // +X方向（2Pコートへ）
@@ -524,6 +549,7 @@ fn default_shadow_z_layer() -> f32 {
 /// AIパラメータ
 /// @spec 30301_ai_movement_spec.md
 /// @spec 30302_ai_shot_spec.md
+/// @spec 30102_serve_spec.md#req-30102-070
 #[derive(Deserialize, Clone, Debug)]
 pub struct AiConfig {
     /// AI移動速度（m/s）
@@ -543,6 +569,24 @@ pub struct AiConfig {
     /// @spec 30301_ai_movement_spec.md#req-30301-005
     #[serde(default = "default_ai_home_return_stop_distance")]
     pub home_return_stop_distance: f32,
+    /// AIサーブまでの待機時間下限（秒）
+    /// @spec 30102_serve_spec.md#req-30102-070
+    /// TODO: v0.4 AI自動サーブ実装で使用予定
+    #[allow(dead_code)]
+    #[serde(default = "default_ai_serve_delay_min")]
+    pub serve_delay_min: f32,
+    /// AIサーブまでの待機時間上限（秒）
+    /// @spec 30102_serve_spec.md#req-30102-070
+    /// TODO: v0.4 AI自動サーブ実装で使用予定
+    #[allow(dead_code)]
+    #[serde(default = "default_ai_serve_delay_max")]
+    pub serve_delay_max: f32,
+    /// AIサーブ方向バリエーション（Z軸）
+    /// @spec 30102_serve_spec.md#req-30102-071
+    /// TODO: v0.4 AI自動サーブ実装で使用予定
+    #[allow(dead_code)]
+    #[serde(default = "default_ai_serve_direction_variance")]
+    pub serve_direction_variance: f32,
 }
 
 impl Default for AiConfig {
@@ -552,6 +596,9 @@ impl Default for AiConfig {
             home_position_x: default_ai_home_position_x(),
             shot_cooldown: default_ai_shot_cooldown(),
             home_return_stop_distance: default_ai_home_return_stop_distance(),
+            serve_delay_min: default_ai_serve_delay_min(),
+            serve_delay_max: default_ai_serve_delay_max(),
+            serve_direction_variance: default_ai_serve_direction_variance(),
         }
     }
 }
@@ -568,6 +615,15 @@ fn default_ai_shot_cooldown() -> f32 {
 }
 fn default_ai_home_return_stop_distance() -> f32 {
     0.3
+}
+fn default_ai_serve_delay_min() -> f32 {
+    0.5 // 秒
+}
+fn default_ai_serve_delay_max() -> f32 {
+    1.5 // 秒
+}
+fn default_ai_serve_direction_variance() -> f32 {
+    0.5 // Z軸方向のバリエーション
 }
 
 /// 視覚フィードバックパラメータ
