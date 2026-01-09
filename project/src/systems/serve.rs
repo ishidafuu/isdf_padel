@@ -9,7 +9,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, BallBundle, InputState, LogicalPosition, Player, TossBall, TossBallBundle, Velocity};
+use crate::components::{Ball, InputState, LogicalPosition, Player, TossBall, TossBallBundle, Velocity};
 use crate::core::{CourtSide, ShotEvent};
 use crate::resource::scoring::{MatchFlowState, ServeState, ServeSubPhase};
 use crate::resource::{GameConfig, MatchScore};
@@ -158,6 +158,9 @@ pub fn serve_hit_input_system(
     }
 
     // @spec 30102_serve_spec.md#req-30102-082: ヒット成功
+    // 打点位置を記録（トスボールの位置を使用）
+    let hit_pos = toss_pos.value;
+
     // トスボールを削除
     commands.entity(toss_entity).despawn();
 
@@ -166,30 +169,8 @@ pub fn serve_hit_input_system(
     let direction = if raw_direction.length() > 0.0 {
         raw_direction.normalize()
     } else {
-        match match_score.server {
-            CourtSide::Left => Vec2::new(config.serve.p1_default_direction_x, 0.0),
-            CourtSide::Right => Vec2::new(config.serve.p2_default_direction_x, 0.0),
-        }
+        Vec2::ZERO
     };
-
-    // @spec 30102_serve_spec.md#req-30102-060: オーバーハンドサーブの弾道計算
-    let speed = config.serve.serve_speed;
-    let angle_rad = config.serve.serve_angle.to_radians();
-    let cos_angle = angle_rad.cos();
-    let sin_angle = angle_rad.sin();
-
-    let horizontal_dir = Vec3::new(direction.x, 0.0, direction.y).normalize();
-    let ball_velocity = Vec3::new(
-        horizontal_dir.x * speed * cos_angle,
-        speed * sin_angle,
-        horizontal_dir.z * speed * cos_angle,
-    );
-
-    // 打点位置（トスボールの位置を使用）
-    let hit_pos = toss_pos.value;
-
-    // 通常ボールを生成
-    commands.spawn(BallBundle::with_shooter(hit_pos, ball_velocity, match_score.server));
 
     // ServeState更新
     serve_state.on_hit_success();
@@ -197,17 +178,21 @@ pub fn serve_hit_input_system(
     // @spec 30102_serve_spec.md#req-30102-082: Rally状態に遷移
     next_state.set(MatchFlowState::Rally);
 
-    // ShotEvent発行
+    // ShotEvent発行（is_serve = true）
+    // @spec 30602_shot_direction_spec.md#req-30602-031
+    // ボール生成と弾道計算は shot_direction_system で実行
     shot_event_writer.write(ShotEvent {
         player_id: player.id,
         court_side: match_score.server,
         direction,
         jump_height: player_pos.value.y,
+        is_serve: true,
+        hit_position: Some(hit_pos),
     });
 
     info!(
-        "Serve hit success: Ball at {:?} with velocity {:?} by Player{}",
-        hit_pos, ball_velocity, player.id
+        "Serve hit success: ShotEvent sent with hit_pos {:?} by Player{}",
+        hit_pos, player.id
     );
 }
 

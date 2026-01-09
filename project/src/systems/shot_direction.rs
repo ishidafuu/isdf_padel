@@ -8,13 +8,16 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::components::{
-    Ball, BallSpin, BounceCount, BounceState, InputState, LastShooter, LogicalPosition, Player,
+    Ball, BallBundle, BallSpin, BounceCount, BounceState, InputState, LastShooter, LogicalPosition, Player,
     Velocity,
 };
 use crate::core::events::{ShotEvent, ShotExecutedEvent};
-use crate::resource::config::GameConfig;
+use crate::resource::config::{GameConfig, ServeSide};
+use crate::resource::scoring::MatchScore;
 use crate::systems::shot_attributes::{build_shot_context_from_input_state, calculate_shot_attributes};
-use crate::systems::trajectory_calculator::{TrajectoryContext, calculate_trajectory};
+use crate::systems::trajectory_calculator::{
+    calculate_serve_trajectory, calculate_trajectory, ServeTrajectoryContext, TrajectoryContext,
+};
 
 /// ショット方向計算システム
 /// ShotEvent を受信してボールの速度を設定する
@@ -24,15 +27,20 @@ use crate::systems::trajectory_calculator::{TrajectoryContext, calculate_traject
 /// @spec 30602_shot_direction_spec.md#req-30602-004
 /// @spec 30602_shot_direction_spec.md#req-30602-005
 /// @spec 30602_shot_direction_spec.md#req-30602-007
+/// @spec 30602_shot_direction_spec.md#req-30602-031 - サーブ処理分岐
+/// @spec 30602_shot_direction_spec.md#req-30602-032 - 通常ショット処理
 /// @spec 30604_shot_attributes_spec.md#req-30604-068
 /// @spec 30604_shot_attributes_spec.md#req-30604-069
 /// @spec 30604_shot_attributes_spec.md#req-30604-070
 /// @spec 30605_trajectory_calculation_spec.md - 着地点逆算型弾道システム
 pub fn shot_direction_system(
+    mut commands: Commands,
     config: Res<GameConfig>,
+    match_score: Res<MatchScore>,
     mut shot_events: MessageReader<ShotEvent>,
     mut ball_query: Query<
         (
+            Entity,
             &mut Velocity,
             &mut BounceCount,
             &mut LastShooter,
@@ -46,8 +54,25 @@ pub fn shot_direction_system(
     mut shot_executed_writer: MessageWriter<ShotExecutedEvent>,
 ) {
     for event in shot_events.read() {
+        // === サーブ処理分岐 ===
+        // @spec 30602_shot_direction_spec.md#req-30602-031
+        if event.is_serve {
+            // サーブ処理: ボールを新規生成
+            handle_serve_shot(
+                &mut commands,
+                &config,
+                &match_score,
+                event,
+                &mut shot_executed_writer,
+            );
+            continue;
+        }
+
+        // === 通常ショット処理 ===
+        // @spec 30602_shot_direction_spec.md#req-30602-032
         // ボールを取得
         let Ok((
+            _entity,
             mut ball_velocity,
             mut bounce_count,
             mut last_shooter,
@@ -174,6 +199,71 @@ pub fn shot_direction_system(
             trajectory_result.landing_position.z
         );
     }
+}
+
+/// サーブショット処理
+/// @spec 30602_shot_direction_spec.md#req-30602-031
+/// @spec 30605_trajectory_calculation_spec.md#req-30605-050
+fn handle_serve_shot(
+    commands: &mut Commands,
+    config: &GameConfig,
+    match_score: &MatchScore,
+    event: &ShotEvent,
+    shot_executed_writer: &mut MessageWriter<ShotExecutedEvent>,
+) {
+    // 打点位置を取得（サーブ時は必須）
+    let hit_position = match event.hit_position {
+        Some(pos) => pos,
+        None => {
+            warn!("Serve shot event missing hit_position");
+            return;
+        }
+    };
+
+    // サーブサイドをポイント合計から計算
+    // @spec 30903_serve_authority_spec.md#req-30903-003
+    let server_points = match_score.get_point_index(event.court_side);
+    let receiver_points = match_score.get_point_index(event.court_side.opponent());
+    let total_points = server_points + receiver_points;
+    let serve_side = ServeSide::from_point_total(total_points);
+
+    // サーブ弾道計算
+    let serve_ctx = ServeTrajectoryContext {
+        input: event.direction,
+        server: event.court_side,
+        serve_side,
+        hit_position,
+        base_speed: config.serve.serve_speed,
+    };
+
+    let trajectory_result = calculate_serve_trajectory(&serve_ctx, config);
+
+    // 最終的な打球ベクトルを計算
+    let shot_velocity = trajectory_result.direction * trajectory_result.final_speed;
+
+    // ボールを新規生成
+    // @spec 30602_shot_direction_spec.md#req-30602-031
+    commands.spawn(BallBundle::with_shooter(
+        hit_position,
+        shot_velocity,
+        event.court_side,
+    ));
+
+    // ShotExecutedEvent の発行
+    shot_executed_writer.write(ShotExecutedEvent {
+        player_id: event.player_id,
+        shot_velocity,
+        is_jump_shot: false, // サーブはジャンプショットではない
+    });
+
+    info!(
+        "Serve shot executed: player={}, landing=({:.1}, {:.1}), angle={:.1}, speed={:.1}",
+        event.player_id,
+        trajectory_result.landing_position.x,
+        trajectory_result.landing_position.z,
+        trajectory_result.launch_angle,
+        trajectory_result.final_speed
+    );
 }
 
 /// ミスショット判定

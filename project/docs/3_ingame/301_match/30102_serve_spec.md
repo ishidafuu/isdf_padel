@@ -91,10 +91,13 @@
 **AND** ServeSubPhase == Tossing
 **AND** ボール高さが `config.serve.hit_height_min` 以上 `config.serve.hit_height_max` 以下
 **THE SYSTEM SHALL** サーブヒットを実行する
-- TossBall マーカーを削除し、通常 Ball に変換
-- 速度: `config.serve.serve_speed`
-- 角度: `config.serve.serve_angle`
+- TossBall エンティティを削除
+- ShotEvent を発行（is_serve=true, hit_position=トスボール位置）
 - MatchFlowState を Rally に遷移する
+- ボール生成と弾道計算は shot_direction_system で実行
+
+**参照**: [30602_shot_direction_spec.md](../306_shot_system/30602_shot_direction_spec.md#req-30602-031)
+**参照**: [30605_trajectory_calculation_spec.md](../306_shot_system/30605_trajectory_calculation_spec.md#req-30605-050)
 **テスト**: TST-30104-082
 
 ### REQ-30102-083: ヒット可能範囲
@@ -140,6 +143,12 @@
 **AND** AI がサーバー
 **AND** ボール高さが `config.serve.hit_height_optimal` ± `config.serve.ai_hit_tolerance`
 **THE SYSTEM SHALL** サーブヒットを自動実行する
+- TossBall エンティティを削除
+- ShotEvent を発行（is_serve=true, hit_position=トスボール位置）
+- MatchFlowState を Rally に遷移する
+- ボール生成と弾道計算は shot_direction_system で実行
+
+**参照**: [30602_shot_direction_spec.md](../306_shot_system/30602_shot_direction_spec.md#req-30602-031)
 **テスト**: TST-30104-088
 
 ### REQ-30102-089: ダブルフォルト

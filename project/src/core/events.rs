@@ -193,6 +193,7 @@ pub struct BallOutOfBoundsEvent {
 /// ショットイベント
 /// @spec 30601_shot_input_spec.md#req-30601-001
 /// @spec 30601_shot_input_spec.md#req-30601-006
+/// @spec 30602_shot_direction_spec.md#req-30602-030
 #[derive(Event, Message, Debug, Clone)]
 pub struct ShotEvent {
     /// プレイヤーID
@@ -203,6 +204,12 @@ pub struct ShotEvent {
     pub direction: Vec2,
     /// ジャンプ中の高さ（Position.Y）
     pub jump_height: f32,
+    /// サーブかどうか
+    /// @spec 30602_shot_direction_spec.md#req-30602-030
+    pub is_serve: bool,
+    /// 打点位置（サーブ時のみ使用）
+    /// @spec 30605_trajectory_calculation_spec.md#req-30605-053
+    pub hit_position: Option<Vec3>,
 }
 
 /// ショット実行完了イベント

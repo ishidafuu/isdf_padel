@@ -101,6 +101,55 @@
 
 ## Extended Requirements (v0.2)
 
+### サーブ統合処理
+
+#### REQ-30602-030: ShotEvent拡張
+**WHEN** ShotEvent を発行する
+**THE SYSTEM SHALL** 以下のフィールドを含む
+```rust
+pub struct ShotEvent {
+    // 既存フィールド
+    pub player_id: u8,
+    pub court_side: CourtSide,
+    pub direction: Vec2,
+    pub jump_height: f32,
+    // 新規追加
+    pub is_serve: bool,              // サーブかどうか
+    pub hit_position: Option<Vec3>,  // 打点位置（サーブ時のみ）
+}
+```
+
+**テスト**: TST-30602-030
+
+---
+
+#### REQ-30602-031: サーブ処理分岐
+**WHEN** ShotEvent を受信する
+**AND** is_serve == true
+**THE SYSTEM SHALL** サーブ専用の弾道計算を実行する
+- サービスボックス内に制限された着地点を計算（REQ-30605-050）
+- hit_position の高さを打点として使用（REQ-30605-053）
+- 新規ボールを生成（トスボールは既に削除済み）
+- BounceCount を 0 にリセット
+- LastShooter を記録
+
+**参照**: [30605_trajectory_calculation_spec.md](30605_trajectory_calculation_spec.md#req-30605-050)
+**テスト**: TST-30602-031
+
+---
+
+#### REQ-30602-032: 通常ショット処理
+**WHEN** ShotEvent を受信する
+**AND** is_serve == false
+**THE SYSTEM SHALL** 既存の弾道計算を実行する
+- 既存ボールの速度を更新
+- BounceCount をリセット
+- LastShooter を記録
+
+**テスト**: TST-30602-032
+
+---
+
 ### REQ-30602-050: スピンショット
 **WHEN** プレイヤーが特定の方向入力でショットする
 **THE SYSTEM SHALL** ボールにスピンを設定する

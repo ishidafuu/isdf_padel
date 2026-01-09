@@ -81,12 +81,15 @@ pub fn ai_shot_system(
         // REQ-30302-005: ジャンプショット禁止（MVP）- jumpHeight = 0
         let jump_height = 0.0;
 
-        // ShotEvent を発行
+        // ShotEvent を発行（通常ショット: is_serve = false）
+        // @spec 30602_shot_direction_spec.md#req-30602-032
         event_writer.write(ShotEvent {
             player_id: player.id,
             court_side: player.court_side,
             direction,
             jump_height,
+            is_serve: false,
+            hit_position: None,
         });
 
         info!(

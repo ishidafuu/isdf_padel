@@ -104,12 +104,15 @@ pub fn shot_input_system(
         // REQ-30601-004: クールダウン開始
         shot_state.start_cooldown(config.shot.cooldown_time);
 
-        // ShotEvent を発行
+        // ShotEvent を発行（通常ショット: is_serve = false）
+        // @spec 30602_shot_direction_spec.md#req-30602-032
         event_writer.write(ShotEvent {
             player_id: player.id,
             court_side: player.court_side,
             direction,
             jump_height: player_pos.y,
+            is_serve: false,
+            hit_position: None,
         });
 
         info!(
