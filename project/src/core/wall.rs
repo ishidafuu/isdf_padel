@@ -104,7 +104,7 @@ impl WallReflection {
             WallType::LeftWall | WallType::RightWall => {
                 Self::reflect_side_wall(velocity, bounce_factor)
             }
-            WallType::BackWall1P | WallType::BackWall2P => {
+            WallType::BackWallLeft | WallType::BackWallRight => {
                 Self::reflect_back_wall(velocity, bounce_factor)
             }
             WallType::Ceiling => Self::reflect_ceiling(velocity, bounce_factor),
@@ -155,14 +155,14 @@ impl WallReflection {
         // 優先順位2: 前後壁（X方向、打ち合い方向）
         if position.x <= bounds.back_left && velocity.x < 0.0 {
             return Some(WallReflectionResult {
-                wall_type: WallType::BackWall1P,
+                wall_type: WallType::BackWallLeft,
                 contact_point: Vec3::new(bounds.back_left, position.y, position.z),
                 reflected_velocity: Self::reflect_back_wall(velocity, bounce_factor),
             });
         }
         if position.x >= bounds.back_right && velocity.x > 0.0 {
             return Some(WallReflectionResult {
-                wall_type: WallType::BackWall2P,
+                wall_type: WallType::BackWallRight,
                 contact_point: Vec3::new(bounds.back_right, position.y, position.z),
                 reflected_velocity: Self::reflect_back_wall(velocity, bounce_factor),
             });
@@ -251,13 +251,13 @@ mod tests {
         let right = WallReflection::reflect(WallType::RightWall, velocity, bounce_factor);
         assert_eq!(right.z, -2.4);
 
-        // 後壁（1P側）（X成分のみ反転・減衰、打ち合い方向）
-        let back_left = WallReflection::reflect(WallType::BackWall1P, velocity, bounce_factor);
+        // 後壁（Left側）（X成分のみ反転・減衰、打ち合い方向）
+        let back_left = WallReflection::reflect(WallType::BackWallLeft, velocity, bounce_factor);
         assert_eq!(back_left.x, -8.0);
         assert_eq!(back_left.z, 3.0);  // 維持
 
-        // 後壁（2P側）（X成分のみ反転・減衰）
-        let back_right = WallReflection::reflect(WallType::BackWall2P, velocity, bounce_factor);
+        // 後壁（Right側）（X成分のみ反転・減衰）
+        let back_right = WallReflection::reflect(WallType::BackWallRight, velocity, bounce_factor);
         assert_eq!(back_right.x, -8.0);
 
         // 天井（Y成分のみ反転・減衰）
@@ -286,21 +286,21 @@ mod tests {
         assert!(result.is_some());
         assert_eq!(result.unwrap().wall_type, WallType::RightWall);
 
-        // 後壁1P側に接触（優先順位2、X方向負側）
-        let pos_back1p = Vec3::new(-3.0, 2.5, 0.0);
-        let vel_back1p = Vec3::new(-10.0, 0.0, 0.0);
+        // 後壁Left側に接触（優先順位2、X方向負側）
+        let pos_back_left = Vec3::new(-3.0, 2.5, 0.0);
+        let vel_back_left = Vec3::new(-10.0, 0.0, 0.0);
         let result =
-            WallReflection::check_and_reflect(pos_back1p, vel_back1p, &bounds, bounce_factor);
+            WallReflection::check_and_reflect(pos_back_left, vel_back_left, &bounds, bounce_factor);
         assert!(result.is_some());
-        assert_eq!(result.unwrap().wall_type, WallType::BackWall1P);
+        assert_eq!(result.unwrap().wall_type, WallType::BackWallLeft);
 
-        // 後壁2P側に接触（X方向正側）
-        let pos_back2p = Vec3::new(3.0, 2.5, 0.0);
-        let vel_back2p = Vec3::new(10.0, 0.0, 0.0);
+        // 後壁Right側に接触（X方向正側）
+        let pos_back_right = Vec3::new(3.0, 2.5, 0.0);
+        let vel_back_right = Vec3::new(10.0, 0.0, 0.0);
         let result =
-            WallReflection::check_and_reflect(pos_back2p, vel_back2p, &bounds, bounce_factor);
+            WallReflection::check_and_reflect(pos_back_right, vel_back_right, &bounds, bounce_factor);
         assert!(result.is_some());
-        assert_eq!(result.unwrap().wall_type, WallType::BackWall2P);
+        assert_eq!(result.unwrap().wall_type, WallType::BackWallRight);
 
         // 天井に接触（優先順位3）
         let pos_ceiling = Vec3::new(0.0, 5.0, 0.0);
@@ -353,10 +353,10 @@ mod tests {
     fn test_wall_type_helpers() {
         assert!(WallType::LeftWall.is_side_wall());
         assert!(WallType::RightWall.is_side_wall());
-        assert!(!WallType::BackWall1P.is_side_wall());
+        assert!(!WallType::BackWallLeft.is_side_wall());
 
-        assert!(WallType::BackWall1P.is_back_wall());
-        assert!(WallType::BackWall2P.is_back_wall());
+        assert!(WallType::BackWallLeft.is_back_wall());
+        assert!(WallType::BackWallRight.is_back_wall());
         assert!(!WallType::Ceiling.is_back_wall());
     }
 
@@ -368,10 +368,10 @@ mod tests {
         assert_eq!(WallType::LeftWall.normal(), Vec3::Z);
         // 右壁: -Z方向の法線（Z正側の壁）
         assert_eq!(WallType::RightWall.normal(), Vec3::NEG_Z);
-        // 後壁1P側: +X方向の法線（X負側の壁）
-        assert_eq!(WallType::BackWall1P.normal(), Vec3::X);
-        // 後壁2P側: -X方向の法線（X正側の壁）
-        assert_eq!(WallType::BackWall2P.normal(), Vec3::NEG_X);
+        // 後壁Left側: +X方向の法線（X負側の壁）
+        assert_eq!(WallType::BackWallLeft.normal(), Vec3::X);
+        // 後壁Right側: -X方向の法線（X正側の壁）
+        assert_eq!(WallType::BackWallRight.normal(), Vec3::NEG_X);
         // 天井: -Y方向の法線
         assert_eq!(WallType::Ceiling.normal(), Vec3::NEG_Y);
     }

@@ -94,10 +94,10 @@ pub enum WallType {
     LeftWall,
     /// 右壁（Z = +Court.Width/2、コート幅方向）
     RightWall,
-    /// 後壁（1Pコート側、X = -Court.Depth/2、打ち合い方向）
-    BackWall1P,
-    /// 後壁（2Pコート側、X = +Court.Depth/2、打ち合い方向）
-    BackWall2P,
+    /// 後壁（Leftコート側、X = -Court.Depth/2、打ち合い方向）
+    BackWallLeft,
+    /// 後壁（Rightコート側、X = +Court.Depth/2、打ち合い方向）
+    BackWallRight,
     /// 天井（Y = Court.CeilingHeight）
     Ceiling,
 }
@@ -112,8 +112,8 @@ impl WallType {
         match self {
             WallType::LeftWall => Vec3::Z,       // +Z方向（Z負側の壁）
             WallType::RightWall => Vec3::NEG_Z,  // -Z方向（Z正側の壁）
-            WallType::BackWall1P => Vec3::X,     // +X方向（X負側の壁、1Pバックライン）
-            WallType::BackWall2P => Vec3::NEG_X, // -X方向（X正側の壁、2Pバックライン）
+            WallType::BackWallLeft => Vec3::X,     // +X方向（X負側の壁、Leftバックライン）
+            WallType::BackWallRight => Vec3::NEG_X, // -X方向（X正側の壁、Rightバックライン）
             WallType::Ceiling => Vec3::NEG_Y,    // -Y方向（天井）
         }
     }
@@ -129,7 +129,7 @@ impl WallType {
     #[allow(dead_code)]
     #[inline]
     pub fn is_back_wall(&self) -> bool {
-        matches!(self, WallType::BackWall1P | WallType::BackWall2P)
+        matches!(self, WallType::BackWallLeft | WallType::BackWallRight)
     }
 }
 
