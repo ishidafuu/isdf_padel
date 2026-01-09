@@ -93,7 +93,7 @@ pub fn calculate_approach_dot(player_velocity: Vec3, player_pos: Vec3, ball_pos:
 /// 打点高さから係数を取得
 /// @spec 30604_shot_attributes_spec.md#req-30604-055
 pub fn get_height_factors(height: f32, curve: &[HeightCurvePoint]) -> (f32, f32, f32) {
-    let power = interpolate_from_curve(curve, height, |p| p.height, |p| p.power_factor);
+    let power = interpolate_from_curve(curve, height, |p| p.height, |p| p.power_bonus);
     let stability = interpolate_from_curve(curve, height, |p| p.height, |p| p.stability_factor);
     let angle = interpolate_from_curve(curve, height, |p| p.height, |p| p.angle_offset);
     (power, stability, angle)
@@ -102,7 +102,7 @@ pub fn get_height_factors(height: f32, curve: &[HeightCurvePoint]) -> (f32, f32,
 /// バウンド経過時間から係数を取得
 /// @spec 30604_shot_attributes_spec.md#req-30604-058
 pub fn get_timing_factors(elapsed: f32, curve: &[TimingCurvePoint]) -> (f32, f32, f32) {
-    let power = interpolate_from_curve(curve, elapsed, |p| p.elapsed, |p| p.power_factor);
+    let power = interpolate_from_curve(curve, elapsed, |p| p.elapsed, |p| p.power_bonus);
     let stability = interpolate_from_curve(curve, elapsed, |p| p.elapsed, |p| p.stability_factor);
     let angle = interpolate_from_curve(curve, elapsed, |p| p.elapsed, |p| p.angle_offset);
     (power, stability, angle)
@@ -111,7 +111,7 @@ pub fn get_timing_factors(elapsed: f32, curve: &[TimingCurvePoint]) -> (f32, f32
 /// 入り方から係数を取得
 /// @spec 30604_shot_attributes_spec.md#req-30604-060
 pub fn get_approach_factors(dot: f32, curve: &[ApproachCurvePoint]) -> (f32, f32) {
-    let power = interpolate_from_curve(curve, dot, |p| p.dot, |p| p.power_factor);
+    let power = interpolate_from_curve(curve, dot, |p| p.dot, |p| p.power_bonus);
     let angle = interpolate_from_curve(curve, dot, |p| p.dot, |p| p.angle_offset);
     (power, angle)
 }
@@ -119,7 +119,7 @@ pub fn get_approach_factors(dot: f32, curve: &[ApproachCurvePoint]) -> (f32, f32
 /// 距離から係数を取得
 /// @spec 30604_shot_attributes_spec.md#req-30604-062
 pub fn get_distance_factors(distance: f32, curve: &[DistanceCurvePoint]) -> (f32, f32, f32) {
-    let power = interpolate_from_curve(curve, distance, |p| p.distance, |p| p.power_factor);
+    let power = interpolate_from_curve(curve, distance, |p| p.distance, |p| p.power_bonus);
     let stability = interpolate_from_curve(curve, distance, |p| p.distance, |p| p.stability_factor);
     let accuracy = interpolate_from_curve(curve, distance, |p| p.distance, |p| p.accuracy_factor);
     (power, stability, accuracy)
@@ -199,7 +199,7 @@ pub fn calculate_shot_attributes(
         None => {
             // ボレー
             (
-                config.volley_factors.power_factor,
+                config.volley_factors.power_bonus,
                 config.volley_factors.stability_factor,
                 config.volley_factors.angle_offset,
             )
@@ -214,14 +214,15 @@ pub fn calculate_shot_attributes(
     let (distance_power, distance_stability, distance_accuracy) =
         get_distance_factors(context.ball_distance, &config.distance_curve);
 
-    // 威力の最終計算
+    // 威力の最終計算（加算方式）
     // @spec 30604_shot_attributes_spec.md#req-30604-063
-    let power = config.base_power
-        * input_power_factor
-        * height_power
-        * timing_power
-        * approach_power
-        * distance_power;
+    // ボーナスを加算し、入力方式の係数を乗算
+    let power = (config.base_power
+        + height_power
+        + timing_power
+        + approach_power
+        + distance_power)
+        * input_power_factor;
 
     // 安定性の最終計算
     // @spec 30604_shot_attributes_spec.md#req-30604-064
@@ -367,39 +368,39 @@ mod tests {
         let points = vec![
             HeightCurvePoint {
                 height: 0.0,
-                power_factor: 0.3,
+                power_bonus: -3.0,
                 stability_factor: 0.5,
                 angle_offset: 30.0,
             },
             HeightCurvePoint {
                 height: 1.0,
-                power_factor: 0.7,
+                power_bonus: -1.0,
                 stability_factor: 1.0,
                 angle_offset: 10.0,
             },
             HeightCurvePoint {
                 height: 2.0,
-                power_factor: 1.0,
+                power_bonus: 2.0,
                 stability_factor: 0.8,
                 angle_offset: -15.0,
             },
         ];
 
         // 境界値
-        let power_at_0 = interpolate_from_curve(&points, 0.0, |p| p.height, |p| p.power_factor);
-        assert!((power_at_0 - 0.3).abs() < 0.001);
+        let power_at_0 = interpolate_from_curve(&points, 0.0, |p| p.height, |p| p.power_bonus);
+        assert!((power_at_0 - (-3.0)).abs() < 0.001);
 
         // 中間値
-        let power_at_0_5 = interpolate_from_curve(&points, 0.5, |p| p.height, |p| p.power_factor);
-        assert!((power_at_0_5 - 0.5).abs() < 0.001); // (0.3 + 0.7) / 2 = 0.5
+        let power_at_0_5 = interpolate_from_curve(&points, 0.5, |p| p.height, |p| p.power_bonus);
+        assert!((power_at_0_5 - (-2.0)).abs() < 0.001); // (-3.0 + -1.0) / 2 = -2.0
 
         // 範囲外（下限）
-        let power_below = interpolate_from_curve(&points, -1.0, |p| p.height, |p| p.power_factor);
-        assert!((power_below - 0.3).abs() < 0.001);
+        let power_below = interpolate_from_curve(&points, -1.0, |p| p.height, |p| p.power_bonus);
+        assert!((power_below - (-3.0)).abs() < 0.001);
 
         // 範囲外（上限）
-        let power_above = interpolate_from_curve(&points, 3.0, |p| p.height, |p| p.power_factor);
-        assert!((power_above - 1.0).abs() < 0.001);
+        let power_above = interpolate_from_curve(&points, 3.0, |p| p.height, |p| p.power_bonus);
+        assert!((power_above - 2.0).abs() < 0.001);
     }
 
     /// TST-30604-003: プッシュ威力係数テスト

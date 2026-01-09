@@ -165,6 +165,7 @@ pub struct ServeTrajectoryContext {
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-054
 pub fn calculate_serve_trajectory(ctx: &ServeTrajectoryContext, config: &GameConfig) -> TrajectoryResult {
     let trajectory_config = &config.trajectory;
+    let court_config = &config.court;
 
     // 1. サービスボックス内の着地地点を決定
     let landing_position = calculate_serve_landing_position(
@@ -177,23 +178,25 @@ pub fn calculate_serve_trajectory(ctx: &ServeTrajectoryContext, config: &GameCon
     // 2. 有効重力を計算（サーブはフラット: spin = 0）
     let effective_gravity = calculate_effective_gravity(0.0, ctx.hit_position.y, config);
 
-    // 3. 発射角度と調整後初速を計算
-    let (launch_angle, adjusted_speed) = calculate_launch_angle(
+    // 3. 発射角度と調整後初速を計算（サーブは着地点調整なし）
+    let (launch_angle, adjusted_speed, adjusted_landing) = calculate_launch_angle(
         ctx.hit_position,
         landing_position,
         ctx.base_speed,
         effective_gravity,
         trajectory_config,
+        court_config.net_x,
+        court_config.net_height,
     );
 
     // 4. 方向ベクトルを計算
-    let direction = calculate_direction_vector(ctx.hit_position, landing_position, launch_angle);
+    let direction = calculate_direction_vector(ctx.hit_position, adjusted_landing, launch_angle);
 
     TrajectoryResult {
         launch_angle,
         final_speed: adjusted_speed,
         direction,
-        landing_position,
+        landing_position: adjusted_landing,
     }
 }
 
@@ -223,17 +226,85 @@ pub fn calculate_effective_gravity(
     gravity * (1.0 + avg_spin * spin_config.gravity_spin_factor)
 }
 
-/// 発射角度を逆算
+/// ネット通過に必要な最小角度を計算
+/// 打点位置、速度、重力からネットを越えるために必要な最小発射角度を計算
+fn calculate_min_angle_for_net_clearance(
+    start_pos: Vec3,
+    target_pos: Vec3,
+    speed: f32,
+    gravity: f32,
+    net_x: f32,
+    net_height: f32,
+) -> f32 {
+    let dx = target_pos.x - start_pos.x;
+    
+    // ネットを越えない方向の場合は制限不要
+    let crosses_net = (dx > 0.0 && start_pos.x < net_x && target_pos.x > net_x)
+        || (dx < 0.0 && start_pos.x > net_x && target_pos.x < net_x);
+    
+    if !crosses_net {
+        return 0.0; // ネットを越えない場合は制限なし
+    }
+    
+    // ネットまでの水平距離
+    let dist_to_net = (net_x - start_pos.x).abs();
+    
+    // 打点とネット上端の高さの差（マージン込み）
+    let net_clearance_margin = 0.3; // ネット上端からのマージン
+    let required_height = net_height + net_clearance_margin - start_pos.y;
+    
+    // 打点がネットより十分高い場合は制限緩和
+    if required_height < 0.0 {
+        // 打点がネット上端より高い場合、低い角度でも通過可能
+        // ただし、落下を考慮して最低限の角度は必要
+        return -5.0; // 少し下向きでもOK
+    }
+    
+    // 二分探索でネットを越える最小角度を求める
+    let mut low = 0.0_f32;
+    let mut high = 60.0_f32;
+    
+    for _ in 0..20 {
+        let mid = (low + high) / 2.0;
+        let mid_rad = mid.to_radians();
+        let cos_a = mid_rad.cos();
+        let sin_a = mid_rad.sin();
+        
+        if cos_a.abs() < 0.001 {
+            low = mid;
+            continue;
+        }
+        
+        // ネット到達時刻
+        let t_net = dist_to_net / (speed * cos_a);
+        
+        // ネット到達時の高さ
+        let height_at_net = start_pos.y + speed * sin_a * t_net - 0.5 * gravity * t_net * t_net;
+        
+        if height_at_net >= net_height + net_clearance_margin {
+            high = mid; // この角度で通過できる、もっと低い角度を試す
+        } else {
+            low = mid; // 通過できない、もっと高い角度が必要
+        }
+    }
+    
+    high // 安全側（高い方）を返す
+}
+
+/// 発射角度を逆算（着地点も調整）
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-021
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-022
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-024
+/// 戻り値: (角度, 速度, 調整後の着地点)
 pub fn calculate_launch_angle(
     start_pos: Vec3,
     target_pos: Vec3,
     base_speed: f32,
     effective_gravity: f32,
     trajectory_config: &TrajectoryConfig,
-) -> (f32, f32) {
+    net_x: f32,
+    net_height: f32,
+) -> (f32, f32, Vec3) {
     let dx = target_pos.x - start_pos.x;
     let dz = target_pos.z - start_pos.z;
     let horizontal_distance = (dx * dx + dz * dz).sqrt();
@@ -241,50 +312,159 @@ pub fn calculate_launch_angle(
     // 高さの差（着地高さ - 打点高さ）※発射点基準
     let h = target_pos.y - start_pos.y;
 
-    // 基準初速
-    let mut v = base_speed;
+    let v = base_speed;
     let g = effective_gravity;
+    let d = horizontal_distance;
+    let v2 = v * v;
+    let v4 = v2 * v2;
 
-    // 放物線公式で角度を逆算（最大3回まで初速調整）
-    for _ in 0..3 {
-        let d = horizontal_distance;
-        let v2 = v * v;
-        let v4 = v2 * v2;
+    // ネット通過に必要な最小角度を計算
+    let min_net_angle = calculate_min_angle_for_net_clearance(
+        start_pos, target_pos, base_speed, effective_gravity, net_x, net_height,
+    );
 
-        // 判別式: v^4 - g(g*d^2 + 2*h*v^2)
-        let discriminant = v4 - g * (g * d * d + 2.0 * h * v2);
+    // 判別式: v^4 - g(g*d^2 + 2*h*v^2)
+    let discriminant = v4 - g * (g * d * d + 2.0 * h * v2);
 
-        if discriminant >= 0.0 {
-            // tan(θ) = (v² ± sqrt(discriminant)) / (g * d)
-            let sqrt_disc = discriminant.sqrt();
-            let tan_theta_1 = (v2 - sqrt_disc) / (g * d);
-            let tan_theta_2 = (v2 + sqrt_disc) / (g * d);
+    if discriminant >= 0.0 {
+        // 解がある場合: 目標地点に到達可能
+        let sqrt_disc = discriminant.sqrt();
+        let tan_theta_1 = (v2 - sqrt_disc) / (g * d);
+        let tan_theta_2 = (v2 + sqrt_disc) / (g * d);
 
-            // 角度が低い方を採用（テニス的な軌道）
-            let angle_1 = tan_theta_1.atan().to_degrees();
-            let angle_2 = tan_theta_2.atan().to_degrees();
+        // 角度が低い方を採用（テニス的な軌道）
+        let angle_1 = tan_theta_1.atan().to_degrees();
+        let angle_2 = tan_theta_2.atan().to_degrees();
 
-            let angle = if angle_1.abs() < angle_2.abs() {
-                angle_1
-            } else {
-                angle_2
-            };
+        let angle = if angle_1.abs() < angle_2.abs() {
+            angle_1
+        } else {
+            angle_2
+        };
 
-            // 範囲制限
-            let clamped_angle = angle.clamp(
-                trajectory_config.min_launch_angle,
-                trajectory_config.max_launch_angle,
-            );
+        // ネット通過角度と比較し、大きい方を採用
+        let angle_with_net = angle.max(min_net_angle);
 
-            return (clamped_angle, v);
-        }
+        // 範囲制限
+        let clamped_angle = angle_with_net.clamp(
+            trajectory_config.min_launch_angle,
+            trajectory_config.max_launch_angle,
+        );
 
-        // 解が得られない場合は初速を10%増加して再計算
-        v *= 1.1;
+        return (clamped_angle, v, target_pos);
     }
 
-    // 3回試行しても解が得られない場合は最大角度を使用
-    (trajectory_config.max_launch_angle, v)
+    // 解がない場合: パワー不足で目標地点に届かない
+    // → 到達可能な最大距離に着地点を短縮（但しネットは越える）
+    let max_distance = calculate_max_reachable_distance(base_speed, effective_gravity, h);
+
+    if max_distance < 0.1 || horizontal_distance < 0.001 {
+        // 到達距離がほぼ0の場合は最大角度で打つ
+        return (trajectory_config.max_launch_angle, v, target_pos);
+    }
+
+    // 着地点を短縮
+    let scale = (max_distance / horizontal_distance).min(0.95); // 95%を上限として安全マージン
+    let mut new_x = start_pos.x + dx * scale;
+    let new_z = start_pos.z + dz * scale;
+
+    // ネットを越える最低位置を保証
+    // ネット位置は X=0、margin=0.5（trajectory_config.landing_margin）
+    let net_margin = trajectory_config.landing_margin;
+    let target_crosses_net = if dx > 0.0 {
+        // 右方向に打っている（Left側プレイヤー）
+        target_pos.x > net_margin
+    } else {
+        // 左方向に打っている（Right側プレイヤー）
+        target_pos.x < -net_margin
+    };
+
+    if target_crosses_net {
+        // 目標がネットを越えている場合、短縮後もネットを越えるよう保証
+        if dx > 0.0 && new_x < net_margin {
+            new_x = net_margin; // ネット直後
+        } else if dx < 0.0 && new_x > -net_margin {
+            new_x = -net_margin; // ネット直後
+        }
+    }
+
+    let new_target = Vec3::new(new_x, target_pos.y, new_z);
+
+    // 短縮した着地点で角度を再計算
+    let new_dx = new_target.x - start_pos.x;
+    let new_dz = new_target.z - start_pos.z;
+    let new_d = (new_dx * new_dx + new_dz * new_dz).sqrt();
+    let new_discriminant = v4 - g * (g * new_d * new_d + 2.0 * h * v2);
+
+    if new_discriminant >= 0.0 {
+        let sqrt_disc = new_discriminant.sqrt();
+        let tan_theta = (v2 - sqrt_disc) / (g * new_d);
+        let angle = tan_theta.atan().to_degrees();
+        
+        // ネット通過角度と比較
+        let angle_with_net = angle.max(min_net_angle);
+        let clamped = angle_with_net.clamp(
+            trajectory_config.min_launch_angle,
+            trajectory_config.max_launch_angle,
+        );
+        return (clamped, v, new_target);
+    }
+
+    // それでも解がない場合は最大角度を使用し、実際の到達距離を計算
+    let max_angle_rad = trajectory_config.max_launch_angle.to_radians();
+    let cos_angle = max_angle_rad.cos();
+    let sin_angle = max_angle_rad.sin();
+
+    // 最大角度で打った場合の水平速度成分
+    let v_horizontal = v * cos_angle;
+    let v_vertical = v * sin_angle;
+
+    // 飛行時間を計算: h + v_y*t - 0.5*g*t^2 = 0
+    // t = (v_y + sqrt(v_y^2 + 2*g*h)) / g （h < 0 の場合）
+    let flight_time = if h >= 0.0 {
+        // 打点より上に着地する場合
+        (v_vertical + (v_vertical * v_vertical + 2.0 * g * h.abs()).sqrt()) / g
+    } else {
+        // 打点より下に着地する場合（通常）
+        (v_vertical + (v_vertical * v_vertical + 2.0 * g * h.abs()).sqrt()) / g
+    };
+
+    // 実際の水平到達距離
+    let actual_distance = v_horizontal * flight_time;
+
+    // 着地点を実際の到達距離に基づいて更新
+    let actual_scale = if horizontal_distance > 0.001 {
+        (actual_distance / horizontal_distance).min(1.0)
+    } else {
+        1.0
+    };
+
+    let actual_target = Vec3::new(
+        start_pos.x + dx * actual_scale,
+        target_pos.y,
+        start_pos.z + dz * actual_scale,
+    );
+
+    (trajectory_config.max_launch_angle, v, actual_target)
+}
+
+/// 与えられた初速と重力で到達可能な最大水平距離を計算
+/// 判別式 v⁴ - g(g*d² + 2h*v²) >= 0 を満たす最大の d を求める
+/// d_max = sqrt((v⁴ - 2gh*v²) / g²) = (v²/g) * sqrt(1 - 2gh/v²)
+fn calculate_max_reachable_distance(base_speed: f32, effective_gravity: f32, height_diff: f32) -> f32 {
+    let v2 = base_speed * base_speed;
+    let g = effective_gravity;
+    let h = height_diff;
+
+    // v² > 2gh が必要（そうでないと到達不可能）
+    let discriminant_factor = 1.0 - 2.0 * g * h / v2;
+
+    if discriminant_factor <= 0.0 {
+        // 初速が低すぎて上に打っても落ちてくる（到達距離ほぼ0）
+        return 0.1; // 最小値
+    }
+
+    (v2 / g) * discriminant_factor.sqrt()
 }
 
 /// 球種・距離による初速係数を計算
@@ -382,33 +562,28 @@ pub fn calculate_trajectory(ctx: &TrajectoryContext, config: &GameConfig) -> Tra
     let raw_landing = calculate_landing_position(ctx, court_config, trajectory_config);
 
     // 2. 精度によるズレを適用
-    let landing_position = apply_landing_deviation(raw_landing, ctx.accuracy, trajectory_config);
+    let landing_with_deviation = apply_landing_deviation(raw_landing, ctx.accuracy, trajectory_config);
 
     // 3. 有効重力を計算
     let effective_gravity = calculate_effective_gravity(ctx.spin, ctx.ball_position.y, config);
 
-    // 4. 発射角度と調整後初速を計算
-    let (launch_angle, adjusted_speed) = calculate_launch_angle(
+    // 4. 発射角度と調整後初速を計算（着地点も調整される可能性あり）
+    let (launch_angle, adjusted_speed, landing_position) = calculate_launch_angle(
         ctx.ball_position,
-        landing_position,
+        landing_with_deviation,
         ctx.base_speed,
         effective_gravity,
         trajectory_config,
+        court_config.net_x,
+        court_config.net_height,
     );
 
-    // 5. 初速係数を計算
-    let dx = landing_position.x - ctx.ball_position.x;
-    let dz = landing_position.z - ctx.ball_position.z;
-    let horizontal_distance = (dx * dx + dz * dz).sqrt();
-    let max_court_distance = court_config.depth; // コート全長
+    // 6. 最終初速（角度計算と一貫性を保つため、speed_factor は適用しない）
+    // 注: speed_factor を適用すると、角度計算時の速度と実際の速度が乖離し、
+    //     着地点予測と実際の着地位置にズレが生じる
+    let final_speed = adjusted_speed;
 
-    let speed_factor =
-        calculate_speed_factors(ctx.spin, horizontal_distance, max_court_distance, trajectory_config);
-
-    // 6. 最終初速
-    let final_speed = adjusted_speed * speed_factor;
-
-    // 7. 方向ベクトルを計算
+    // 8. 方向ベクトルを計算
     let direction = calculate_direction_vector(ctx.ball_position, landing_position, launch_angle);
 
     TrajectoryResult {
@@ -668,14 +843,18 @@ mod tests {
     fn test_launch_angle_calculation() {
         let config = make_test_config();
         let trajectory_config = &config.trajectory;
+        let court_config = &config.court;
 
         let start = Vec3::new(-5.0, 1.0, 0.0);
         let target = Vec3::new(5.0, 0.0, 0.0);
         let base_speed = 15.0;
         let effective_gravity = 9.8;
 
-        let (angle, _speed) =
-            calculate_launch_angle(start, target, base_speed, effective_gravity, trajectory_config);
+        let (angle, _speed, _landing) =
+            calculate_launch_angle(
+                start, target, base_speed, effective_gravity, trajectory_config,
+                court_config.net_x, court_config.net_height,
+            );
 
         // 角度が有効範囲内
         assert!(

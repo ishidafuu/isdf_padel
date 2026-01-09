@@ -1016,7 +1016,7 @@ fn default_landing_depth() -> f32 {
     4.0
 }
 fn default_min_launch_angle() -> f32 {
-    5.0
+    12.0
 }
 fn default_max_launch_angle() -> f32 {
     60.0
@@ -1160,7 +1160,7 @@ impl Default for ShotAttributesConfig {
 #[derive(Deserialize, Clone, Debug)]
 pub struct HeightCurvePoint {
     pub height: f32,
-    pub power_factor: f32,
+    pub power_bonus: f32,
     pub stability_factor: f32,
     pub angle_offset: f32,
 }
@@ -1169,7 +1169,7 @@ pub struct HeightCurvePoint {
 #[derive(Deserialize, Clone, Debug)]
 pub struct TimingCurvePoint {
     pub elapsed: f32,
-    pub power_factor: f32,
+    pub power_bonus: f32,
     pub stability_factor: f32,
     pub angle_offset: f32,
 }
@@ -1178,7 +1178,7 @@ pub struct TimingCurvePoint {
 #[derive(Deserialize, Clone, Debug)]
 pub struct ApproachCurvePoint {
     pub dot: f32,
-    pub power_factor: f32,
+    pub power_bonus: f32,
     pub angle_offset: f32,
 }
 
@@ -1186,7 +1186,7 @@ pub struct ApproachCurvePoint {
 #[derive(Deserialize, Clone, Debug)]
 pub struct DistanceCurvePoint {
     pub distance: f32,
-    pub power_factor: f32,
+    pub power_bonus: f32,
     pub stability_factor: f32,
     pub accuracy_factor: f32,
 }
@@ -1194,7 +1194,7 @@ pub struct DistanceCurvePoint {
 /// ボレー補正
 #[derive(Deserialize, Clone, Debug)]
 pub struct VolleyFactors {
-    pub power_factor: f32,
+    pub power_bonus: f32,
     pub stability_factor: f32,
     pub angle_offset: f32,
 }
@@ -1252,12 +1252,12 @@ fn default_base_accuracy() -> f32 {
 /// @spec 30604_shot_attributes_spec.md#req-30604-055
 fn default_height_curve() -> Vec<HeightCurvePoint> {
     vec![
-        HeightCurvePoint { height: 0.0, power_factor: 0.3, stability_factor: 0.5, angle_offset: 30.0 },
-        HeightCurvePoint { height: 0.5, power_factor: 0.5, stability_factor: 0.7, angle_offset: 20.0 },
-        HeightCurvePoint { height: 1.0, power_factor: 0.7, stability_factor: 1.0, angle_offset: 10.0 },
-        HeightCurvePoint { height: 1.5, power_factor: 0.9, stability_factor: 0.9, angle_offset: 0.0 },
-        HeightCurvePoint { height: 2.0, power_factor: 1.0, stability_factor: 0.8, angle_offset: -15.0 },
-        HeightCurvePoint { height: 2.5, power_factor: 1.0, stability_factor: 0.7, angle_offset: -30.0 },
+        HeightCurvePoint { height: 0.0, power_bonus: -3.0, stability_factor: 0.5, angle_offset: 30.0 },
+        HeightCurvePoint { height: 0.5, power_bonus: -2.0, stability_factor: 0.7, angle_offset: 20.0 },
+        HeightCurvePoint { height: 1.0, power_bonus: -1.0, stability_factor: 1.0, angle_offset: 10.0 },
+        HeightCurvePoint { height: 1.5, power_bonus: 0.0, stability_factor: 0.9, angle_offset: 0.0 },
+        HeightCurvePoint { height: 2.0, power_bonus: 2.0, stability_factor: 0.8, angle_offset: -15.0 },
+        HeightCurvePoint { height: 2.5, power_bonus: 3.0, stability_factor: 0.7, angle_offset: -30.0 },
     ]
 }
 
@@ -1265,11 +1265,11 @@ fn default_height_curve() -> Vec<HeightCurvePoint> {
 /// @spec 30604_shot_attributes_spec.md#req-30604-058
 fn default_timing_curve() -> Vec<TimingCurvePoint> {
     vec![
-        TimingCurvePoint { elapsed: 0.0, power_factor: 1.0, stability_factor: 0.6, angle_offset: -5.0 },
-        TimingCurvePoint { elapsed: 0.3, power_factor: 0.9, stability_factor: 0.8, angle_offset: 0.0 },
-        TimingCurvePoint { elapsed: 0.5, power_factor: 0.8, stability_factor: 1.0, angle_offset: 0.0 },
-        TimingCurvePoint { elapsed: 0.8, power_factor: 0.6, stability_factor: 0.9, angle_offset: 10.0 },
-        TimingCurvePoint { elapsed: 1.0, power_factor: 0.4, stability_factor: 0.7, angle_offset: 20.0 },
+        TimingCurvePoint { elapsed: 0.0, power_bonus: 2.0, stability_factor: 0.6, angle_offset: -5.0 },
+        TimingCurvePoint { elapsed: 0.3, power_bonus: 1.0, stability_factor: 0.8, angle_offset: 0.0 },
+        TimingCurvePoint { elapsed: 0.5, power_bonus: 0.0, stability_factor: 1.0, angle_offset: 0.0 },
+        TimingCurvePoint { elapsed: 0.8, power_bonus: -1.0, stability_factor: 0.9, angle_offset: 10.0 },
+        TimingCurvePoint { elapsed: 1.0, power_bonus: -2.0, stability_factor: 0.7, angle_offset: 20.0 },
     ]
 }
 
@@ -1277,9 +1277,9 @@ fn default_timing_curve() -> Vec<TimingCurvePoint> {
 /// @spec 30604_shot_attributes_spec.md#req-30604-060
 fn default_approach_curve() -> Vec<ApproachCurvePoint> {
     vec![
-        ApproachCurvePoint { dot: -1.0, power_factor: 0.7, angle_offset: 20.0 },
-        ApproachCurvePoint { dot: 0.0, power_factor: 1.0, angle_offset: 0.0 },
-        ApproachCurvePoint { dot: 1.0, power_factor: 1.2, angle_offset: -10.0 },
+        ApproachCurvePoint { dot: -1.0, power_bonus: -2.0, angle_offset: 20.0 },
+        ApproachCurvePoint { dot: 0.0, power_bonus: 0.0, angle_offset: 0.0 },
+        ApproachCurvePoint { dot: 1.0, power_bonus: 3.0, angle_offset: -10.0 },
     ]
 }
 
@@ -1287,10 +1287,10 @@ fn default_approach_curve() -> Vec<ApproachCurvePoint> {
 /// @spec 30604_shot_attributes_spec.md#req-30604-062
 fn default_distance_curve() -> Vec<DistanceCurvePoint> {
     vec![
-        DistanceCurvePoint { distance: 0.5, power_factor: 1.1, stability_factor: 1.1, accuracy_factor: 1.1 },
-        DistanceCurvePoint { distance: 1.0, power_factor: 1.0, stability_factor: 1.0, accuracy_factor: 1.0 },
-        DistanceCurvePoint { distance: 1.5, power_factor: 0.7, stability_factor: 0.7, accuracy_factor: 0.7 },
-        DistanceCurvePoint { distance: 2.0, power_factor: 0.4, stability_factor: 0.4, accuracy_factor: 0.4 },
+        DistanceCurvePoint { distance: 0.5, power_bonus: 1.0, stability_factor: 1.1, accuracy_factor: 1.1 },
+        DistanceCurvePoint { distance: 1.0, power_bonus: 0.0, stability_factor: 1.0, accuracy_factor: 1.0 },
+        DistanceCurvePoint { distance: 1.5, power_bonus: -1.5, stability_factor: 0.7, accuracy_factor: 0.7 },
+        DistanceCurvePoint { distance: 2.0, power_bonus: -3.0, stability_factor: 0.4, accuracy_factor: 0.4 },
     ]
 }
 
@@ -1298,7 +1298,7 @@ fn default_distance_curve() -> Vec<DistanceCurvePoint> {
 /// @spec 30604_shot_attributes_spec.md#req-30604-057
 fn default_volley_factors() -> VolleyFactors {
     VolleyFactors {
-        power_factor: 0.8,
+        power_bonus: -1.0,
         stability_factor: 0.7,
         angle_offset: 0.0,
     }
