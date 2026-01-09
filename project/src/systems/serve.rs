@@ -1,73 +1,183 @@
 //! サーブ処理システム
 //! @spec 30102_serve_spec.md
 //!
-//! Serve状態でサーバーがショット入力をするとボールを生成しShotEventを発行する。
-//! ボールの速度はサーブ実行時に直接設定する（commands.spawn() の遅延適用対策）。
-//! Rally状態への遷移は serve_to_rally_system が担当する。
+//! v0.4: トス→ヒット方式
+//! 1回目ボタン: トス開始（ボールを上に投げる）
+//! 2回目ボタン: ヒット（ボールを打つ）
+//! ヒット可能高さ外でボタン押下しても発射されない
+//! タイムアウトまたはボール落下でFault
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, BallBundle, InputState, LogicalPosition, Player};
+use crate::components::{Ball, BallBundle, InputState, LogicalPosition, Player, TossBall, TossBallBundle, Velocity};
 use crate::core::{CourtSide, ShotEvent};
+use crate::resource::scoring::{MatchFlowState, ServeState, ServeSubPhase};
 use crate::resource::{GameConfig, MatchScore};
 
-/// サーブ実行システム
-/// @spec 30102_serve_spec.md#req-30102-002
-/// @spec 30102_serve_spec.md#req-30102-003
-///
-/// Serve状態でサーバーがBボタンを押すとボールを生成しShotEventを発行する。
-pub fn serve_execute_system(
+/// ServeState リソースの初期化/リセットシステム
+/// @spec 30102_serve_spec.md#req-30102-080
+/// Serve状態に入った時にServeStateを初期化する
+pub fn serve_init_system(
     mut commands: Commands,
-    config: Res<GameConfig>,
-    match_score: Res<MatchScore>,
-    player_query: Query<(&Player, &LogicalPosition, &InputState)>,
-    ball_query: Query<Entity, With<Ball>>,
-    mut shot_event_writer: MessageWriter<ShotEvent>,
+    state: Res<State<MatchFlowState>>,
+    serve_state: Option<Res<ServeState>>,
 ) {
-    // @spec 30102_serve_spec.md#req-30102-002: すでにボールがある場合は何もしない
-    if !ball_query.is_empty() {
+    if *state.get() != MatchFlowState::Serve {
         return;
     }
 
-    // @spec 30102_serve_spec.md#req-30102-001: サーバーを特定（CourtSideで直接検索）
+    // ServeStateがない場合のみ初期化（あれば前回のfault_countを維持）
+    if serve_state.is_none() {
+        commands.insert_resource(ServeState::new());
+    }
+}
+
+/// トス入力システム（1回目ボタン）
+/// @spec 30102_serve_spec.md#req-30102-080
+/// Waiting状態でショットボタンを押すとトスを開始
+pub fn serve_toss_input_system(
+    mut commands: Commands,
+    config: Res<GameConfig>,
+    match_score: Res<MatchScore>,
+    mut serve_state: ResMut<ServeState>,
+    player_query: Query<(&Player, &LogicalPosition, &InputState)>,
+    toss_ball_query: Query<Entity, With<TossBall>>,
+    ball_query: Query<Entity, With<Ball>>,
+) {
+    // @spec 30102_serve_spec.md#req-30102-080: Waiting状態でのみトス可能
+    if serve_state.phase != ServeSubPhase::Waiting {
+        return;
+    }
+
+    // すでにトスボールまたは通常ボールがある場合は何もしない
+    if !toss_ball_query.is_empty() || !ball_query.is_empty() {
+        return;
+    }
+
+    // サーバーを特定
     let Some((player, logical_pos, input_state)) = player_query
         .iter()
         .find(|(p, _, _)| p.court_side == match_score.server)
     else {
-        warn!("Server player {:?} not found", match_score.server);
         return;
     };
 
-    // @spec 30102_serve_spec.md#req-30102-002: サーバーのショット入力をチェック
+    // ショット入力をチェック
     if !input_state.shot_pressed {
         return;
     }
 
-    // @spec 30102_serve_spec.md#req-30102-002: 入力方向を取得
-    let raw_direction = input_state.movement;
+    // @spec 30102_serve_spec.md#req-30102-080: トスボール生成
+    let toss_pos = logical_pos.value + Vec3::new(0.0, config.serve.toss_start_offset_y, 0.0);
+    let toss_vel = Vec3::new(0.0, config.serve.toss_velocity_y, 0.0);
 
-    // 入力がない場合は相手コート方向をデフォルトに
+    commands.spawn(TossBallBundle::new(toss_pos, toss_vel));
+
+    // ServeState更新
+    serve_state.start_toss(logical_pos.value);
+
+    info!(
+        "Toss: Ball tossed at {:?} with velocity {:?} by Player{}",
+        toss_pos, toss_vel, player.id
+    );
+}
+
+/// トス物理システム（重力適用）
+/// @spec 30102_serve_spec.md#req-30102-081
+/// トスボールに重力を適用する
+pub fn serve_toss_physics_system(
+    config: Res<GameConfig>,
+    time: Res<Time>,
+    mut serve_state: ResMut<ServeState>,
+    mut toss_ball_query: Query<(&mut LogicalPosition, &mut Velocity), With<TossBall>>,
+) {
+    // Tossing状態でのみ実行
+    if serve_state.phase != ServeSubPhase::Tossing {
+        return;
+    }
+
+    for (mut pos, mut vel) in toss_ball_query.iter_mut() {
+        // 重力適用
+        vel.value.y += config.physics.gravity * time.delta_secs();
+
+        // 位置更新
+        pos.value += vel.value * time.delta_secs();
+    }
+
+    // トス時間更新
+    serve_state.update_toss_time(time.delta_secs());
+}
+
+/// ヒット入力システム（2回目ボタン）
+/// @spec 30102_serve_spec.md#req-30102-082
+/// @spec 30102_serve_spec.md#req-30102-083
+/// Tossing状態でショットボタンを押すとヒットを試行
+pub fn serve_hit_input_system(
+    mut commands: Commands,
+    config: Res<GameConfig>,
+    match_score: Res<MatchScore>,
+    mut serve_state: ResMut<ServeState>,
+    mut next_state: ResMut<NextState<MatchFlowState>>,
+    player_query: Query<(&Player, &LogicalPosition, &InputState)>,
+    toss_ball_query: Query<(Entity, &LogicalPosition), With<TossBall>>,
+    mut shot_event_writer: MessageWriter<ShotEvent>,
+) {
+    // @spec 30102_serve_spec.md#req-30102-082: Tossing状態でのみヒット可能
+    if serve_state.phase != ServeSubPhase::Tossing {
+        return;
+    }
+
+    // サーバーを特定
+    let Some((player, player_pos, input_state)) = player_query
+        .iter()
+        .find(|(p, _, _)| p.court_side == match_score.server)
+    else {
+        return;
+    };
+
+    // ショット入力をチェック
+    if !input_state.shot_pressed {
+        return;
+    }
+
+    // トスボールを取得
+    let Some((toss_entity, toss_pos)) = toss_ball_query.iter().next() else {
+        return;
+    };
+
+    let ball_height = toss_pos.value.y;
+
+    // @spec 30102_serve_spec.md#req-30102-083: ヒット可能高さ判定
+    if ball_height < config.serve.hit_height_min || ball_height > config.serve.hit_height_max {
+        // ヒット可能範囲外: 何もしない
+        info!(
+            "Serve hit ignored: ball height {:.2}m not in range [{:.2}, {:.2}]",
+            ball_height, config.serve.hit_height_min, config.serve.hit_height_max
+        );
+        return;
+    }
+
+    // @spec 30102_serve_spec.md#req-30102-082: ヒット成功
+    // トスボールを削除
+    commands.entity(toss_entity).despawn();
+
+    // 入力方向を取得
+    let raw_direction = input_state.movement;
     let direction = if raw_direction.length() > 0.0 {
         raw_direction.normalize()
     } else {
         match match_score.server {
-            CourtSide::Player1 => Vec2::new(config.serve.p1_default_direction_x, 0.0), // Player1: +X方向（2Pコートへ）
-            CourtSide::Player2 => Vec2::new(config.serve.p2_default_direction_x, 0.0), // Player2: -X方向（1Pコートへ）
+            CourtSide::Player1 => Vec2::new(config.serve.p1_default_direction_x, 0.0),
+            CourtSide::Player2 => Vec2::new(config.serve.p2_default_direction_x, 0.0),
         }
     };
 
-    // @spec 30102_serve_spec.md#req-30102-002: ボールを生成（プレイヤーの足元 + オフセット）
-    let ball_spawn_offset_y = config.serve.ball_spawn_offset_y;
-    let ball_pos = logical_pos.value + Vec3::new(0.0, ball_spawn_offset_y, 0.0);
-
     // @spec 30102_serve_spec.md#req-30102-060: オーバーハンドサーブの弾道計算
-    // commands.spawn() は遅延適用されるため、ここで直接速度を計算する
     let speed = config.serve.serve_speed;
     let angle_rad = config.serve.serve_angle.to_radians();
     let cos_angle = angle_rad.cos();
     let sin_angle = angle_rad.sin();
 
-    // Vec2(x, y) -> Vec3(x, 0, y) で XZ平面に変換
     let horizontal_dir = Vec3::new(direction.x, 0.0, direction.y).normalize();
     let ball_velocity = Vec3::new(
         horizontal_dir.x * speed * cos_angle,
@@ -75,80 +185,172 @@ pub fn serve_execute_system(
         horizontal_dir.z * speed * cos_angle,
     );
 
-    // サーバー情報を LastShooter に設定（自己衝突回避のため）
-    info!(
-        "Serve: Creating ball with LastShooter = {:?}",
-        match_score.server
-    );
-    commands.spawn(BallBundle::with_shooter(ball_pos, ball_velocity, match_score.server));
-    info!(
-        "Serve: Ball spawned at {:?} with velocity {:?} by Player{}",
-        ball_pos, ball_velocity, player.id
-    );
+    // 打点位置（トスボールの位置を使用）
+    let hit_pos = toss_pos.value;
 
-    // @spec 30102_serve_spec.md#req-30102-002: ShotEvent を発行
-    // serve_to_rally_system が状態遷移を行う
-    // NOTE: ボール速度は上記で直接設定済み（commands.spawn の遅延適用対策）
+    // 通常ボールを生成
+    commands.spawn(BallBundle::with_shooter(hit_pos, ball_velocity, match_score.server));
+
+    // ServeState更新
+    serve_state.on_hit_success();
+
+    // @spec 30102_serve_spec.md#req-30102-082: Rally状態に遷移
+    next_state.set(MatchFlowState::Rally);
+
+    // ShotEvent発行
     shot_event_writer.write(ShotEvent {
         player_id: player.id,
         court_side: match_score.server,
         direction,
-        jump_height: logical_pos.value.y,
+        jump_height: player_pos.value.y,
     });
 
     info!(
-        "Serve: ShotEvent emitted for Player{}, direction: {:?}",
-        player.id, direction
+        "Serve hit success: Ball at {:?} with velocity {:?} by Player{}",
+        hit_pos, ball_velocity, player.id
     );
+}
+
+/// トスタイムアウト/落下判定システム
+/// @spec 30102_serve_spec.md#req-30102-084
+/// タイムアウトまたはボールが落下しすぎた場合Faultとする
+pub fn serve_toss_timeout_system(
+    mut commands: Commands,
+    config: Res<GameConfig>,
+    mut serve_state: ResMut<ServeState>,
+    toss_ball_query: Query<(Entity, &LogicalPosition), With<TossBall>>,
+) {
+    // Tossing状態でのみ実行
+    if serve_state.phase != ServeSubPhase::Tossing {
+        return;
+    }
+
+    // トスボールを取得
+    let Some((toss_entity, toss_pos)) = toss_ball_query.iter().next() else {
+        return;
+    };
+
+    let ball_height = toss_pos.value.y;
+    let is_timeout = serve_state.toss_time >= config.serve.toss_timeout;
+    let is_too_low = ball_height < config.serve.hit_height_min;
+
+    if is_timeout || is_too_low {
+        // @spec 30102_serve_spec.md#req-30102-084: Fault
+        commands.entity(toss_entity).despawn();
+        serve_state.record_fault();
+
+        let reason = if is_timeout { "timeout" } else { "ball too low" };
+        info!(
+            "Serve fault: {} (fault_count: {})",
+            reason, serve_state.fault_count
+        );
+    }
+}
+
+/// ダブルフォルト処理システム
+/// @spec 30102_serve_spec.md#req-30102-089
+/// fault_countが2に達したら相手にポイントを与える
+pub fn serve_double_fault_system(
+    mut serve_state: ResMut<ServeState>,
+    mut match_score: ResMut<MatchScore>,
+    mut next_state: ResMut<NextState<MatchFlowState>>,
+) {
+    // @spec 30102_serve_spec.md#req-30102-089: ダブルフォルト判定
+    if !serve_state.is_double_fault() {
+        return;
+    }
+
+    // 相手にポイント
+    let receiver = match_score.server.opponent();
+    match_score.add_point(receiver);
+
+    info!(
+        "Double fault! Point to {:?}. Score: P1={}, P2={}",
+        receiver,
+        match_score.get_point_index(CourtSide::Player1),
+        match_score.get_point_index(CourtSide::Player2)
+    );
+
+    // ServeStateリセット
+    serve_state.reset_for_new_point();
+
+    // PointEnd状態に遷移
+    next_state.set(MatchFlowState::PointEnd);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// TST-30104-006: サーブ権の管理テスト
-    /// @spec 30102_serve_spec.md#req-30102-001
+    /// TST-30104-080: トス開始テスト
+    /// @spec 30102_serve_spec.md#req-30102-080
     #[test]
-    fn test_req_30102_001_server_determination() {
-        // Player1 がサーバーの場合
-        let server = CourtSide::Player1;
-        let server_id = match server {
-            CourtSide::Player1 => 1,
-            CourtSide::Player2 => 2,
-        };
-        assert_eq!(server_id, 1);
+    fn test_req_30102_080_toss_start() {
+        let mut serve_state = ServeState::new();
+        assert_eq!(serve_state.phase, ServeSubPhase::Waiting);
 
-        // Player2 がサーバーの場合
-        let server = CourtSide::Player2;
-        let server_id = match server {
-            CourtSide::Player1 => 1,
-            CourtSide::Player2 => 2,
-        };
-        assert_eq!(server_id, 2);
+        let origin = Vec3::new(0.0, 0.0, -5.0);
+        serve_state.start_toss(origin);
+
+        assert_eq!(serve_state.phase, ServeSubPhase::Tossing);
+        assert_eq!(serve_state.toss_origin, Some(origin));
+        assert_eq!(serve_state.toss_time, 0.0);
     }
 
-    /// TST-30104-007: サーブ方向デフォルト値テスト
-    /// @spec 30102_serve_spec.md#req-30102-002
+    /// TST-30104-084: トスタイムアウトテスト
+    /// @spec 30102_serve_spec.md#req-30102-084
     #[test]
-    fn test_req_30102_002_default_direction() {
-        // Player1 のデフォルト方向: +Z（2Pコートへ）
-        let player1_default = Vec2::new(0.0, 1.0);
-        assert!((player1_default.y - 1.0).abs() < 0.001);
+    fn test_req_30102_084_toss_timeout() {
+        let mut serve_state = ServeState::new();
+        serve_state.start_toss(Vec3::ZERO);
 
-        // Player2 のデフォルト方向: -Z（1Pコートへ）
-        let player2_default = Vec2::new(0.0, -1.0);
-        assert!((player2_default.y - (-1.0)).abs() < 0.001);
+        // タイムアウト前
+        serve_state.update_toss_time(2.9);
+        assert!(!serve_state.is_double_fault());
+
+        // fault記録
+        serve_state.record_fault();
+        assert_eq!(serve_state.fault_count, 1);
+        assert_eq!(serve_state.phase, ServeSubPhase::Waiting);
     }
 
-    /// TST-30104-008: ボール生成位置テスト
-    /// @spec 30102_serve_spec.md#req-30102-002
+    /// TST-30104-089: ダブルフォルトテスト
+    /// @spec 30102_serve_spec.md#req-30102-089
     #[test]
-    fn test_req_30102_002_ball_spawn_position() {
-        let player_pos = Vec3::new(0.0, 0.0, -2.0);
-        let ball_pos = player_pos + Vec3::new(0.0, 0.5, 0.0);
+    fn test_req_30102_089_double_fault() {
+        let mut serve_state = ServeState::new();
 
-        assert!((ball_pos.x - 0.0).abs() < 0.001);
-        assert!((ball_pos.y - 0.5).abs() < 0.001);
-        assert!((ball_pos.z - (-2.0)).abs() < 0.001);
+        // 1回目のfault
+        serve_state.record_fault();
+        assert!(!serve_state.is_double_fault());
+        assert_eq!(serve_state.fault_count, 1);
+
+        // 2回目のfault
+        serve_state.record_fault();
+        assert!(serve_state.is_double_fault());
+        assert_eq!(serve_state.fault_count, 2);
+    }
+
+    /// TST-30104-083: ヒット可能高さテスト
+    /// @spec 30102_serve_spec.md#req-30102-083
+    #[test]
+    fn test_req_30102_083_hit_height_range() {
+        let hit_min = 1.8;
+        let hit_max = 2.7;
+
+        // 範囲内
+        let ball_height = 2.2;
+        let can_hit = ball_height >= hit_min && ball_height <= hit_max;
+        assert!(can_hit);
+
+        // 範囲外（低すぎ）
+        let ball_height = 1.5;
+        let can_hit = ball_height >= hit_min && ball_height <= hit_max;
+        assert!(!can_hit);
+
+        // 範囲外（高すぎ）
+        let ball_height = 3.0;
+        let can_hit = ball_height >= hit_min && ball_height <= hit_max;
+        assert!(!can_hit);
     }
 }

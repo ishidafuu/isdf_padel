@@ -68,12 +68,22 @@ GameConfig(
         stick_deadzone: 0.1,
     ),
     // @spec 30102_serve_spec.md#req-30102-060
+    // @spec 30102_serve_spec.md#req-30102-080
     serve: ServeConfig(
         ball_spawn_offset_y: 2.0,       // オーバーハンドサーブの打点高さ
-        serve_speed: 4.0,               // m/s
-        serve_angle: 20.0,              // 度
+        serve_speed: 10.0,              // m/s
+        serve_angle: -15.0,             // 度（負の値=下向き発射）
         p1_default_direction_x: 1.0,
         p2_default_direction_x: -1.0,
+        // トス→ヒット方式パラメータ
+        toss_start_offset_y: 1.0,       // トスボール生成高さ（手元）
+        toss_velocity_y: 3.5,           // トス上向き初速度 m/s
+        toss_timeout: 3.0,              // トス失敗までの時間（秒）
+        hit_height_min: 1.8,            // ヒット可能最低高さ（m）
+        hit_height_max: 2.7,            // ヒット可能最高高さ（m）
+        hit_height_optimal: 2.2,        // AI用ヒット最適高さ（m）
+        serve_baseline_x_p1: -7.0,      // Player1のベースライン位置
+        serve_baseline_x_p2: 7.0,       // Player2のベースライン位置
     ),
     shadow: ShadowConfig(
         player_size: (25.0, 10.0),

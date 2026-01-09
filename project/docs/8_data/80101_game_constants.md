@@ -1,6 +1,6 @@
 # Game Constants
 
-**Version**: 3.2.0
+**Version**: 3.4.0
 **Last Updated**: 2026-01-09
 **Status**: Active
 
@@ -339,14 +339,23 @@ let angle = if is_jump_shot {
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | ball_spawn_offset_y | f32 | 2.0 | オーバーハンドサーブの打点高さオフセット（m） |
-| serve_speed | f32 | 4.0 | サーブ速度（m/s） |
-| serve_angle | f32 | 20.0 | サーブ角度（度） |
+| serve_speed | f32 | 10.0 | サーブ速度（m/s） |
+| serve_angle | f32 | -15.0 | サーブ角度（度、負の値=下向き） |
 | p1_default_direction_x | f32 | 1.0 | Player1のデフォルトサーブ方向X成分 |
 | p2_default_direction_x | f32 | -1.0 | Player2のデフォルトサーブ方向X成分 |
+| toss_start_offset_y | f32 | 1.0 | トスボール生成高さ（手元位置） |
+| toss_velocity_y | f32 | 3.5 | トス上向き初速度（m/s） |
+| toss_timeout | f32 | 3.0 | トス失敗までの時間（秒） |
+| hit_height_min | f32 | 1.8 | ヒット可能最低高さ（m） |
+| hit_height_max | f32 | 2.7 | ヒット可能最高高さ（m） |
+| hit_height_optimal | f32 | 2.2 | AI用ヒット最適高さ（m） |
+| serve_baseline_x_p1 | f32 | -7.0 | Player1のベースライン位置 |
+| serve_baseline_x_p2 | f32 | 7.0 | Player2のベースライン位置 |
 
 ```rust
 /// サーブ設定
 /// @spec 30102_serve_spec.md#req-30102-060
+/// @spec 30102_serve_spec.md#req-30102-080
 #[derive(Deserialize, Clone, Debug)]
 pub struct ServeConfig {
     /// オーバーハンドサーブの打点高さオフセット（m）
@@ -364,13 +373,45 @@ pub struct ServeConfig {
     /// Player2のデフォルトサーブ方向X成分
     #[serde(default = "default_p2_direction_x")]
     pub p2_default_direction_x: f32,
+    /// トスボール生成高さ（手元位置）
+    #[serde(default = "default_toss_start_offset_y")]
+    pub toss_start_offset_y: f32,
+    /// トス上向き初速度（m/s）
+    #[serde(default = "default_toss_velocity_y")]
+    pub toss_velocity_y: f32,
+    /// トス失敗までの時間（秒）
+    #[serde(default = "default_toss_timeout")]
+    pub toss_timeout: f32,
+    /// ヒット可能最低高さ（m）
+    #[serde(default = "default_hit_height_min")]
+    pub hit_height_min: f32,
+    /// ヒット可能最高高さ（m）
+    #[serde(default = "default_hit_height_max")]
+    pub hit_height_max: f32,
+    /// AI用ヒット最適高さ（m）
+    #[serde(default = "default_hit_height_optimal")]
+    pub hit_height_optimal: f32,
+    /// Player1のベースライン位置
+    #[serde(default = "default_serve_baseline_x_p1")]
+    pub serve_baseline_x_p1: f32,
+    /// Player2のベースライン位置
+    #[serde(default = "default_serve_baseline_x_p2")]
+    pub serve_baseline_x_p2: f32,
 }
 
 fn default_ball_spawn_offset_y() -> f32 { 2.0 }
-fn default_serve_speed() -> f32 { 4.0 }
-fn default_serve_angle() -> f32 { 20.0 }
+fn default_serve_speed() -> f32 { 10.0 }
+fn default_serve_angle() -> f32 { -15.0 }
 fn default_p1_direction_x() -> f32 { 1.0 }
 fn default_p2_direction_x() -> f32 { -1.0 }
+fn default_toss_start_offset_y() -> f32 { 1.0 }
+fn default_toss_velocity_y() -> f32 { 3.5 }
+fn default_toss_timeout() -> f32 { 3.0 }
+fn default_hit_height_min() -> f32 { 1.8 }
+fn default_hit_height_max() -> f32 { 2.7 }
+fn default_hit_height_optimal() -> f32 { 2.2 }
+fn default_serve_baseline_x_p1() -> f32 { -7.0 }
+fn default_serve_baseline_x_p2() -> f32 { 7.0 }
 ```
 
 **使用例**:
@@ -386,6 +427,14 @@ let velocity = Vec3::new(
     speed * angle_rad.sin(),
     direction.z * speed * angle_rad.cos(),
 );
+
+// トス開始
+let toss_pos = player_pos + Vec3::new(0.0, config.serve.toss_start_offset_y, 0.0);
+let toss_vel = Vec3::new(0.0, config.serve.toss_velocity_y, 0.0);
+
+// ヒット可能判定
+let can_hit = ball_pos.y >= config.serve.hit_height_min
+           && ball_pos.y <= config.serve.hit_height_max;
 ```
 
 ---
@@ -701,10 +750,18 @@ GameConfig(
     ),
     serve: ServeConfig(
         ball_spawn_offset_y: 2.0,
-        serve_speed: 4.0,
-        serve_angle: 20.0,
+        serve_speed: 10.0,
+        serve_angle: -15.0,
         p1_default_direction_x: 1.0,
         p2_default_direction_x: -1.0,
+        toss_start_offset_y: 1.0,
+        toss_velocity_y: 3.5,
+        toss_timeout: 3.0,
+        hit_height_min: 1.8,
+        hit_height_max: 2.7,
+        hit_height_optimal: 2.2,
+        serve_baseline_x_p1: -7.0,
+        serve_baseline_x_p2: 7.0,
     ),
     ai: AiConfig(
         move_speed: 4.5,
@@ -941,6 +998,13 @@ spin_physics: SpinPhysicsConfig(
 ---
 
 ## Change Log
+
+### 2026-01-09 - v3.4.0
+
+- ServeConfigにトス→ヒット方式パラメータ追加
+  - toss_start_offset_y, toss_velocity_y, toss_timeout
+  - hit_height_min, hit_height_max, hit_height_optimal
+  - serve_baseline_x_p1, serve_baseline_x_p2
 
 ### 2026-01-09 - v3.3.0
 

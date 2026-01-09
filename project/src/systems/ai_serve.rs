@@ -1,37 +1,43 @@
 //! AI自動サーブシステム
-//! @spec 30102_serve_spec.md#req-30102-070
-//! @spec 30102_serve_spec.md#req-30102-071
+//! @spec 30102_serve_spec.md#req-30102-087
+//! @spec 30102_serve_spec.md#req-30102-088
 //!
-//! AIプレイヤーがサーブ権を持つ時、一定時間後に自動でサーブを実行する。
+//! v0.4: トス→ヒット方式
+//! AIプレイヤーがサーブ権を持つ時、
+//! 1. 待機時間後に自動でトスを実行
+//! 2. ボールが最適高さに達したらヒットを実行
 
 use bevy::prelude::*;
 use rand::Rng;
 
-use crate::components::{AiController, Ball, BallBundle, LogicalPosition, Player};
+use crate::components::{AiController, Ball, BallBundle, LogicalPosition, Player, TossBall, TossBallBundle};
 use crate::core::{CourtSide, ShotEvent};
+use crate::resource::scoring::{ServeState, ServeSubPhase};
 use crate::resource::{GameConfig, MatchFlowState, MatchScore};
 
 /// AIサーブ待機タイマー（リソース）
-/// @spec 30102_serve_spec.md#req-30102-070
+/// @spec 30102_serve_spec.md#req-30102-087
 ///
 /// サーブ権を持つAIの待機時間を管理する。
-/// サーブは1人しか行わないため、リソースで管理。
 #[derive(Resource, Default)]
 pub struct AiServeTimer {
-    /// 残り待機時間
-    pub timer: Option<Timer>,
+    /// 残り待機時間（トス開始用）
+    pub toss_timer: Option<Timer>,
     /// サーブ方向のZ軸オフセット（事前決定）
     /// @spec 30102_serve_spec.md#req-30102-071
     pub direction_z_offset: f32,
+    /// ヒット済みフラグ（連続ヒット防止）
+    pub hit_executed: bool,
 }
 
 /// AIサーブタイマー初期化システム
-/// @spec 30102_serve_spec.md#req-30102-070
+/// @spec 30102_serve_spec.md#req-30102-087
 ///
-/// Serve状態に入った時、AIがサーバーならタイマーを初期化する。
+/// Serve状態に入った時、AIがサーバーでWaiting状態ならタイマーを初期化する。
 pub fn ai_serve_timer_init_system(
     config: Res<GameConfig>,
     match_score: Res<MatchScore>,
+    serve_state: Res<ServeState>,
     ai_query: Query<&Player, With<AiController>>,
     mut ai_serve_timer: ResMut<AiServeTimer>,
 ) {
@@ -42,16 +48,22 @@ pub fn ai_serve_timer_init_system(
 
     if !is_ai_server {
         // 人間がサーバーの場合、タイマーをクリア
-        ai_serve_timer.timer = None;
+        ai_serve_timer.toss_timer = None;
+        ai_serve_timer.hit_executed = false;
+        return;
+    }
+
+    // Waiting状態でのみタイマー初期化
+    if serve_state.phase != ServeSubPhase::Waiting {
         return;
     }
 
     // 既にタイマーが設定されている場合はスキップ
-    if ai_serve_timer.timer.is_some() {
+    if ai_serve_timer.toss_timer.is_some() {
         return;
     }
 
-    // @spec 30102_serve_spec.md#req-30102-070: ランダムな待機時間を決定
+    // @spec 30102_serve_spec.md#req-30102-087: ランダムな待機時間を決定
     let mut rng = rand::rng();
     let delay = rng.random_range(config.ai.serve_delay_min..=config.ai.serve_delay_max);
 
@@ -59,34 +71,40 @@ pub fn ai_serve_timer_init_system(
     let direction_z_offset =
         rng.random_range(-config.ai.serve_direction_variance..=config.ai.serve_direction_variance);
 
-    ai_serve_timer.timer = Some(Timer::from_seconds(delay, TimerMode::Once));
+    ai_serve_timer.toss_timer = Some(Timer::from_seconds(delay, TimerMode::Once));
     ai_serve_timer.direction_z_offset = direction_z_offset;
+    ai_serve_timer.hit_executed = false;
 
     info!(
-        "AI serve timer initialized: {:.2}s, direction_z_offset: {:.2}",
+        "AI toss timer initialized: {:.2}s, direction_z_offset: {:.2}",
         delay, direction_z_offset
     );
 }
 
-/// AIサーブ実行システム
-/// @spec 30102_serve_spec.md#req-30102-070
-/// @spec 30102_serve_spec.md#req-30102-071
+/// AIトス実行システム
+/// @spec 30102_serve_spec.md#req-30102-087
 ///
-/// タイマーが完了したらサーブを実行する。
-pub fn ai_serve_execute_system(
+/// タイマーが完了したらトスを実行する。
+pub fn ai_serve_toss_system(
     mut commands: Commands,
     time: Res<Time>,
     config: Res<GameConfig>,
     match_score: Res<MatchScore>,
+    mut serve_state: ResMut<ServeState>,
     mut ai_serve_timer: ResMut<AiServeTimer>,
     ai_query: Query<(&Player, &LogicalPosition), With<AiController>>,
+    toss_ball_query: Query<Entity, With<TossBall>>,
     ball_query: Query<Entity, With<Ball>>,
-    mut shot_event_writer: MessageWriter<ShotEvent>,
 ) {
     // タイマーがなければスキップ
-    let Some(ref mut timer) = ai_serve_timer.timer else {
+    let Some(ref mut timer) = ai_serve_timer.toss_timer else {
         return;
     };
+
+    // Waiting状態でのみトス可能
+    if serve_state.phase != ServeSubPhase::Waiting {
+        return;
+    }
 
     // タイマー更新
     timer.tick(time.delta());
@@ -97,39 +115,107 @@ pub fn ai_serve_execute_system(
     }
 
     // 既にボールがある場合は何もしない
-    if !ball_query.is_empty() {
-        ai_serve_timer.timer = None;
+    if !toss_ball_query.is_empty() || !ball_query.is_empty() {
+        ai_serve_timer.toss_timer = None;
         return;
     }
 
     // AIサーバーを取得
-    let Some((player, logical_pos)) = ai_query
+    let Some((_player, logical_pos)) = ai_query
         .iter()
         .find(|(p, _)| p.court_side == match_score.server)
     else {
-        warn!("AI server not found");
-        ai_serve_timer.timer = None;
+        warn!("AI server not found for toss");
+        ai_serve_timer.toss_timer = None;
         return;
     };
 
-    // @spec 30102_serve_spec.md#req-30102-060: ボール生成位置
-    let ball_spawn_offset_y = config.serve.ball_spawn_offset_y;
-    let ball_pos = logical_pos.value + Vec3::new(0.0, ball_spawn_offset_y, 0.0);
+    // @spec 30102_serve_spec.md#req-30102-087: トスボール生成
+    let toss_pos = logical_pos.value + Vec3::new(0.0, config.serve.toss_start_offset_y, 0.0);
+    let toss_vel = Vec3::new(0.0, config.serve.toss_velocity_y, 0.0);
 
-    // @spec 30102_serve_spec.md#req-30102-071: サーブ方向（ランダムバリエーション付き）
+    commands.spawn(TossBallBundle::new(toss_pos, toss_vel));
+
+    // ServeState更新
+    serve_state.start_toss(logical_pos.value);
+
+    info!(
+        "AI Toss: Ball tossed at {:?} with velocity {:?} by {:?}",
+        toss_pos, toss_vel, match_score.server
+    );
+
+    // タイマーをクリア（ヒット待ちに遷移）
+    ai_serve_timer.toss_timer = None;
+}
+
+/// AIヒット実行システム
+/// @spec 30102_serve_spec.md#req-30102-088
+///
+/// ボールが最適高さに達したらヒットを実行する。
+pub fn ai_serve_hit_system(
+    mut commands: Commands,
+    config: Res<GameConfig>,
+    match_score: Res<MatchScore>,
+    mut serve_state: ResMut<ServeState>,
+    mut next_state: ResMut<NextState<MatchFlowState>>,
+    mut ai_serve_timer: ResMut<AiServeTimer>,
+    ai_query: Query<(&Player, &LogicalPosition), With<AiController>>,
+    toss_ball_query: Query<(Entity, &LogicalPosition), With<TossBall>>,
+    mut shot_event_writer: MessageWriter<ShotEvent>,
+) {
+    // Tossing状態でのみヒット可能
+    if serve_state.phase != ServeSubPhase::Tossing {
+        return;
+    }
+
+    // ヒット済みならスキップ
+    if ai_serve_timer.hit_executed {
+        return;
+    }
+
+    // AIサーバーを取得
+    let Some((player, player_pos)) = ai_query
+        .iter()
+        .find(|(p, _)| p.court_side == match_score.server)
+    else {
+        return;
+    };
+
+    // トスボールを取得
+    let Some((toss_entity, toss_pos)) = toss_ball_query.iter().next() else {
+        return;
+    };
+
+    let ball_height = toss_pos.value.y;
+    let optimal_height = config.serve.hit_height_optimal;
+    let tolerance = 0.1; // ±0.1m
+
+    // @spec 30102_serve_spec.md#req-30102-088: 最適高さに達したらヒット
+    if (ball_height - optimal_height).abs() > tolerance {
+        return;
+    }
+
+    // ヒット可能範囲チェック（念のため）
+    if ball_height < config.serve.hit_height_min || ball_height > config.serve.hit_height_max {
+        return;
+    }
+
+    // ヒット実行
+    commands.entity(toss_entity).despawn();
+
+    // サーブ方向（ランダムバリエーション付き）
     let base_direction_x = match match_score.server {
         CourtSide::Player1 => config.serve.p1_default_direction_x,
         CourtSide::Player2 => config.serve.p2_default_direction_x,
     };
     let direction = Vec2::new(base_direction_x, ai_serve_timer.direction_z_offset);
 
-    // @spec 30102_serve_spec.md#req-30102-060: オーバーハンドサーブの弾道計算
+    // オーバーハンドサーブの弾道計算
     let speed = config.serve.serve_speed;
     let angle_rad = config.serve.serve_angle.to_radians();
     let cos_angle = angle_rad.cos();
     let sin_angle = angle_rad.sin();
 
-    // Vec2(x, y) -> Vec3(x, 0, y) で XZ平面に変換
     let horizontal_dir = Vec3::new(direction.x, 0.0, direction.y).normalize();
     let ball_velocity = Vec3::new(
         horizontal_dir.x * speed * cos_angle,
@@ -137,33 +223,33 @@ pub fn ai_serve_execute_system(
         horizontal_dir.z * speed * cos_angle,
     );
 
-    // ボール生成
-    commands.spawn(BallBundle::with_shooter(
-        ball_pos,
-        ball_velocity,
-        match_score.server,
-    ));
+    // 打点位置（トスボールの位置を使用）
+    let hit_pos = toss_pos.value;
 
-    info!(
-        "AI Serve: Ball spawned at {:?} with velocity {:?} by {:?}",
-        ball_pos, ball_velocity, match_score.server
-    );
+    // 通常ボールを生成
+    commands.spawn(BallBundle::with_shooter(hit_pos, ball_velocity, match_score.server));
 
-    // ShotEvent を発行
+    // ServeState更新
+    serve_state.on_hit_success();
+
+    // Rally状態に遷移
+    next_state.set(MatchFlowState::Rally);
+
+    // ShotEvent発行
     shot_event_writer.write(ShotEvent {
         player_id: player.id,
         court_side: match_score.server,
         direction,
-        jump_height: logical_pos.value.y,
+        jump_height: player_pos.value.y,
     });
 
-    info!(
-        "AI Serve: ShotEvent emitted for {:?}, direction: {:?}",
-        match_score.server, direction
-    );
+    // ヒット済みフラグを設定
+    ai_serve_timer.hit_executed = true;
 
-    // タイマーをクリア
-    ai_serve_timer.timer = None;
+    info!(
+        "AI Serve hit: Ball at {:?} with velocity {:?} by {:?}",
+        hit_pos, ball_velocity, match_score.server
+    );
 }
 
 /// AIサーブプラグイン
@@ -173,7 +259,11 @@ impl Plugin for AiServePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<AiServeTimer>().add_systems(
             Update,
-            (ai_serve_timer_init_system, ai_serve_execute_system)
+            (
+                ai_serve_timer_init_system,
+                ai_serve_toss_system,
+                ai_serve_hit_system,
+            )
                 .chain()
                 .run_if(in_state(MatchFlowState::Serve)),
         );
@@ -184,27 +274,43 @@ impl Plugin for AiServePlugin {
 mod tests {
     use super::*;
 
-    /// REQ-30102-070: AIサーブタイマーテスト
+    /// REQ-30102-087: AIサーブタイマーテスト
     #[test]
     fn test_ai_serve_timer_default() {
         let timer = AiServeTimer::default();
-        assert!(timer.timer.is_none());
+        assert!(timer.toss_timer.is_none());
         assert!((timer.direction_z_offset - 0.0).abs() < 0.001);
+        assert!(!timer.hit_executed);
     }
 
     /// REQ-30102-071: サーブ方向バリエーションテスト
     #[test]
     fn test_ai_serve_direction_variance() {
-        // バリエーションは ±0.5 の範囲
         let variance = 0.5;
         let min = -variance;
         let max = variance;
 
-        // ランダム値が範囲内であることを確認
         let mut rng = rand::rng();
         for _ in 0..100 {
             let offset: f32 = rng.random_range(min..=max);
             assert!(offset >= min && offset <= max);
         }
+    }
+
+    /// REQ-30102-088: 最適高さ判定テスト
+    #[test]
+    fn test_ai_serve_optimal_height() {
+        let optimal_height: f32 = 2.2;
+        let tolerance: f32 = 0.1;
+
+        // 範囲内
+        let ball_height: f32 = 2.25;
+        let is_optimal = (ball_height - optimal_height).abs() <= tolerance;
+        assert!(is_optimal);
+
+        // 範囲外
+        let ball_height: f32 = 2.5;
+        let is_optimal = (ball_height - optimal_height).abs() <= tolerance;
+        assert!(!is_optimal);
     }
 }

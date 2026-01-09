@@ -324,6 +324,7 @@ mod tests {
                 input_sensitivity: 1.0,
             },
             input_keys: crate::resource::config::InputKeysConfig::default(),
+            gamepad_buttons: crate::resource::config::GamepadButtonsConfig::default(),
             shadow: crate::resource::config::ShadowConfig::default(),
             shot_attributes: crate::resource::config::ShotAttributesConfig::default(),
             ai: crate::resource::config::AiConfig::default(),
@@ -332,6 +333,7 @@ mod tests {
             serve: crate::resource::config::ServeConfig::default(),
             spin_physics: crate::resource::config::SpinPhysicsConfig::default(),
             trajectory: crate::resource::config::TrajectoryConfig::default(),
+            character: crate::resource::config::CharacterConfig::default(),
         }
     }
 

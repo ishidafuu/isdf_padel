@@ -1,6 +1,6 @@
 # Serve Specification
 
-**Version**: 2.0.0
+**Version**: 3.0.0
 **Status**: Draft
 **Last Updated**: 2026-01-09
 
@@ -47,10 +47,10 @@
 
 ### REQ-30102-060: オーバーハンドサーブ
 **WHEN** サーブを実行する
-**THE SYSTEM SHALL** 高い打点からボールを発射する
+**THE SYSTEM SHALL** 高い打点からボールを下向きに発射する
 - 打点高さ: `config.serve.ball_spawn_offset_y`（デフォルト: 2.0）
-- 速度: `config.serve.serve_speed`（デフォルト: 4.0 m/s）
-- 角度: `config.serve.serve_angle`（デフォルト: 20度）
+- 速度: `config.serve.serve_speed`（デフォルト: 10.0 m/s）
+- 角度: `config.serve.serve_angle`（デフォルト: -15度、負の値=下向き）
 **テスト**: TST-30104-060
 
 ### REQ-30102-070: AI自動サーブ
@@ -67,6 +67,87 @@
 - Z方向: 中央 ± `config.ai.serve_direction_variance` の範囲でランダム
 - バリエーションデフォルト: ±0.5
 **テスト**: TST-30104-071
+
+### REQ-30102-080: トス開始
+**WHEN** サーブ権を持つ人間プレイヤーがショットボタンを押す
+**AND** MatchFlowState == Serve
+**AND** ServeSubPhase == Waiting
+**THE SYSTEM SHALL** トスを開始する
+- トスボール生成位置: プレイヤー位置 + (0, `config.serve.toss_start_offset_y`, 0)
+- 初速度: (0, `config.serve.toss_velocity_y`, 0)
+- ServeSubPhase を Tossing に遷移する
+- TossBall マーカーを付与する
+**テスト**: TST-30104-080
+
+### REQ-30102-081: トス物理
+**WHILE** ServeSubPhase == Tossing
+**THE SYSTEM SHALL** トスボールに重力を適用する
+- 重力: `config.physics.gravity`
+- 上昇後、落下する放物線軌道
+**テスト**: TST-30104-081
+
+### REQ-30102-082: ヒット入力
+**WHEN** サーブ権を持つ人間プレイヤーがショットボタンを押す
+**AND** ServeSubPhase == Tossing
+**AND** ボール高さが `config.serve.hit_height_min` 以上 `config.serve.hit_height_max` 以下
+**THE SYSTEM SHALL** サーブヒットを実行する
+- TossBall マーカーを削除し、通常 Ball に変換
+- 速度: `config.serve.serve_speed`
+- 角度: `config.serve.serve_angle`
+- MatchFlowState を Rally に遷移する
+**テスト**: TST-30104-082
+
+### REQ-30102-083: ヒット可能範囲
+**IF** ボール高さが `config.serve.hit_height_min` 未満
+**OR** ボール高さが `config.serve.hit_height_max` 超過
+**WHEN** プレイヤーがショットボタンを押す
+**THE SYSTEM SHALL** ヒットを無視する（何も起こらない）
+**テスト**: TST-30104-083
+
+### REQ-30102-084: トスタイムアウト
+**WHEN** ServeSubPhase == Tossing
+**AND** トス開始から `config.serve.toss_timeout` 秒経過
+**THE SYSTEM SHALL** Fault と判定する
+- トスボールを削除
+- fault_count をインクリメント
+- ServeSubPhase を Waiting に戻す
+**テスト**: TST-30104-084
+
+### REQ-30102-085: トス中移動禁止
+**WHILE** ServeSubPhase == Tossing
+**THE SYSTEM SHALL** サーバーの移動入力を無視する
+- 完全静止（X, Z 両方向）
+**テスト**: TST-30104-085
+
+### REQ-30102-086: ベースライン制限
+**WHILE** MatchFlowState == Serve
+**AND** ServeSubPhase == Waiting
+**THE SYSTEM SHALL** サーバーの X 方向移動を制限する
+- Player1: X座標を `config.serve.serve_baseline_x_p1` に固定
+- Player2: X座標を `config.serve.serve_baseline_x_p2` に固定
+- Z 方向のみ移動可能
+**テスト**: TST-30104-086
+
+### REQ-30102-087: AIトス実行
+**WHEN** サーブ権を持つ AI プレイヤーがサーブを開始する
+**AND** ServeSubPhase == Waiting
+**THE SYSTEM SHALL** 待機時間後にトスを自動実行する
+- 待機時間: `config.ai.serve_delay_min` ～ `config.ai.serve_delay_max`
+**テスト**: TST-30104-087
+
+### REQ-30102-088: AIヒット実行
+**WHEN** ServeSubPhase == Tossing
+**AND** AI がサーバー
+**AND** ボール高さが `config.serve.hit_height_optimal` ± 0.1m
+**THE SYSTEM SHALL** サーブヒットを自動実行する
+**テスト**: TST-30104-088
+
+### REQ-30102-089: ダブルフォルト
+**WHEN** fault_count が 2 に達する
+**THE SYSTEM SHALL** 相手プレイヤーに 1 ポイントを加算する
+- fault_count を 0 にリセット
+- 次のポイントを開始
+**テスト**: TST-30104-089
 
 ---
 
@@ -92,10 +173,18 @@
 | パラメータ | データパス | デフォルト値 | 説明 |
 |-----------|-----------|-------------|------|
 | 打点高さ | `config.serve.ball_spawn_offset_y` | 2.0 | オーバーハンドサーブの打点Y座標オフセット |
-| サーブ速度 | `config.serve.serve_speed` | 4.0 m/s | ボール初速度 |
-| サーブ角度 | `config.serve.serve_angle` | 20.0 | 発射角度（度） |
+| サーブ速度 | `config.serve.serve_speed` | 10.0 m/s | ボール初速度 |
+| サーブ角度 | `config.serve.serve_angle` | -15.0 | 発射角度（度、負の値=下向き） |
 | P1デフォルト方向X | `config.serve.p1_default_direction_x` | 1.0 | Player1のサーブ方向（X成分） |
 | P2デフォルト方向X | `config.serve.p2_default_direction_x` | -1.0 | Player2のサーブ方向（X成分） |
+| トス開始高さ | `config.serve.toss_start_offset_y` | 1.0 | トスボール生成高さ（手元） |
+| トス初速度 | `config.serve.toss_velocity_y` | 3.5 m/s | トス上向き初速度 |
+| トスタイムアウト | `config.serve.toss_timeout` | 3.0 | トス失敗までの時間（秒） |
+| ヒット可能最低高さ | `config.serve.hit_height_min` | 1.8 | ヒット可能な最低高さ（m） |
+| ヒット可能最高高さ | `config.serve.hit_height_max` | 2.7 | ヒット可能な最高高さ（m） |
+| ヒット最適高さ | `config.serve.hit_height_optimal` | 2.2 | AI用ヒット最適高さ（m） |
+| P1ベースラインX | `config.serve.serve_baseline_x_p1` | -7.0 | Player1のベースライン位置 |
+| P2ベースラインX | `config.serve.serve_baseline_x_p2` | 7.0 | Player2のベースライン位置 |
 
 ### AIサーブパラメータ
 
@@ -127,6 +216,13 @@
 ---
 
 ## Change Log
+
+### 2026-01-09 - v3.0.0
+- トス→ヒット方式追加（REQ-30102-080〜089）
+- トス物理、ヒット可能範囲、タイムアウト、ダブルフォルト仕様
+- ベースライン制限、トス中移動禁止仕様
+- AIトス・ヒット自動実行仕様
+- ServeConfigに新規パラメータ追加
 
 ### 2026-01-09 - v2.0.0
 - オーバーハンドサーブ仕様追加（REQ-30102-060）

@@ -402,6 +402,7 @@ mod tests {
                 input_sensitivity: 1.0,
             },
             input_keys: InputKeysConfig::default(),
+            gamepad_buttons: GamepadButtonsConfig::default(),
             shadow: ShadowConfig::default(),
             shot_attributes: ShotAttributesConfig::default(),
             ai: AiConfig::default(),
@@ -410,6 +411,7 @@ mod tests {
             serve: ServeConfig::default(),
             spin_physics: SpinPhysicsConfig::default(),
             trajectory: TrajectoryConfig::default(),
+            character: CharacterConfig::default(),
         }
     }
 

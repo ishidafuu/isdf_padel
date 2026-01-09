@@ -90,6 +90,13 @@ pub struct InputState {
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct Ball;
 
+/// トスボールマーカーコンポーネント
+/// @spec 30102_serve_spec.md#req-30102-080
+/// サーブ前のトス中ボールを識別する
+/// ヒット成功時に削除され、通常Ballが生成される
+#[derive(Component, Debug, Clone, Copy, Default)]
+pub struct TossBall;
+
 /// 速度コンポーネント
 /// @spec 30201_movement_spec.md
 #[derive(Component, Debug, Clone, Copy, Default)]
@@ -454,6 +461,35 @@ impl BallBundle {
             bounce_state: BounceState::default(),
             last_shooter: LastShooter { side: Some(shooter) },
             ball_spin: BallSpin::default(),
+            sprite: Sprite {
+                color: Color::srgb(0.9, 0.9, 0.2), // 黄色
+                custom_size: Some(Vec2::new(20.0, 20.0)),
+                ..default()
+            },
+            transform: Transform::default(),
+        }
+    }
+}
+
+/// トスボールバンドル（トスボール生成時に使用）
+/// @spec 30102_serve_spec.md#req-30102-080
+#[derive(Bundle)]
+pub struct TossBallBundle {
+    pub toss_ball: TossBall,
+    pub logical_position: LogicalPosition,
+    pub velocity: Velocity,
+    pub sprite: Sprite,
+    pub transform: Transform,
+}
+
+impl TossBallBundle {
+    /// トスボールを生成
+    /// @spec 30102_serve_spec.md#req-30102-080
+    pub fn new(position: Vec3, velocity: Vec3) -> Self {
+        Self {
+            toss_ball: TossBall,
+            logical_position: LogicalPosition { value: position },
+            velocity: Velocity { value: velocity },
             sprite: Sprite {
                 color: Color::srgb(0.9, 0.9, 0.2), // 黄色
                 custom_size: Some(Vec2::new(20.0, 20.0)),

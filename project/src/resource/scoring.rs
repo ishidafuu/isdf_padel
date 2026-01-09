@@ -224,6 +224,96 @@ impl MatchScore {
     }
 }
 
+/// サーブサブフェーズ
+/// @spec 30102_serve_spec.md#req-30102-080
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ServeSubPhase {
+    /// トス待機中（1回目ボタン待ち）
+    #[default]
+    Waiting,
+    /// トス中（ボールが上昇・落下中）
+    Tossing,
+    /// ヒット準備完了（ヒット可能高さに到達）
+    /// Note: この状態は判定用で、ヒット自体はTossing中に行う
+    #[allow(dead_code)]
+    HitReady,
+}
+
+/// サーブ状態
+/// @spec 30102_serve_spec.md#req-30102-080
+#[derive(Resource, Debug, Clone)]
+pub struct ServeState {
+    /// 現在のサーブサブフェーズ
+    pub phase: ServeSubPhase,
+    /// トス開始からの経過時間（秒）
+    pub toss_time: f32,
+    /// トス開始位置（サーバーの位置）
+    pub toss_origin: Option<Vec3>,
+    /// フォルト回数（0 or 1、2でダブルフォルト）
+    pub fault_count: u8,
+}
+
+impl Default for ServeState {
+    fn default() -> Self {
+        Self {
+            phase: ServeSubPhase::default(),
+            toss_time: 0.0,
+            toss_origin: None,
+            fault_count: 0,
+        }
+    }
+}
+
+impl ServeState {
+    /// 新規サーブ状態を作成
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// トスを開始
+    /// @spec 30102_serve_spec.md#req-30102-080
+    pub fn start_toss(&mut self, origin: Vec3) {
+        self.phase = ServeSubPhase::Tossing;
+        self.toss_time = 0.0;
+        self.toss_origin = Some(origin);
+    }
+
+    /// トス時間を更新
+    pub fn update_toss_time(&mut self, delta: f32) {
+        self.toss_time += delta;
+    }
+
+    /// フォルト記録
+    /// @spec 30102_serve_spec.md#req-30102-084
+    pub fn record_fault(&mut self) {
+        self.fault_count += 1;
+        self.phase = ServeSubPhase::Waiting;
+        self.toss_time = 0.0;
+        self.toss_origin = None;
+    }
+
+    /// ダブルフォルト判定
+    /// @spec 30102_serve_spec.md#req-30102-089
+    pub fn is_double_fault(&self) -> bool {
+        self.fault_count >= 2
+    }
+
+    /// ヒット成功時のリセット（Rallyへ遷移するため）
+    pub fn on_hit_success(&mut self) {
+        self.phase = ServeSubPhase::Waiting;
+        self.toss_time = 0.0;
+        self.toss_origin = None;
+    }
+
+    /// ポイント開始時のリセット
+    pub fn reset_for_new_point(&mut self) {
+        self.phase = ServeSubPhase::Waiting;
+        self.toss_time = 0.0;
+        self.toss_origin = None;
+        self.fault_count = 0;
+    }
+}
+
 /// ラリーフェーズ
 /// @spec 30901_point_judgment_spec.md#req-30901-003
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

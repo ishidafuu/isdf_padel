@@ -7,10 +7,14 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, LogicalPosition, Player};
+use crate::components::{Ball, LogicalPosition, Player, TossBall};
 use crate::core::{CourtSide, MatchStartEvent, MatchWonEvent, RallyEndEvent, ShotEvent};
+use crate::resource::scoring::ServeState;
 use crate::resource::{GameConfig, GameState, MatchFlowState, MatchScore, RallyState};
-use crate::systems::serve_execute_system;
+use crate::systems::{
+    serve_double_fault_system, serve_hit_input_system, serve_init_system,
+    serve_toss_input_system, serve_toss_physics_system, serve_toss_timeout_system,
+};
 
 /// 試合フロープラグイン
 /// @spec 30101_flow_spec.md
@@ -19,12 +23,21 @@ pub struct MatchFlowPlugin;
 impl Plugin for MatchFlowPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<MatchFlowState>()
+            .init_resource::<ServeState>()
             .add_message::<MatchStartEvent>()
             .add_systems(OnEnter(MatchFlowState::MatchStart), match_start_system)
-            // @spec 30102_serve_spec.md: サーブ実行システム（Serve状態でのみ動作）
+            .add_systems(OnEnter(MatchFlowState::Serve), serve_init_system)
+            // @spec 30102_serve_spec.md: トス→ヒット方式サーブシステム（Serve状態でのみ動作）
             .add_systems(
                 Update,
-                (serve_execute_system, serve_to_rally_system)
+                (
+                    serve_toss_input_system,
+                    serve_toss_physics_system,
+                    serve_hit_input_system,
+                    serve_toss_timeout_system,
+                    serve_double_fault_system,
+                    serve_to_rally_system,
+                )
                     .chain()
                     .run_if(in_state(MatchFlowState::Serve)),
             )
@@ -126,7 +139,12 @@ fn rally_to_point_end_system(
 
 /// ポイント終了状態に入ったときの処理
 /// @spec 30101_flow_spec.md#req-30101-003
-fn point_end_enter_system(mut commands: Commands, ball_query: Query<Entity, With<Ball>>) {
+fn point_end_enter_system(
+    mut commands: Commands,
+    mut serve_state: ResMut<ServeState>,
+    ball_query: Query<Entity, With<Ball>>,
+    toss_ball_query: Query<Entity, With<TossBall>>,
+) {
     // @spec 30101_flow_spec.md#req-30101-003: PointEndEvent を発行する
     // NOTE: 現在は RallyEndEvent が PointEnd の役割を果たしている
     info!("Point ended. Preparing for next serve...");
@@ -136,6 +154,15 @@ fn point_end_enter_system(mut commands: Commands, ball_query: Query<Entity, With
         commands.entity(ball_entity).despawn();
         info!("Ball despawned for next serve");
     }
+
+    // トスボールも削除
+    for toss_entity in toss_ball_query.iter() {
+        commands.entity(toss_entity).despawn();
+        info!("Toss ball despawned for next serve");
+    }
+
+    // ServeStateをリセット（次のポイント用）
+    serve_state.reset_for_new_point();
 }
 
 /// ポイント終了から次の状態への遷移システム
