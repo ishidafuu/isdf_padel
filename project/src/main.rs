@@ -29,7 +29,7 @@ use systems::{
     knockback_timer_system, landing_system, movement_system, shot_cooldown_system,
     shot_direction_system, shot_input_system, vertical_movement_system, AiServePlugin,
     BallCollisionPlugin, BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin,
-    MatchFlowPlugin, PointJudgmentPlugin, ScoringPlugin,
+    GameSystemSet, MatchFlowPlugin, PointJudgmentPlugin, ScoringPlugin,
 };
 
 fn main() {
@@ -78,19 +78,30 @@ fn main() {
         .add_message::<ShotEvent>()
         .add_message::<ShotExecutedEvent>()
         .add_systems(Startup, (setup, load_config_asset))
+        // SystemSet の順序を設定: Input → GameLogic
+        .configure_sets(Update, GameSystemSet::Input.before(GameSystemSet::GameLogic))
         // エスケープキーでウィンドウを閉じる
         .add_systems(Update, escape_to_exit)
+        // 入力システム（Input セット）
         .add_systems(
             Update,
             (
-                // 設定ホットリロード
-                update_config_on_change,
                 // 人間入力読み取り（HumanControlled を持つプレイヤーの InputState を更新）
                 // @spec 20006_input_system.md
                 human_input_system,
                 // ゲームパッド入力読み取り（device_id=1 の HumanControlled）
                 // @spec 20006_input_system.md#req-20006-050
                 gamepad_input_system,
+            )
+                .chain()
+                .in_set(GameSystemSet::Input),
+        )
+        // ゲームロジックシステム（GameLogic セット）
+        .add_systems(
+            Update,
+            (
+                // 設定ホットリロード
+                update_config_on_change,
                 // ふっとばし開始（BallHitEvent を処理）
                 knockback_start_system,
                 // ジャンプ・重力
@@ -119,7 +130,8 @@ fn main() {
                 // @spec 30802_visual_feedback_spec.md
                 (save_player_original_color_system, player_hold_visual_system, ball_spin_color_system),
             )
-                .chain(),
+                .chain()
+                .in_set(GameSystemSet::GameLogic),
         )
         .run();
 }

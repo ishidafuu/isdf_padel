@@ -1,6 +1,18 @@
 //! Systems層: ゲームロジックの実装
 //! @spec 20001_layers.md#layer-4-systems
 
+use bevy::prelude::*;
+
+/// システム実行順序を制御するための SystemSet
+/// 入力読み取り → ゲームロジック の順序を保証
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GameSystemSet {
+    /// 入力読み取り（human_input, gamepad_input）
+    Input,
+    /// ゲームロジック（サーブ、ショット、移動など）
+    GameLogic,
+}
+
 mod ai_movement;
 mod ai_serve;
 mod ai_shot;

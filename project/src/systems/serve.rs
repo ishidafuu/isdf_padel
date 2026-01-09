@@ -218,7 +218,7 @@ pub fn serve_toss_timeout_system(
     mut commands: Commands,
     config: Res<GameConfig>,
     mut serve_state: ResMut<ServeState>,
-    toss_ball_query: Query<(Entity, &LogicalPosition), With<TossBall>>,
+    toss_ball_query: Query<(Entity, &LogicalPosition, &Velocity), With<TossBall>>,
 ) {
     // Tossing状態でのみ実行
     if serve_state.phase != ServeSubPhase::Tossing {
@@ -226,13 +226,15 @@ pub fn serve_toss_timeout_system(
     }
 
     // トスボールを取得
-    let Some((toss_entity, toss_pos)) = toss_ball_query.iter().next() else {
+    let Some((toss_entity, toss_pos, velocity)) = toss_ball_query.iter().next() else {
         return;
     };
 
     let ball_height = toss_pos.value.y;
     let is_timeout = serve_state.toss_time >= config.serve.toss_timeout;
-    let is_too_low = ball_height < config.serve.hit_height_min;
+    // ボールが落下中（velocity.y < 0）の場合のみ「低すぎる」判定
+    let is_falling = velocity.value.y < 0.0;
+    let is_too_low = is_falling && ball_height < config.serve.hit_height_min;
 
     if is_timeout || is_too_low {
         // @spec 30102_serve_spec.md#req-30102-084: Fault

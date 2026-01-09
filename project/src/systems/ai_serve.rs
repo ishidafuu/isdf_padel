@@ -14,6 +14,7 @@ use crate::components::{AiController, Ball, BallBundle, LogicalPosition, Player,
 use crate::core::{CourtSide, ShotEvent};
 use crate::resource::scoring::{ServeState, ServeSubPhase};
 use crate::resource::{GameConfig, MatchFlowState, MatchScore};
+use super::GameSystemSet;
 
 /// AIサーブ待機タイマー（リソース）
 /// @spec 30102_serve_spec.md#req-30102-087
@@ -265,7 +266,8 @@ impl Plugin for AiServePlugin {
                 ai_serve_hit_system,
             )
                 .chain()
-                .run_if(in_state(MatchFlowState::Serve)),
+                .run_if(in_state(MatchFlowState::Serve))
+                .in_set(GameSystemSet::GameLogic),
         );
     }
 }

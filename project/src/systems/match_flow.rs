@@ -11,9 +11,10 @@ use crate::components::{Ball, LogicalPosition, Player, TossBall};
 use crate::core::{CourtSide, MatchStartEvent, MatchWonEvent, RallyEndEvent, ShotEvent};
 use crate::resource::scoring::ServeState;
 use crate::resource::{GameConfig, GameState, MatchFlowState, MatchScore, RallyState};
-use crate::systems::{
+use super::{
     serve_double_fault_system, serve_hit_input_system, serve_init_system,
     serve_toss_input_system, serve_toss_physics_system, serve_toss_timeout_system,
+    GameSystemSet,
 };
 
 /// 試合フロープラグイン
@@ -28,6 +29,7 @@ impl Plugin for MatchFlowPlugin {
             .add_systems(OnEnter(MatchFlowState::MatchStart), match_start_system)
             .add_systems(OnEnter(MatchFlowState::Serve), serve_init_system)
             // @spec 30102_serve_spec.md: トス→ヒット方式サーブシステム（Serve状態でのみ動作）
+            // GameSystemSet::GameLogic に配置し、入力読み取り後に実行されることを保証
             .add_systems(
                 Update,
                 (
@@ -39,16 +41,21 @@ impl Plugin for MatchFlowPlugin {
                     serve_to_rally_system,
                 )
                     .chain()
-                    .run_if(in_state(MatchFlowState::Serve)),
+                    .run_if(in_state(MatchFlowState::Serve))
+                    .in_set(GameSystemSet::GameLogic),
             )
             .add_systems(
                 Update,
-                rally_to_point_end_system.run_if(in_state(MatchFlowState::Rally)),
+                rally_to_point_end_system
+                    .run_if(in_state(MatchFlowState::Rally))
+                    .in_set(GameSystemSet::GameLogic),
             )
             .add_systems(OnEnter(MatchFlowState::PointEnd), point_end_enter_system)
             .add_systems(
                 Update,
-                point_end_to_next_system.run_if(in_state(MatchFlowState::PointEnd)),
+                point_end_to_next_system
+                    .run_if(in_state(MatchFlowState::PointEnd))
+                    .in_set(GameSystemSet::GameLogic),
             )
             .add_systems(OnEnter(MatchFlowState::MatchEnd), match_end_system);
     }
