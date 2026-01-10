@@ -208,15 +208,15 @@ pub enum CharacterFacing {
 | Foot base_offset | config.Character.Parts.Foot.BaseOffset | (6, -4, 0) |
 | Part size | config.Character.Parts.*.Size | 各パーツ固有 |
 
-詳細: [80102_character_parts.md](../../8_data/80102_character_parts.md)
+詳細: [80101_game_constants.md](../../8_data/80101_game_constants.md)
 
 ---
 
 ## 依存関係
 
 ### 依存先
-- [20001_ecs_architecture.md](../../2_architecture/20001_ecs_architecture.md) - ECS設計原則
-- [80102_character_parts.md](../../8_data/80102_character_parts.md) - パーツパラメータ
+- [20004_ecs_overview.md](../../2_architecture/20004_ecs_overview.md) - ECS設計原則
+- [80101_game_constants.md](../../8_data/80101_game_constants.md) - パーツパラメータ
 
 ### 被依存
 - [31002_animation_spec.md](31002_animation_spec.md) - アニメーションシステム

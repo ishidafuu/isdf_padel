@@ -255,7 +255,7 @@ CharacterAnimationsData(
 
 ### 依存先
 - [31001_parts_spec.md](31001_parts_spec.md) - パーツ構成・Component
-- [20001_ecs_architecture.md](../../2_architecture/20001_ecs_architecture.md) - ECS設計原則
+- [20004_ecs_overview.md](../../2_architecture/20004_ecs_overview.md) - ECS設計原則
 
 ### 被依存
 - プレイヤーシステム（アニメーション遷移トリガー）
