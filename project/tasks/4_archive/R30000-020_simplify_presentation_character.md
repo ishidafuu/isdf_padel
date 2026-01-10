@@ -2,7 +2,7 @@
 id: "R30000-020"
 title: "presentation/ + character/ 簡素化"
 type: "refactor"
-status: "todo"
+status: "done"
 priority: "low"
 related_task: "30000"
 spec_ids: []

@@ -11,17 +11,7 @@ use crate::resource::config::{
     SpinCurvePoint, TimingCurvePoint,
 };
 use crate::resource::FixedDeltaTime;
-
-// ============================================================================
-// 線形補間ユーティリティ
-// ============================================================================
-
-/// 2点間で線形補間
-/// @spec 30604_shot_attributes_spec.md
-#[inline]
-fn lerp(a: f32, b: f32, t: f32) -> f32 {
-    a + (b - a) * t
-}
+use crate::systems::trajectory_calculator::lerp;
 
 /// カーブポイントから値を線形補間で取得
 /// ポイントはソート済みと仮定
@@ -62,6 +52,20 @@ where
 }
 
 // ============================================================================
+// 係数計算マクロ
+// ============================================================================
+
+/// カーブから複数の係数を一括取得するマクロ
+/// 重複コードを削減し、各カーブポイント型に対応
+macro_rules! get_factors_from_curve {
+    ($curve:expr, $value:expr, $key_field:ident, [$($factor_field:ident),+]) => {{
+        (
+            $(interpolate_from_curve($curve, $value, |p| p.$key_field, |p| p.$factor_field)),+
+        )
+    }};
+}
+
+// ============================================================================
 // 5要素の取得
 // ============================================================================
 
@@ -91,39 +95,28 @@ pub fn calculate_approach_dot(player_velocity: Vec3, player_pos: Vec3, ball_pos:
 // 係数計算
 // ============================================================================
 
-/// 打点高さから係数を取得
+/// 打点高さから係数を取得 (power_bonus, stability_factor, angle_offset)
 /// @spec 30604_shot_attributes_spec.md#req-30604-055
 pub fn get_height_factors(height: f32, curve: &[HeightCurvePoint]) -> (f32, f32, f32) {
-    let power = interpolate_from_curve(curve, height, |p| p.height, |p| p.power_bonus);
-    let stability = interpolate_from_curve(curve, height, |p| p.height, |p| p.stability_factor);
-    let angle = interpolate_from_curve(curve, height, |p| p.height, |p| p.angle_offset);
-    (power, stability, angle)
+    get_factors_from_curve!(curve, height, height, [power_bonus, stability_factor, angle_offset])
 }
 
-/// バウンド経過時間から係数を取得
+/// バウンド経過時間から係数を取得 (power_bonus, stability_factor, angle_offset)
 /// @spec 30604_shot_attributes_spec.md#req-30604-058
 pub fn get_timing_factors(elapsed: f32, curve: &[TimingCurvePoint]) -> (f32, f32, f32) {
-    let power = interpolate_from_curve(curve, elapsed, |p| p.elapsed, |p| p.power_bonus);
-    let stability = interpolate_from_curve(curve, elapsed, |p| p.elapsed, |p| p.stability_factor);
-    let angle = interpolate_from_curve(curve, elapsed, |p| p.elapsed, |p| p.angle_offset);
-    (power, stability, angle)
+    get_factors_from_curve!(curve, elapsed, elapsed, [power_bonus, stability_factor, angle_offset])
 }
 
-/// 入り方から係数を取得
+/// 入り方から係数を取得 (power_bonus, angle_offset)
 /// @spec 30604_shot_attributes_spec.md#req-30604-060
 pub fn get_approach_factors(dot: f32, curve: &[ApproachCurvePoint]) -> (f32, f32) {
-    let power = interpolate_from_curve(curve, dot, |p| p.dot, |p| p.power_bonus);
-    let angle = interpolate_from_curve(curve, dot, |p| p.dot, |p| p.angle_offset);
-    (power, angle)
+    get_factors_from_curve!(curve, dot, dot, [power_bonus, angle_offset])
 }
 
-/// 距離から係数を取得
+/// 距離から係数を取得 (power_bonus, stability_factor, accuracy_factor)
 /// @spec 30604_shot_attributes_spec.md#req-30604-062
 pub fn get_distance_factors(distance: f32, curve: &[DistanceCurvePoint]) -> (f32, f32, f32) {
-    let power = interpolate_from_curve(curve, distance, |p| p.distance, |p| p.power_bonus);
-    let stability = interpolate_from_curve(curve, distance, |p| p.distance, |p| p.stability_factor);
-    let accuracy = interpolate_from_curve(curve, distance, |p| p.distance, |p| p.accuracy_factor);
-    (power, stability, accuracy)
+    get_factors_from_curve!(curve, distance, distance, [power_bonus, stability_factor, accuracy_factor])
 }
 
 /// スピン係数を取得（高さ）
@@ -146,10 +139,8 @@ pub fn get_spin_timing_factor(elapsed: f32, curve: &[SpinCurvePoint]) -> f32 {
 /// @spec 30604_shot_attributes_spec.md#req-30604-053
 pub fn calculate_push_power_factor(timing_diff: f32, config: &ShotAttributesConfig) -> f32 {
     if timing_diff >= config.push_to_hold_threshold {
-        // ホールド扱い
         config.hold_power_factor
     } else {
-        // 威力係数 = 1.0 - (timing_diff / threshold) * 0.3
         1.0 - (timing_diff / config.push_to_hold_threshold) * 0.3
     }
 }
@@ -157,7 +148,6 @@ pub fn calculate_push_power_factor(timing_diff: f32, config: &ShotAttributesConf
 /// ホールド時間による安定性係数を計算
 /// @spec 30604_shot_attributes_spec.md#req-30604-052
 pub fn calculate_hold_stability_factor(hold_time: f32, config: &ShotAttributesConfig) -> f32 {
-    // stability_factor = min(1.0, 0.5 + (hold_time / hold_stable_time) * 0.5)
     (0.5 + (hold_time / config.hold_stable_time) * 0.5).min(1.0)
 }
 
@@ -179,7 +169,6 @@ pub fn calculate_shot_attributes(
     let (input_power_factor, input_stability_factor) = match context.input_mode {
         InputMode::Push => {
             let power = calculate_push_power_factor(context.push_timing_diff, config);
-            // プッシュは安定性が低い（精度と引き換えに威力）
             let stability = 0.8 - (1.0 - power) * 0.5;
             (power, stability)
         }
@@ -197,14 +186,11 @@ pub fn calculate_shot_attributes(
     // タイミング（バウンド経過時間）による係数
     let (timing_power, timing_stability, timing_angle) = match context.bounce_elapsed {
         Some(elapsed) => get_timing_factors(elapsed, &config.timing_curve),
-        None => {
-            // ボレー
-            (
-                config.volley_factors.power_bonus,
-                config.volley_factors.stability_factor,
-                config.volley_factors.angle_offset,
-            )
-        }
+        None => (
+            config.volley_factors.power_bonus,
+            config.volley_factors.stability_factor,
+            config.volley_factors.angle_offset,
+        ),
     };
 
     // 入り方による係数
@@ -217,7 +203,6 @@ pub fn calculate_shot_attributes(
 
     // 威力の最終計算（加算方式）
     // @spec 30604_shot_attributes_spec.md#req-30604-063
-    // ボーナスを加算し、入力方式の係数を乗算
     let power = (config.base_power
         + height_power
         + timing_power
@@ -242,7 +227,7 @@ pub fn calculate_shot_attributes(
     let spin_height = get_spin_height_factor(context.hit_height, &config.spin_height_curve);
     let spin_timing = match context.bounce_elapsed {
         Some(elapsed) => get_spin_timing_factor(elapsed, &config.spin_timing_curve),
-        None => 0.0, // ボレーはスピンなし
+        None => 0.0,
     };
     let spin = (spin_height + spin_timing).clamp(-1.0, 1.0);
 
@@ -260,52 +245,46 @@ pub fn calculate_shot_attributes(
 }
 
 // ============================================================================
-// BounceState 更新システム
+// BounceState 更新システム（v0.2 で使用予定）
 // ============================================================================
 
-/// BounceState のタイマーを更新するシステム
-/// @spec 30604_shot_attributes_spec.md#req-30604-056
-/// v0.2 で使用予定
+/// v0.2 で使用予定の BounceState 関連システム群
 #[allow(dead_code)]
-pub fn update_bounce_state_timer_system(
-    fixed_dt: Res<FixedDeltaTime>,
-    mut query: Query<&mut BounceState, With<Ball>>,
-) {
-    let delta = fixed_dt.delta_secs();
+pub mod bounce_state_systems {
+    use super::*;
 
-    for mut bounce_state in query.iter_mut() {
-        if let Some(ref mut elapsed) = bounce_state.time_since_bounce {
-            *elapsed += delta;
-        }
-    }
-}
+    /// BounceState のタイマーを更新するシステム
+    /// @spec 30604_shot_attributes_spec.md#req-30604-056
+    pub fn update_timer(fixed_dt: Res<FixedDeltaTime>, mut query: Query<&mut BounceState, With<Ball>>) {
+        let delta = fixed_dt.delta_secs();
 
-/// GroundBounceEvent を受けて BounceState をリセットするシステム
-/// @spec 30604_shot_attributes_spec.md#req-30604-056
-/// v0.2 で使用予定
-#[allow(dead_code)]
-pub fn handle_ground_bounce_event_system(
-    mut reader: MessageReader<GroundBounceEvent>,
-    mut query: Query<&mut BounceState, With<Ball>>,
-) {
-    for _event in reader.read() {
         for mut bounce_state in query.iter_mut() {
-            // バウンドしたらタイマーをリセット
-            bounce_state.time_since_bounce = Some(0.0);
-            info!("Ball bounced, reset bounce timer");
+            if let Some(ref mut elapsed) = bounce_state.time_since_bounce {
+                *elapsed += delta;
+            }
         }
     }
-}
 
-/// ショットされたときに BounceState をリセットするシステム
-/// @spec 30604_shot_attributes_spec.md#req-30604-056
-/// v0.2 で使用予定
-#[allow(dead_code)]
-pub fn reset_bounce_state_on_shot_system(mut query: Query<&mut BounceState, With<Ball>>) {
-    // このシステムはショットイベント時に手動で呼び出すか、
-    // ShotExecutedEvent をトリガーにする
-    for mut bounce_state in query.iter_mut() {
-        bounce_state.time_since_bounce = None;
+    /// GroundBounceEvent を受けて BounceState をリセットするシステム
+    /// @spec 30604_shot_attributes_spec.md#req-30604-056
+    pub fn handle_ground_bounce_event(
+        mut reader: MessageReader<GroundBounceEvent>,
+        mut query: Query<&mut BounceState, With<Ball>>,
+    ) {
+        for _event in reader.read() {
+            for mut bounce_state in query.iter_mut() {
+                bounce_state.time_since_bounce = Some(0.0);
+                info!("Ball bounced, reset bounce timer");
+            }
+        }
+    }
+
+    /// ショットされたときに BounceState をリセットするシステム
+    /// @spec 30604_shot_attributes_spec.md#req-30604-056
+    pub fn reset_on_shot(mut query: Query<&mut BounceState, With<Ball>>) {
+        for mut bounce_state in query.iter_mut() {
+            bounce_state.time_since_bounce = None;
+        }
     }
 }
 
@@ -324,12 +303,10 @@ pub fn build_shot_context_from_input_state(
     ball_bounce_state: &BounceState,
     config: &ShotAttributesConfig,
 ) -> ShotContext {
-    // ホールド時間が閾値以上ならホールド、そうでなければプッシュ
     let (input_mode, push_timing_diff, hold_duration) =
         if hold_time >= config.push_to_hold_threshold {
             (InputMode::Hold, 0.0, hold_time)
         } else {
-            // プッシュの場合、タイミング差はhold_timeと等価
             (InputMode::Push, hold_time, hold_time)
         };
 
@@ -393,7 +370,7 @@ mod tests {
 
         // 中間値
         let power_at_0_5 = interpolate_from_curve(&points, 0.5, |p| p.height, |p| p.power_bonus);
-        assert!((power_at_0_5 - (-2.0)).abs() < 0.001); // (-3.0 + -1.0) / 2 = -2.0
+        assert!((power_at_0_5 - (-2.0)).abs() < 0.001);
 
         // 範囲外（下限）
         let power_below = interpolate_from_curve(&points, -1.0, |p| p.height, |p| p.power_bonus);
@@ -444,7 +421,7 @@ mod tests {
     #[test]
     fn test_ball_distance() {
         let player = Vec3::new(0.0, 0.0, 0.0);
-        let ball = Vec3::new(1.0, 5.0, 0.0); // Y は無視
+        let ball = Vec3::new(1.0, 5.0, 0.0);
 
         let distance = calculate_ball_distance(player, ball);
         assert!((distance - 1.0).abs() < 0.001);
@@ -477,20 +454,18 @@ mod tests {
     fn test_calculate_shot_attributes() {
         let config = ShotAttributesConfig::default();
 
-        // 標準的なコンテキスト
         let context = ShotContext {
             input_mode: InputMode::Push,
-            push_timing_diff: 0.0, // 完璧
+            push_timing_diff: 0.0,
             hold_duration: 0.0,
-            hit_height: 1.0,       // 最適高さ
-            bounce_elapsed: Some(0.5), // 頂点
-            approach_dot: 0.0,     // 静止
-            ball_distance: 1.0,    // 最適距離
+            hit_height: 1.0,
+            bounce_elapsed: Some(0.5),
+            approach_dot: 0.0,
+            ball_distance: 1.0,
         };
 
         let attrs = calculate_shot_attributes(&context, &config);
 
-        // 値が妥当な範囲にあることを確認
         assert!(attrs.power > 0.0);
         assert!(attrs.stability > 0.0);
         assert!(attrs.accuracy > 0.0);
