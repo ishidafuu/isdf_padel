@@ -57,9 +57,8 @@ pub fn ai_shot_system(
     mut event_writer: MessageWriter<ShotEvent>,
 ) {
     // ボール位置、LastShooter、BounceCountを取得（存在しなければ何もしない）
-    let (ball_logical_pos, last_shooter, bounce_count) = match ball_query.iter().next() {
-        Some(t) => t,
-        None => return,
+    let Some((ball_logical_pos, last_shooter, bounce_count)) = ball_query.iter().next() else {
+        return;
     };
     let ball_pos = ball_logical_pos.value;
 

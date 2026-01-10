@@ -206,7 +206,6 @@ pub fn ai_movement_system(
                     &mut velocity,
                     ai.home_position,
                     config.ai.move_speed,
-                    config.ai.home_return_stop_distance,
                     delta,
                 );
                 continue;
@@ -319,7 +318,6 @@ pub fn ai_movement_system(
             &mut velocity,
             target_pos,
             config.ai.move_speed,
-            stop_distance,
             delta,
         );
     }
@@ -331,7 +329,6 @@ fn move_towards_target(
     velocity: &mut Velocity,
     target: Vec3,
     move_speed: f32,
-    _stop_distance: f32,
     delta: f32,
 ) {
     let ai_pos = logical_pos.value;
