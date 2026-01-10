@@ -347,63 +347,66 @@ mod tests {
     /// TST-30904-010: サービスボックス判定テスト
     /// @spec 30902_fault_spec.md#req-30902-001
     /// 新座標系: X=打ち合い方向, Z=コート幅
+    /// クロスサーブ: サーバーの対角線上にサービスボックス
     #[test]
     fn test_req_30902_001_service_box_judgment() {
         let config = test_config();
 
-        // 1Pがサーブ、デュースサイド → 2Pコート右半分（X>0, Z>0）
+        // 1Pがサーブ、デュースサイド（Z>0）→ クロスで2Pコート左半分（X>0, Z<0）
         let service_box = get_service_box(CourtSide::Left, ServeSide::Deuce, &config);
         assert_eq!(service_box.x_min, 0.0);    // ネット位置
         assert_eq!(service_box.x_max, 1.5);    // サービスライン位置
-        assert_eq!(service_box.z_min, 0.0);    // コート中央
-        assert_eq!(service_box.z_max, 5.0);    // コート右側（+Z）
-
-        // サービスボックス内（X=0.75, Z=2.5）
-        assert!(service_box.contains(0.75, 2.5));
-        // サービスボックス外（左半分：Z < 0）
-        assert!(!service_box.contains(0.75, -2.5));
-        // サービスボックス外（サービスラインより奥：X > 1.5）
-        assert!(!service_box.contains(2.0, 2.5));
-    }
-
-    /// TST-30904-010: サービスボックス判定テスト（アドサイド）
-    /// @spec 30902_fault_spec.md#req-30902-001
-    /// 新座標系: X=打ち合い方向, Z=コート幅
-    #[test]
-    fn test_req_30902_001_service_box_ad_side() {
-        let config = test_config();
-
-        // 1Pがサーブ、アドサイド → 2Pコート左半分（X>0, Z<0）
-        let service_box = get_service_box(CourtSide::Left, ServeSide::Ad, &config);
-        assert_eq!(service_box.x_min, 0.0);    // ネット位置
-        assert_eq!(service_box.x_max, 1.5);    // サービスライン位置
-        assert_eq!(service_box.z_min, -5.0);   // コート左側（-Z）
+        assert_eq!(service_box.z_min, -5.0);   // コート左側（-Z）クロス
         assert_eq!(service_box.z_max, 0.0);    // コート中央
 
         // サービスボックス内（X=0.75, Z=-2.5）
         assert!(service_box.contains(0.75, -2.5));
         // サービスボックス外（右半分：Z > 0）
         assert!(!service_box.contains(0.75, 2.5));
+        // サービスボックス外（サービスラインより奥：X > 1.5）
+        assert!(!service_box.contains(2.0, -2.5));
+    }
+
+    /// TST-30904-010: サービスボックス判定テスト（アドサイド）
+    /// @spec 30902_fault_spec.md#req-30902-001
+    /// 新座標系: X=打ち合い方向, Z=コート幅
+    /// クロスサーブ: サーバーの対角線上にサービスボックス
+    #[test]
+    fn test_req_30902_001_service_box_ad_side() {
+        let config = test_config();
+
+        // 1Pがサーブ、アドサイド（Z<0）→ クロスで2Pコート右半分（X>0, Z>0）
+        let service_box = get_service_box(CourtSide::Left, ServeSide::Ad, &config);
+        assert_eq!(service_box.x_min, 0.0);    // ネット位置
+        assert_eq!(service_box.x_max, 1.5);    // サービスライン位置
+        assert_eq!(service_box.z_min, 0.0);    // コート中央
+        assert_eq!(service_box.z_max, 5.0);    // コート右側（+Z）クロス
+
+        // サービスボックス内（X=0.75, Z=2.5）
+        assert!(service_box.contains(0.75, 2.5));
+        // サービスボックス外（左半分：Z < 0）
+        assert!(!service_box.contains(0.75, -2.5));
     }
 
     /// TST-30904-010: サービスボックス判定テスト（2Pサーブ）
     /// @spec 30902_fault_spec.md#req-30902-001
     /// 新座標系: X=打ち合い方向, Z=コート幅
+    /// クロスサーブ: サーバーの対角線上にサービスボックス
     #[test]
     fn test_req_30902_001_service_box_player2_serve() {
         let config = test_config();
 
-        // 2Pがサーブ、デュースサイド → 1Pコート左半分（X<0, Z<0）
+        // 2Pがサーブ、デュースサイド（Z<0）→ クロスで1Pコート右半分（X<0, Z>0）
         let service_box = get_service_box(CourtSide::Right, ServeSide::Deuce, &config);
         assert_eq!(service_box.x_min, -1.5);   // サービスライン位置
         assert_eq!(service_box.x_max, 0.0);    // ネット位置
-        assert_eq!(service_box.z_min, -5.0);   // コート左側（-Z）
-        assert_eq!(service_box.z_max, 0.0);    // コート中央
+        assert_eq!(service_box.z_min, 0.0);    // コート中央
+        assert_eq!(service_box.z_max, 5.0);    // コート右側（+Z）クロス
 
-        // サービスボックス内（X=-0.75, Z=-2.5）
-        assert!(service_box.contains(-0.75, -2.5));
-        // サービスボックス外（右半分：Z > 0）
-        assert!(!service_box.contains(-0.75, 2.5));
+        // サービスボックス内（X=-0.75, Z=2.5）
+        assert!(service_box.contains(-0.75, 2.5));
+        // サービスボックス外（左半分：Z < 0）
+        assert!(!service_box.contains(-0.75, -2.5));
     }
 
     /// TST-30904-011: ダブルフォルト判定テスト
