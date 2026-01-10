@@ -75,53 +75,31 @@ pub fn get_service_box(
     let net_x = config.court.net_x;
     let service_box_depth = config.court.service_box_depth;
 
-    match server {
-        CourtSide::Left => {
-            // 1Pがサーブ → 2Pコート側（X > 0）
-            let x_min = net_x;
-            let x_max = net_x + service_box_depth;
+    // X座標: サーバー側のみに依存
+    // Left(1P)がサーブ → 2Pコート側（X > 0）
+    // Right(2P)がサーブ → 1Pコート側（X < 0）
+    let (x_min, x_max) = match server {
+        CourtSide::Left => (net_x, net_x + service_box_depth),
+        CourtSide::Right => (net_x - service_box_depth, net_x),
+    };
 
-            // クロス: サーバーと対角線上のサービスボックス
-            match serve_side {
-                ServeSide::Deuce => ServiceBox {
-                    // サーバーはデュース側（Z > 0）→ サービスボックスは Z < 0（クロス）
-                    x_min,
-                    x_max,
-                    z_min: -half_width,
-                    z_max: 0.0,
-                },
-                ServeSide::Ad => ServiceBox {
-                    // サーバーはアド側（Z < 0）→ サービスボックスは Z > 0（クロス）
-                    x_min,
-                    x_max,
-                    z_min: 0.0,
-                    z_max: half_width,
-                },
-            }
-        }
-        CourtSide::Right => {
-            // 2Pがサーブ → 1Pコート側（X < 0）
-            let x_min = net_x - service_box_depth;
-            let x_max = net_x;
+    // Z座標: クロスサーブの法則
+    // (Left, Deuce) と (Right, Ad) → Z < 0 側
+    // (Left, Ad) と (Right, Deuce) → Z > 0 側
+    let is_negative_z_side =
+        (server == CourtSide::Left) == (serve_side == ServeSide::Deuce);
 
-            // クロス: サーバーと対角線上のサービスボックス
-            match serve_side {
-                ServeSide::Deuce => ServiceBox {
-                    // サーバーはデュース側（Z < 0）→ サービスボックスは Z > 0（クロス）
-                    x_min,
-                    x_max,
-                    z_min: 0.0,
-                    z_max: half_width,
-                },
-                ServeSide::Ad => ServiceBox {
-                    // サーバーはアド側（Z > 0）→ サービスボックスは Z < 0（クロス）
-                    x_min,
-                    x_max,
-                    z_min: -half_width,
-                    z_max: 0.0,
-                },
-            }
-        }
+    let (z_min, z_max) = if is_negative_z_side {
+        (-half_width, 0.0)
+    } else {
+        (0.0, half_width)
+    };
+
+    ServiceBox {
+        x_min,
+        x_max,
+        z_min,
+        z_max,
     }
 }
 

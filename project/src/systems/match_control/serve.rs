@@ -9,11 +9,22 @@
 
 use bevy::prelude::*;
 
-use crate::components::{AiController, Ball, InputState, LogicalPosition, Player, TossBall, TossBallBundle, Velocity};
+use crate::components::{
+    AiController, Ball, InputState, LogicalPosition, Player, TossBall, TossBallBundle, Velocity,
+};
 use crate::core::{CourtSide, ShotEvent};
 use crate::resource::config::ServeSide;
 use crate::resource::scoring::{MatchFlowState, ServeState, ServeSubPhase};
 use crate::resource::{FixedDeltaTime, GameConfig, MatchScore};
+
+/// サーバーを検索するヘルパー関数
+/// @spec 30102_serve_spec.md
+fn find_server<'a>(
+    mut player_query: impl Iterator<Item = (&'a Player, &'a LogicalPosition, &'a InputState)>,
+    server_side: CourtSide,
+) -> Option<(&'a Player, &'a LogicalPosition, &'a InputState)> {
+    player_query.find(|(p, _, _)| p.court_side == server_side)
+}
 
 /// ServeState リソースの初期化/リセットシステム
 /// @spec 30102_serve_spec.md#req-30102-080
@@ -105,15 +116,12 @@ pub fn serve_toss_input_system(
         return;
     }
 
-    // サーバーを特定
-    let Some((player, logical_pos, input_state)) = player_query
-        .iter()
-        .find(|(p, _, _)| p.court_side == match_score.server)
+    // サーバーを特定し、ショット入力をチェック
+    let Some((player, logical_pos, input_state)) =
+        find_server(player_query.iter(), match_score.server)
     else {
         return;
     };
-
-    // ショット入力をチェック
     if !input_state.shot_pressed {
         return;
     }
@@ -179,29 +187,26 @@ pub fn serve_hit_input_system(
         return;
     }
 
-    // サーバーを特定
-    let Some((player, player_pos, input_state)) = player_query
-        .iter()
-        .find(|(p, _, _)| p.court_side == match_score.server)
+    // サーバーを特定し、ショット入力をチェック
+    let Some((player, player_pos, input_state)) =
+        find_server(player_query.iter(), match_score.server)
     else {
         return;
     };
-
-    // ショット入力をチェック
     if !input_state.shot_pressed {
         return;
     }
 
-    // トスボールを取得
+    // トスボールを取得し、ヒット可能高さをチェック
     let Some((toss_entity, toss_pos)) = toss_ball_query.iter().next() else {
         return;
     };
-
     let ball_height = toss_pos.value.y;
 
     // @spec 30102_serve_spec.md#req-30102-083: ヒット可能高さ判定
-    if ball_height < config.serve.hit_height_min || ball_height > config.serve.hit_height_max {
-        // ヒット可能範囲外: 何もしない
+    let is_in_hit_range =
+        ball_height >= config.serve.hit_height_min && ball_height <= config.serve.hit_height_max;
+    if !is_in_hit_range {
         info!(
             "Serve hit ignored: ball height {:.2}m not in range [{:.2}, {:.2}]",
             ball_height, config.serve.hit_height_min, config.serve.hit_height_max
@@ -210,19 +215,11 @@ pub fn serve_hit_input_system(
     }
 
     // @spec 30102_serve_spec.md#req-30102-082: ヒット成功
-    // 打点位置を記録（トスボールの位置を使用）
     let hit_pos = toss_pos.value;
-
-    // トスボールを削除
     commands.entity(toss_entity).despawn();
 
-    // 入力方向を取得
-    let raw_direction = input_state.movement;
-    let direction = if raw_direction.length() > 0.0 {
-        raw_direction.normalize()
-    } else {
-        Vec2::ZERO
-    };
+    // 入力方向を正規化（ゼロベクトルの場合はそのまま）
+    let direction = input_state.movement.normalize_or_zero();
 
     // ServeState更新
     serve_state.on_hit_success();
@@ -265,20 +262,21 @@ pub fn serve_toss_timeout_system(
         return;
     };
 
-    let ball_height = toss_pos.value.y;
+    // タイムアウトまたは落下判定
     let is_timeout = serve_state.toss_time >= config.serve.toss_timeout;
-    // ボールが落下中（velocity.y < 0）の場合のみ「低すぎる」判定
-    let is_falling = velocity.value.y < 0.0;
-    let is_too_low = is_falling && ball_height < config.serve.hit_height_min;
+    let is_falling_too_low =
+        velocity.value.y < 0.0 && toss_pos.value.y < config.serve.hit_height_min;
 
-    if is_timeout || is_too_low {
-        // @spec 30102_serve_spec.md#req-30102-084: 打ち直し(let)
-        commands.entity(toss_entity).despawn();
-        serve_state.reset_for_retry();
-
-        let reason = if is_timeout { "timeout" } else { "ball too low" };
-        info!("Serve let: {} (retry without fault)", reason);
+    if !is_timeout && !is_falling_too_low {
+        return;
     }
+
+    // @spec 30102_serve_spec.md#req-30102-084: 打ち直し(let)
+    commands.entity(toss_entity).despawn();
+    serve_state.reset_for_retry();
+
+    let reason = if is_timeout { "timeout" } else { "ball too low" };
+    info!("Serve let: {} (retry without fault)", reason);
 }
 
 /// ダブルフォルト処理システム
