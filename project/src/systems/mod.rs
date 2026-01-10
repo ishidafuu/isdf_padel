@@ -13,45 +13,28 @@ pub enum GameSystemSet {
     GameLogic,
 }
 
-mod ai_movement;
-mod ai_serve;
-mod ai_shot;
-mod ball_collision;
-mod ball_trajectory;
+// サブディレクトリモジュール
+mod ai;
+mod ball;
+mod input;
+mod match_control;
+mod player;
+mod point_judgment;
+mod shot;
+mod trajectory_calculator;
+
+// ルートレベルモジュール
 mod boundary;
 mod court_factory;
 mod debug_marker;
-mod fault_judgment;
-mod gamepad_input;
-mod human_input;
-mod jump;
-mod knockback;
-mod match_flow;
-mod movement;
-mod point_judgment;
-mod scoring;
-mod serve;
-mod shot_attributes;
-mod shot_direction;
-mod shot_input;
-mod trajectory_calculator;
 
-pub use ai_movement::*;
-pub use ai_serve::*;
-pub use ai_shot::*;
-pub use ball_collision::*;
-pub use ball_trajectory::*;
+// re-export
+pub use ai::*;
+pub use ball::*;
 pub use boundary::*;
 pub use debug_marker::*;
-pub use fault_judgment::*;
-pub use gamepad_input::gamepad_input_system;
-pub use human_input::human_input_system;
-pub use jump::*;
-pub use knockback::*;
-pub use match_flow::*;
-pub use movement::*;
+pub use input::*;
+pub use match_control::*;
+pub use player::*;
 pub use point_judgment::*;
-pub use scoring::*;
-pub use serve::*;
-pub use shot_direction::*;
-pub use shot_input::*;
+pub use shot::*;

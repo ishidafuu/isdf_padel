@@ -15,7 +15,7 @@ use crate::core::CourtSide;
 use crate::resource::config::{GameConfig, ServeSide};
 use crate::resource::debug::LastShotDebugInfo;
 use crate::resource::scoring::MatchScore;
-use crate::systems::shot_attributes::{build_shot_context_from_input_state, calculate_shot_attributes};
+use super::attributes::{build_shot_context_from_input_state, calculate_shot_attributes};
 use crate::systems::trajectory_calculator::{
     calculate_serve_trajectory, calculate_trajectory, ServeTrajectoryContext, TrajectoryContext,
     TrajectoryResult,

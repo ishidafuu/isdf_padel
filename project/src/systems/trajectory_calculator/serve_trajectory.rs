@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use crate::core::CourtSide;
 use crate::resource::config::{GameConfig, ServeSide};
-use crate::systems::fault_judgment::get_service_box;
+use crate::systems::match_control::get_service_box;
 
 use super::launch_angle::calculate_launch_angle;
 use super::physics_utils::{calculate_direction_vector, calculate_effective_gravity, lerp, CourtSideExt};

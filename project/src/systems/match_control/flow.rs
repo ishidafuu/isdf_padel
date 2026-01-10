@@ -14,8 +14,9 @@ use crate::resource::{GameConfig, GameState, MatchFlowState, MatchScore, RallySt
 use super::{
     serve_double_fault_system, serve_hit_input_system, serve_init_system,
     serve_position_system, serve_toss_input_system, serve_toss_physics_system,
-    serve_toss_timeout_system, GameSystemSet,
+    serve_toss_timeout_system,
 };
+use crate::systems::GameSystemSet;
 
 /// 試合フロープラグイン
 /// @spec 30101_flow_spec.md
