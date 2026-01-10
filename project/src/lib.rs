@@ -14,7 +14,7 @@ pub mod simulation;
 pub mod systems;
 
 // リプレイ機能を再公開
-pub use replay::{load_replay, ReplayPlayer};
+pub use replay::{ReplayManager, ReplayRecordPlugin};
 
 // 主要な型を再公開
 pub use character::CharacterPlugin;

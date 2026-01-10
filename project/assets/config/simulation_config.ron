@@ -8,7 +8,7 @@
     // === 実行設定 ===
     execution: (
         // 実行試合数
-        match_count: 10,
+        match_count: 1,
         // 1試合タイムアウト（秒）
         timeout_secs: 300,
         // 乱数シード（None=ランダム）

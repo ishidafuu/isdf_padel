@@ -17,15 +17,15 @@ use bevy::prelude::*;
 use clap::Parser;
 
 use padel_game::character::CharacterPlugin;
-use padel_game::components::AiController;
 use padel_game::core::{
-    BallHitEvent, CourtSide, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent,
+    BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent,
     PlayerMoveEvent, ShotEvent, ShotExecutedEvent,
 };
-use padel_game::replay::{load_replay, player::replay_input_system, ReplayPlayer};
+use padel_game::replay::loader::load_replay;
+use padel_game::replay::player::{replay_input_system, ReplayPlayer};
 use padel_game::resource::config::load_game_config;
 use padel_game::resource::debug::LastShotDebugInfo;
-use padel_game::resource::{GameConfig, MatchFlowState};
+use padel_game::resource::MatchFlowState;
 use padel_game::simulation::AnomalyDetectorPlugin;
 use padel_game::systems::{
     ceiling_collision_system, gravity_system, jump_system, knockback_movement_system,
