@@ -13,6 +13,7 @@ use crate::components::AiController;
 use crate::core::CourtSide;
 use crate::resource::config::GameConfig;
 use crate::resource::scoring::{GameState, MatchScore};
+use crate::resource::FixedDeltaTime;
 use crate::resource::MatchFlowState;
 
 use super::{
@@ -137,6 +138,7 @@ impl SimulationRunner {
 
         // MinimalPlugins（時間とタスク処理のみ）
         // ScheduleRunnerPlugin で固定タイムステップを使用
+        // 60FPS固定タイムステップ
         app.add_plugins(MinimalPlugins.set(ScheduleRunnerPlugin::run_loop(
             std::time::Duration::from_secs_f64(1.0 / 60.0),
         )));
@@ -152,6 +154,9 @@ impl SimulationRunner {
 
         // GameConfig リソースを挿入
         app.insert_resource(game_config.clone());
+
+        // FixedDeltaTime リソースを挿入（物理計算用）
+        app.init_resource::<FixedDeltaTime>();
 
         // シミュレーション状態リソースを挿入
         app.insert_resource(SimulationStateResource::new(self.config.timeout_secs));
@@ -282,8 +287,8 @@ fn check_match_end_system(
 }
 
 /// タイムアウト検出システム
-fn check_timeout_system(mut sim_state: ResMut<SimulationStateResource>, time: Res<Time>) {
-    sim_state.elapsed_secs += time.delta_secs();
+fn check_timeout_system(mut sim_state: ResMut<SimulationStateResource>, fixed_dt: Res<FixedDeltaTime>) {
+    sim_state.elapsed_secs += fixed_dt.delta_secs();
 
     if sim_state.elapsed_secs >= sim_state.timeout_secs {
         sim_state.timed_out = true;

@@ -10,6 +10,7 @@ use super::animation::{
 use super::components::{ArticulatedCharacter, CharacterFacing, PartDefinition, PartState};
 use crate::components::{GroundedState, LogicalPosition, Player, Velocity};
 use crate::core::events::ShotEvent;
+use crate::resource::FixedDeltaTime;
 use crate::resource::GameConfig;
 
 /// 起動時にアニメーションデータをロードするシステム
@@ -111,7 +112,7 @@ pub fn update_character_facing_system(
 /// アニメーション時間を進めるシステム
 /// @spec 31002_animation_spec.md#req-31002-006
 pub fn advance_animation_system(
-    time: Res<Time>,
+    fixed_dt: Res<FixedDeltaTime>,
     animations: Res<CharacterAnimations>,
     mut query: Query<&mut CharacterAnimationState, With<ArticulatedCharacter>>,
 ) {
@@ -123,7 +124,7 @@ pub fn advance_animation_system(
 
         // 経過時間を更新
         // @spec 31002_animation_spec.md#req-31002-006
-        anim_state.elapsed += time.delta_secs() * anim_state.speed;
+        anim_state.elapsed += fixed_dt.delta_secs() * anim_state.speed;
 
         // ループ処理
         if anim_state.looping && anim_state.elapsed >= anim_data.duration {

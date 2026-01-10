@@ -23,6 +23,7 @@ use presentation::{
 };
 use resource::config::{load_game_config, GameConfig, GameConfigHandle, GameConfigLoader};
 use resource::debug::LastShotDebugInfo;
+use resource::FixedDeltaTime;
 use resource::MatchFlowState;
 use systems::{
     ai_movement_system, ai_shot_system, ceiling_collision_system, debug_marker_system,
@@ -74,6 +75,7 @@ fn main() {
         // @spec 77103_replay_spec.md: リプレイ記録機能
         .add_plugins(replay::ReplayRecordPlugin)
         .insert_resource(config)
+        .init_resource::<FixedDeltaTime>()
         .init_resource::<LastShotDebugInfo>()
         .add_message::<PlayerMoveEvent>()
         .add_message::<PlayerJumpEvent>()
@@ -192,118 +194,47 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
 
 }
 
+
+/// スプライト（矩形）を生成するヘルパー
+fn spawn_rect(commands: &mut Commands, width: f32, height: f32, x: f32, y: f32, z: f32, color: Color) {
+    commands.spawn((
+        Sprite {
+            color,
+            custom_size: Some(Vec2::new(width, height)),
+            ..default()
+        },
+        Transform::from_xyz(x, y, z),
+    ));
+}
+
 /// コートの境界線とネットを描画（横向き：左右の打ち合い）
 fn spawn_court(commands: &mut Commands, config: &GameConfig) {
     // 直接マッピング：論理X（depth/打ち合い方向）→ 画面X、論理Z（width/コート幅）→ 画面Y
     let court_display_width = config.court.depth * WORLD_SCALE;  // 画面X方向（打ち合い方向）
     let court_display_height = config.court.width * WORLD_SCALE; // 画面Y方向（コート幅）
-    let half_display_width = court_display_width / 2.0;
-    let half_display_height = court_display_height / 2.0;
+    let half_w = court_display_width / 2.0;
+    let half_h = court_display_height / 2.0;
+    // @spec 30501_court_spec.md#req-30501-008
+    let service_x = config.court.service_box_depth * WORLD_SCALE;
+
+    let white = Color::srgb(1.0, 1.0, 1.0);
+    let line = 4.0;
 
     // コート背景（緑）
-    commands.spawn((
-        Sprite {
-            color: Color::srgb(0.2, 0.5, 0.2),
-            custom_size: Some(Vec2::new(court_display_width, court_display_height)),
-            ..default()
-        },
-        Transform::from_xyz(0.0, 0.0, -1.0),
-    ));
-
+    spawn_rect(commands, court_display_width, court_display_height, 0.0, 0.0, -1.0, Color::srgb(0.2, 0.5, 0.2));
     // ネット（白い線、中央の縦線）
-    commands.spawn((
-        Sprite {
-            color: Color::srgb(1.0, 1.0, 1.0),
-            custom_size: Some(Vec2::new(4.0, court_display_height)),
-            ..default()
-        },
-        Transform::from_xyz(0.0, 0.0, 0.0),
-    ));
-
-    // 左境界線（1Pコート側）
-    commands.spawn((
-        Sprite {
-            color: Color::srgb(1.0, 1.0, 1.0),
-            custom_size: Some(Vec2::new(4.0, court_display_height)),
-            ..default()
-        },
-        Transform::from_xyz(-half_display_width, 0.0, 0.0),
-    ));
-
-    // 右境界線（2Pコート側）
-    commands.spawn((
-        Sprite {
-            color: Color::srgb(1.0, 1.0, 1.0),
-            custom_size: Some(Vec2::new(4.0, court_display_height)),
-            ..default()
-        },
-        Transform::from_xyz(half_display_width, 0.0, 0.0),
-    ));
-
-    // 上境界線
-    commands.spawn((
-        Sprite {
-            color: Color::srgb(1.0, 1.0, 1.0),
-            custom_size: Some(Vec2::new(court_display_width, 4.0)),
-            ..default()
-        },
-        Transform::from_xyz(0.0, half_display_height, 0.0),
-    ));
-
-    // 下境界線
-    commands.spawn((
-        Sprite {
-            color: Color::srgb(1.0, 1.0, 1.0),
-            custom_size: Some(Vec2::new(court_display_width, 4.0)),
-            ..default()
-        },
-        Transform::from_xyz(0.0, -half_display_height, 0.0),
-    ));
-
-    // サービスライン描画
-    // @spec 30501_court_spec.md#req-30501-008
-    let service_line_x = config.court.service_box_depth * WORLD_SCALE;
-
-    // 1P側サービスライン（縦線）
-    commands.spawn((
-        Sprite {
-            color: Color::srgb(1.0, 1.0, 1.0),
-            custom_size: Some(Vec2::new(4.0, court_display_height)),
-            ..default()
-        },
-        Transform::from_xyz(-service_line_x, 0.0, 0.0),
-    ));
-
-    // 2P側サービスライン（縦線）
-    commands.spawn((
-        Sprite {
-            color: Color::srgb(1.0, 1.0, 1.0),
-            custom_size: Some(Vec2::new(4.0, court_display_height)),
-            ..default()
-        },
-        Transform::from_xyz(service_line_x, 0.0, 0.0),
-    ));
-
+    spawn_rect(commands, line, court_display_height, 0.0, 0.0, 0.0, white);
+    // 境界線（左右上下）
+    spawn_rect(commands, line, court_display_height, -half_w, 0.0, 0.0, white); // 左（1P側）
+    spawn_rect(commands, line, court_display_height, half_w, 0.0, 0.0, white);  // 右（2P側）
+    spawn_rect(commands, court_display_width, line, 0.0, half_h, 0.0, white);   // 上
+    spawn_rect(commands, court_display_width, line, 0.0, -half_h, 0.0, white);  // 下
+    // サービスライン（縦線）
+    spawn_rect(commands, line, court_display_height, -service_x, 0.0, 0.0, white); // 1P側
+    spawn_rect(commands, line, court_display_height, service_x, 0.0, 0.0, white);  // 2P側
     // センターサービスライン（ネットからサービスラインまでの中央線）
-    // 1P側センターライン
-    commands.spawn((
-        Sprite {
-            color: Color::srgb(1.0, 1.0, 1.0),
-            custom_size: Some(Vec2::new(service_line_x, 4.0)),
-            ..default()
-        },
-        Transform::from_xyz(-service_line_x / 2.0, 0.0, 0.0),
-    ));
-
-    // 2P側センターライン
-    commands.spawn((
-        Sprite {
-            color: Color::srgb(1.0, 1.0, 1.0),
-            custom_size: Some(Vec2::new(service_line_x, 4.0)),
-            ..default()
-        },
-        Transform::from_xyz(service_line_x / 2.0, 0.0, 0.0),
-    ));
+    spawn_rect(commands, service_x, line, -service_x / 2.0, 0.0, 0.0, white); // 1P側
+    spawn_rect(commands, service_x, line, service_x / 2.0, 0.0, 0.0, white);  // 2P側
 
     info!("Court spawned: {}x{} pixels (直接マッピング)", court_display_width, court_display_height);
 }

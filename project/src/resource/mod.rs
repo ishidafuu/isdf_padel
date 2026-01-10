@@ -3,8 +3,9 @@
 
 pub mod config;
 pub mod debug;
+pub mod fixed_delta;
 pub mod scoring;
 
 pub use config::*;
-pub use debug::*;
+pub use fixed_delta::*;
 pub use scoring::*;

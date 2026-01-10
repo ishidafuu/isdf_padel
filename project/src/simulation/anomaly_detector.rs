@@ -12,6 +12,7 @@ use bevy::prelude::*;
 
 use crate::components::{Ball, LogicalPosition, Player, Velocity};
 use crate::resource::config::GameConfig;
+use crate::resource::FixedDeltaTime;
 use crate::resource::MatchFlowState;
 
 use super::config::AnomalyThresholds;
@@ -191,10 +192,10 @@ fn detect_state_stuck(
     mut detector: ResMut<AnomalyDetectorResource>,
     thresholds: Res<AnomalyThresholdsResource>,
     state: Res<State<MatchFlowState>>,
-    time: Res<Time>,
+    fixed_dt: Res<FixedDeltaTime>,
 ) {
     let current_state = *state.get();
-    let dt = time.delta_secs();
+    let dt = fixed_dt.delta_secs();
 
     if detector.detector.last_state == Some(current_state) {
         detector.detector.state_duration += dt;
@@ -219,10 +220,10 @@ fn detect_infinite_rally(
     mut detector: ResMut<AnomalyDetectorResource>,
     thresholds: Res<AnomalyThresholdsResource>,
     state: Res<State<MatchFlowState>>,
-    time: Res<Time>,
+    fixed_dt: Res<FixedDeltaTime>,
 ) {
     let current_state = *state.get();
-    let dt = time.delta_secs();
+    let dt = fixed_dt.delta_secs();
 
     if current_state == MatchFlowState::Rally {
         detector.detector.rally_duration += dt;
@@ -265,8 +266,8 @@ fn detect_physics_anomaly(
 /// 検出器状態更新システム
 fn update_detector_state(
     mut detector: ResMut<AnomalyDetectorResource>,
-    time: Res<Time>,
+    fixed_dt: Res<FixedDeltaTime>,
 ) {
     detector.detector.frame_count += 1;
-    detector.detector.elapsed_secs += time.delta_secs();
+    detector.detector.elapsed_secs += fixed_dt.delta_secs();
 }
