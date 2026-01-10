@@ -2,7 +2,7 @@
 id: "R30000-025"
 title: "大規模モジュール分割（direction.rs等）"
 type: "refactor"
-status: "in-review"
+status: "done"
 priority: "medium"
 related_task: null
 spec_ids: []
@@ -15,7 +15,7 @@ tags: ["audit", "architecture", "module-split"]
 parent_task_id: null
 created_at: "2026-01-11"
 updated_at: "2026-01-11"
-completed_at: null
+completed_at: "2026-01-11"
 ---
 
 # Task R30000-025: 大規模モジュール分割（direction.rs等）
@@ -53,7 +53,7 @@ completed_at: null
 - [x] テスト全PASS（`cargo test`）
 - [x] 各サブモジュールが300行以下
 - [x] in-review に移動済み
-- [ ] レビュー完了
+- [x] レビュー完了
 
 ## メモ
 
