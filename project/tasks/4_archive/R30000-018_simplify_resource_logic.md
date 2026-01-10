@@ -2,7 +2,7 @@
 id: "R30000-018"
 title: "resource/ (ロジック系) 簡素化"
 type: "refactor"
-status: "todo"
+status: "done"
 priority: "medium"
 related_task: "30000"
 spec_ids: []
@@ -41,3 +41,14 @@ code-simplifier エージェントを使用
 
 ## 優先度
 Tier 2（中）
+
+## 完了内容
+
+### scoring.rs: ServeStateリセット処理共通化
+- `reset_toss_state()` プライベートヘルパー関数を追加
+- `on_hit_success()`, `reset_for_retry()`, `reset_for_new_point()` の重複コードを解消
+- DRY原則の適用
+
+### その他
+- `debug.rs`, `fixed_delta.rs` は既に簡素な構造のため変更なし
+- `mod.rs` は必要最小限のため変更なし

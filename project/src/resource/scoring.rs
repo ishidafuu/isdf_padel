@@ -295,27 +295,28 @@ impl ServeState {
         self.fault_count >= 2
     }
 
-    /// ヒット成功時のリセット（Rallyへ遷移するため）
-    pub fn on_hit_success(&mut self) {
+    /// トス状態のみリセット（共通処理）
+    #[inline]
+    fn reset_toss_state(&mut self) {
         self.phase = ServeSubPhase::Waiting;
         self.toss_time = 0.0;
         self.toss_origin = None;
+    }
+
+    /// ヒット成功時のリセット（Rallyへ遷移するため）
+    pub fn on_hit_success(&mut self) {
+        self.reset_toss_state();
     }
 
     /// 打ち直し（let）時のリセット
     /// @spec 30102_serve_spec.md#req-30102-084
     pub fn reset_for_retry(&mut self) {
-        self.phase = ServeSubPhase::Waiting;
-        self.toss_time = 0.0;
-        self.toss_origin = None;
-        // fault_count は変更しない
+        self.reset_toss_state();
     }
 
     /// ポイント開始時のリセット
     pub fn reset_for_new_point(&mut self) {
-        self.phase = ServeSubPhase::Waiting;
-        self.toss_time = 0.0;
-        self.toss_origin = None;
+        self.reset_toss_state();
         self.fault_count = 0;
     }
 }
