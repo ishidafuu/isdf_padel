@@ -114,6 +114,7 @@ pub fn start_recording_system(
 
 /// フレーム入力記録システム
 /// @spec REQ-77103-001
+/// ECS設計原則: court_sideベースでプレイヤーを識別（固定IDを排除）
 pub fn record_frame_system(
     mut recorder: ResMut<ReplayRecorder>,
     match_state: Res<State<MatchFlowState>>,
@@ -129,21 +130,21 @@ pub fn record_frame_system(
         return;
     }
 
-    // P1, P2 の入力を取得
-    let mut p1_input: Option<&InputState> = None;
-    let mut p2_input: Option<&InputState> = None;
+    // Left側, Right側 の入力を取得
+    let mut left_input: Option<&InputState> = None;
+    let mut right_input: Option<&InputState> = None;
 
     for (player, input) in players.iter() {
-        match player.id {
-            1 => p1_input = Some(input),
-            2 => p2_input = Some(input),
-            _ => {}
+        match player.court_side {
+            CourtSide::Left => left_input = Some(input),
+            CourtSide::Right => right_input = Some(input),
         }
     }
 
     // 両方の入力が揃ったら記録
-    if let (Some(p1), Some(p2)) = (p1_input, p2_input) {
-        recorder.record_frame(p1, p2);
+    // p1 = Left側, p2 = Right側 として保存
+    if let (Some(left), Some(right)) = (left_input, right_input) {
+        recorder.record_frame(left, right);
     }
 }
 

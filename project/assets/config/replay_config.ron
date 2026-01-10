@@ -1,0 +1,13 @@
+// Replay Configuration
+// @data 87103_replay_config.md
+(
+    file_management: (
+        save_directory: "assets/replays",
+        file_prefix: "replay_",
+        max_replay_count: 100,
+    ),
+    cleanup_policy: (
+        delete_on_version_mismatch: true,
+        delete_oldest_on_limit: true,
+    ),
+)

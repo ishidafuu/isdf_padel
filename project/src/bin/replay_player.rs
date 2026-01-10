@@ -95,7 +95,14 @@ fn main() {
 
     // ReplayPlayer リソースを初期化
     let mut replay_player = ReplayPlayer::new();
-    replay_player.start_playback(replay_data);
+    replay_player.start_playback(replay_data.clone());
+
+    // TODO: シード値による乱数初期化
+    // 現在のゲームは rand::rng() を直接使用しており、シード可能な乱数リソースになっていない。
+    // 完全な再現のためには、ゲーム全体の乱数システムをシード可能なリソースにリファクタリングする必要がある。
+    // 現時点では入力の再現のみ対応。AIの乱数動作の再現は将来の拡張として保留。
+    println!("Note: Seed {} is recorded but not used for RNG initialization.", replay_data.metadata.seed);
+    println!("      AI behavior may differ from original recording.\n");
 
     // Bevy アプリを構築して実行
     let mut app = App::new();

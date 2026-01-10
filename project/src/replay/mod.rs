@@ -49,20 +49,24 @@ impl Plugin for ReplayRecordPlugin {
 
 /// 試合開始時にリプレイ記録を開始
 /// @spec REQ-77103-002
-fn start_replay_on_match_start(mut recorder: ResMut<ReplayRecorder>) {
-    use crate::core::CourtSide;
-
+fn start_replay_on_match_start(
+    mut recorder: ResMut<ReplayRecorder>,
+    match_score: Res<crate::resource::MatchScore>,
+) {
     // シードを生成（現在時刻ベース）
     let seed = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos() as u64)
         .unwrap_or(0);
 
-    // デフォルトでLeft側からサーブ開始
-    let initial_serve_side = CourtSide::Left;
+    // ゲーム状態から初期サーブ側を取得
+    let initial_serve_side = match_score.server;
 
     recorder.start_recording(seed, initial_serve_side);
-    info!("Replay recording started with seed: {}", seed);
+    info!(
+        "Replay recording started with seed: {}, initial_serve_side: {:?}",
+        seed, initial_serve_side
+    );
 }
 
 /// 試合終了時に自動保存

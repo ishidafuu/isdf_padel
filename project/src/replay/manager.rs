@@ -7,7 +7,11 @@ use bevy::prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::data::{ReplayConfig, ReplayData};
+use super::data::{load_replay_config, ReplayConfig, ReplayData};
+use super::loader;
+
+/// リプレイ設定ファイルのデフォルトパス
+const REPLAY_CONFIG_PATH: &str = "assets/config/replay_config.ron";
 
 /// リプレイマネージャーリソース
 /// @spec REQ-77103-003, REQ-77103-004, REQ-77103-005
@@ -18,9 +22,18 @@ pub struct ReplayManager {
 
 impl Default for ReplayManager {
     fn default() -> Self {
-        Self {
-            config: ReplayConfig::default(),
-        }
+        // 設定ファイルを読み込む（失敗時はデフォルト値を使用）
+        let config = match load_replay_config(REPLAY_CONFIG_PATH) {
+            Ok(c) => {
+                info!("Loaded replay config from {}", REPLAY_CONFIG_PATH);
+                c
+            }
+            Err(e) => {
+                warn!("Failed to load replay config: {}. Using defaults.", e);
+                ReplayConfig::default()
+            }
+        };
+        Self { config }
     }
 }
 
@@ -73,24 +86,8 @@ impl ReplayManager {
     /// リプレイを読み込み
     /// @spec REQ-77103-006
     pub fn load_replay<P: AsRef<Path>>(&self, path: P) -> Result<ReplayData, String> {
-        let path = path.as_ref();
-
-        let content =
-            fs::read_to_string(path).map_err(|e| format!("Failed to read replay file: {}", e))?;
-
-        let data: ReplayData =
-            ron::from_str(&content).map_err(|e| format!("Failed to parse replay: {}", e))?;
-
-        // バージョンチェック
-        if !data.metadata.is_version_compatible() {
-            return Err(format!(
-                "Version mismatch: replay={}, current={}",
-                data.metadata.game_version,
-                env!("CARGO_PKG_VERSION")
-            ));
-        }
-
-        Ok(data)
+        // loader モジュールに委譲（バージョンチェック含む）
+        loader::load_replay(path)
     }
 
     /// 保存ディレクトリ内のリプレイファイル一覧を取得

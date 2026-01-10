@@ -170,3 +170,18 @@ impl Default for CleanupPolicyConfig {
         }
     }
 }
+
+/// 設定ファイルを読み込む
+/// @data 87103_replay_config.md
+pub fn load_replay_config<P: AsRef<std::path::Path>>(path: P) -> Result<ReplayConfig, String> {
+    let path = path.as_ref();
+
+    if !path.exists() {
+        return Ok(ReplayConfig::default());
+    }
+
+    let content =
+        std::fs::read_to_string(path).map_err(|e| format!("Failed to read config file: {}", e))?;
+
+    ron::from_str(&content).map_err(|e| format!("Failed to parse config: {}", e))
+}

@@ -7,6 +7,7 @@
 use bevy::prelude::*;
 
 use crate::components::{InputState, Player};
+use crate::core::CourtSide;
 
 use super::data::{InputSnapshot, ReplayData};
 
@@ -113,6 +114,7 @@ impl ReplayPlayer {
 
 /// 入力注入システム
 /// @spec REQ-77103-008
+/// ECS設計原則: court_sideベースでプレイヤーを識別（固定IDを排除）
 pub fn replay_input_system(
     mut replay_player: ResMut<ReplayPlayer>,
     mut players: Query<(&Player, &mut InputState)>,
@@ -122,16 +124,16 @@ pub fn replay_input_system(
     }
 
     // 次のフレーム入力を取得
-    let Some((p1_snapshot, p2_snapshot)) = replay_player.advance_frame() else {
+    // p1 = Left側, p2 = Right側
+    let Some((left_snapshot, right_snapshot)) = replay_player.advance_frame() else {
         return;
     };
 
     // 各プレイヤーに入力を注入
     for (player, mut input) in players.iter_mut() {
-        let snapshot = match player.id {
-            1 => &p1_snapshot,
-            2 => &p2_snapshot,
-            _ => continue,
+        let snapshot = match player.court_side {
+            CourtSide::Left => &left_snapshot,
+            CourtSide::Right => &right_snapshot,
         };
 
         input.movement = snapshot.movement;
