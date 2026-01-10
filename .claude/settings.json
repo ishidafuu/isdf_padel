@@ -30,6 +30,15 @@
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/rust-check.py\""
           }
         ]
+      },
+      {
+        "matcher": "Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/validate-task-dirs.py\""
+          }
+        ]
       }
     ]
   },
