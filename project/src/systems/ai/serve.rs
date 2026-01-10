@@ -13,7 +13,7 @@ use rand::Rng;
 use crate::components::{AiController, Ball, LogicalPosition, Player, TossBall, TossBallBundle};
 use crate::core::ShotEvent;
 use crate::resource::scoring::{ServeState, ServeSubPhase};
-use crate::resource::{GameConfig, MatchFlowState, MatchScore};
+use crate::resource::{FixedDeltaTime, GameConfig, MatchFlowState, MatchScore};
 use crate::systems::GameSystemSet;
 
 /// AIサーブ待機タイマー（リソース）
@@ -88,7 +88,7 @@ pub fn ai_serve_timer_init_system(
 /// タイマーが完了したらトスを実行する。
 pub fn ai_serve_toss_system(
     mut commands: Commands,
-    time: Res<Time>,
+    fixed_dt: Res<FixedDeltaTime>,
     config: Res<GameConfig>,
     match_score: Res<MatchScore>,
     mut serve_state: ResMut<ServeState>,
@@ -107,8 +107,8 @@ pub fn ai_serve_toss_system(
         return;
     }
 
-    // タイマー更新
-    timer.tick(time.delta());
+    // タイマー更新（FixedDeltaTime使用で高速シミュレーション対応）
+    timer.tick(std::time::Duration::from_secs_f32(fixed_dt.delta_secs()));
 
     // タイマー完了前ならスキップ
     if !timer.is_finished() {
