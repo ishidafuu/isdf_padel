@@ -1,3 +1,20 @@
+---
+id: "B30102-003"
+title: "AIサーブlet条件後のスタック修正"
+type: "bugfix"
+status: "todo"
+priority: "high"
+related_task: "30102"
+spec_ids: ["REQ-30102-084"]
+blocked_by: []
+blocks: []
+branch_name: null
+worktree_path: null
+plan_file: null
+tags: ["ai", "serve", "bugfix"]
+parent_task_id: null
+---
+
 # B30102-003: AIサーブlet条件後のスタック修正
 
 ## 概要

@@ -2,7 +2,7 @@
 id: "B30700-001"
 title: "scoring.rs ブール式ロジック修正"
 type: "bugfix"
-status: "in-review"
+status: "completed"
 priority: "critical"
 related_task: null
 spec_ids:
@@ -18,7 +18,7 @@ tags:
 parent_task_id: null
 created_at: "2026-01-10"
 updated_at: "2026-01-10"
-completed_at: null
+completed_at: "2026-01-11"
 ---
 
 # Task B30700-001: scoring.rs ブール式ロジック修正
@@ -74,7 +74,7 @@ scorer_index >= win_index
 - [x] テスト全PASS（`cargo test`）- 149 passed
 - [x] Clippy エラー解消（`cargo clippy`）
 - [x] in-review に移動済み
-- [ ] レビュー完了
+- [x] レビュー完了
 
 ## メモ
 

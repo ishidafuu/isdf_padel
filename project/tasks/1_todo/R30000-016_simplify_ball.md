@@ -1,3 +1,20 @@
+---
+id: "R30000-016"
+title: "systems/ball/ 簡素化"
+type: "refactor"
+status: "todo"
+priority: "medium"
+related_task: "30000"
+spec_ids: []
+blocked_by: []
+blocks: []
+branch_name: null
+worktree_path: null
+plan_file: null
+tags: ["code-simplifier", "ball", "refactor"]
+parent_task_id: null
+---
+
 # R30000-016: systems/ball/ 簡素化
 
 ## 概要

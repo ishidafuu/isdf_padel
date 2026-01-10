@@ -1,3 +1,20 @@
+---
+id: "R30000-021"
+title: "core/ 簡素化"
+type: "refactor"
+status: "todo"
+priority: "low"
+related_task: "30000"
+spec_ids: []
+blocked_by: []
+blocks: []
+branch_name: null
+worktree_path: null
+plan_file: null
+tags: ["code-simplifier", "core", "refactor"]
+parent_task_id: null
+---
+
 # R30000-021: core/ 簡素化
 
 ## 概要

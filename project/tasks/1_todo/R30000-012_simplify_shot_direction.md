@@ -1,3 +1,20 @@
+---
+id: "R30000-012"
+title: "systems/shot/direction.rs 簡素化"
+type: "refactor"
+status: "todo"
+priority: "high"
+related_task: "30000"
+spec_ids: []
+blocked_by: []
+blocks: []
+branch_name: null
+worktree_path: null
+plan_file: null
+tags: ["code-simplifier", "shot", "refactor"]
+parent_task_id: null
+---
+
 # R30000-012: systems/shot/direction.rs 簡素化
 
 ## 概要

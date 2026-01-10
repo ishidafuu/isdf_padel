@@ -2,7 +2,7 @@
 id: "R30000-011"
 title: "長関数のリファクタリング"
 type: "refactor"
-status: "in-review"
+status: "completed"
 priority: "low"
 related_task: "30000"
 spec_ids: []
@@ -15,7 +15,7 @@ tags: ["code-quality", "readability"]
 parent_task_id: null
 created_at: "2026-01-10"
 updated_at: "2026-01-10"
-completed_at: null
+completed_at: "2026-01-11"
 ---
 
 # Task R30000-011: 長関数のリファクタリング
@@ -83,7 +83,7 @@ completed_at: null
 - [x] ビルド成功（`cargo build`）
 - [x] テスト全PASS（`cargo test`）
 - [x] in-review に移動済み
-- [ ] レビュー完了
+- [x] レビュー完了
 
 ## メモ
 

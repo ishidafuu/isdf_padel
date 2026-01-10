@@ -1,3 +1,20 @@
+---
+id: "R30000-020"
+title: "presentation/ + character/ 簡素化"
+type: "refactor"
+status: "todo"
+priority: "low"
+related_task: "30000"
+spec_ids: []
+blocked_by: []
+blocks: []
+branch_name: null
+worktree_path: null
+plan_file: null
+tags: ["code-simplifier", "presentation", "character", "refactor"]
+parent_task_id: null
+---
+
 # R30000-020: presentation/ + character/ 簡素化
 
 ## 概要
