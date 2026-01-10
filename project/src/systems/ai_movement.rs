@@ -261,23 +261,25 @@ mod tests {
     }
 
     /// 待機位置計算テスト
+    /// @spec 30301_ai_movement_spec.md#req-30301-v05-002
     #[test]
     fn test_idle_position_calculation() {
-        // ダミーのAiConfig設定
-        let optimal_depth: f32 = 5.0;
-        let bias_factor: f32 = 0.3;
-        let _max_z_offset: f32 = 3.0;
+        use crate::resource::config::AiConfig;
 
+        let ai_config = AiConfig::default();
         let ball_pos = Vec3::new(3.0, 2.0, 2.0);
 
-        // Right側のAI（+X側）
-        // X = depth = 5.0
-        // Z = ball_z * bias = 2.0 * 0.3 = 0.6
-        let expected_x = optimal_depth;
-        let expected_z = ball_pos.z * bias_factor;
+        // Right側のAI: X = +optimal_depth, Z = ball_z * bias
+        let expected_x_right = ai_config.optimal_depth;
+        let expected_z = (ball_pos.z * ai_config.coverage_bias_factor)
+            .clamp(-ai_config.max_z_offset, ai_config.max_z_offset);
 
-        assert!((expected_x - 5.0_f32).abs() < 0.01);
-        assert!((expected_z - 0.6_f32).abs() < 0.01);
+        assert!((expected_x_right - 5.0).abs() < 0.01); // デフォルト: 5.0m
+        assert!((expected_z - 0.6).abs() < 0.01); // 2.0 * 0.3 = 0.6
+
+        // Left側のAI: X = -optimal_depth
+        let expected_x_left = -ai_config.optimal_depth;
+        assert!((expected_x_left - (-5.0)).abs() < 0.01);
     }
 
     /// REQ-30301-002: 移動方向正規化テスト
