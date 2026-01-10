@@ -1016,7 +1016,7 @@ fn default_landing_depth() -> f32 {
     4.0
 }
 fn default_min_launch_angle() -> f32 {
-    12.0
+    -90.0 // 下限は動的計算（ネット通過角度）に任せるため、実質的に無効化
 }
 fn default_max_launch_angle() -> f32 {
     60.0

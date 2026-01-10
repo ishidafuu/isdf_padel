@@ -1,8 +1,8 @@
 # Trajectory Calculation Specification
 
-**Version**: 1.0.0
+**Version**: 1.1.0
 **Status**: Draft
-**Last Updated**: 2026-01-09
+**Last Updated**: 2026-01-10
 
 ## 概要
 
@@ -158,16 +158,69 @@ tan(θ) = (v² ± sqrt(v⁴ - g_eff * (g_eff * d² + 2 * h * v²))) / (g_eff * d
 
 ---
 
+#### REQ-30605-025: ネット通過角度の動的計算
+**WHEN** 発射角度を計算する
+**THE SYSTEM SHALL** ネットを確実に越える最小角度を動的に算出する
+
+**計算ロジック**:
+```
+1. 二分探索で最小角度を探索（0°〜60°）
+2. 各候補角度でネット位置での高さを計算
+3. ネット高さ + マージンを越えられる最小角度を採用
+
+min_net_angle = binary_search(
+    condition: height_at_net(angle) >= net_height + margin,
+    range: 0° to 60°
+)
+```
+
+**考慮要素**:
+- 打点高さ（地上 vs ジャンプ）
+- ネットまでの距離
+- 有効重力（スピン影響）
+
+**テスト**: TST-30605-025
+
+---
+
+#### REQ-30605-026: 角度変更時の速度再計算
+**WHEN** ネット通過角度により発射角度が変更される
+**THE SYSTEM SHALL** 目標地点に到達するよう初速を再計算する
+
+**物理公式**:
+```
+v = √[ g·d² / (2·cos²(θ)·(d·tan(θ) - h)) ]
+
+where:
+  v = 必要初速（求める値）
+  g = 有効重力
+  d = 水平距離
+  θ = 最終発射角度
+  h = 高低差（着地高さ - 打点高さ）
+```
+
+**解の存在条件**: `d·tan(θ) - h > 0`
+- 条件を満たさない場合は元の速度を維持
+
+**テスト**: TST-30605-026
+
+---
+
 #### REQ-30605-022: 発射角度の範囲制限
 **WHEN** 発射角度が計算される
 **THE SYSTEM SHALL** 角度を有効範囲内に制限する
 
 ```
-angle = clamp(calculated_angle, min_launch_angle, max_launch_angle)
+// 逆算角度とネット通過角度の大きい方を採用
+final_angle = max(calculated_angle, min_net_angle)
+
+// 上限でクランプ
+clamped_angle = clamp(final_angle, -90°, max_launch_angle)
 ```
 
+**注意**: 下限値は固定値ではなく、REQ-30605-025で動的に計算される
+
 **データ**:
-- config.trajectory.min_launch_angle (デフォルト: 5°)
 - config.trajectory.max_launch_angle (デフォルト: 60°)
 
 ---
@@ -371,7 +424,7 @@ final_target = target + Vec3(offset_x, 0, offset_z)
 
 ### 事後条件
 
-- 発射角度が 5°〜60° の範囲内
+- 発射角度が最大60°以内（下限はネット通過角度で動的決定）
 - 最終初速が正の値
 - 着地地点がコート内に収まる（マージン考慮）
 - 方向ベクトルが正規化されている
@@ -392,7 +445,6 @@ final_target = target + Vec3(offset_x, 0, offset_z)
 |-----------|-----------|------------|
 | 着地マージン | config.trajectory.landing_margin | 0.5m |
 | デフォルト着地深さ | config.trajectory.default_landing_depth | 4.0m |
-| 最小発射角度 | config.trajectory.min_launch_angle | 5° |
 | 最大発射角度 | config.trajectory.max_launch_angle | 60° |
 | フラット初速係数 | config.trajectory.spin_speed_flat | 1.0 |
 | トップスピン初速係数 | config.trajectory.spin_speed_topspin | 0.92 |
@@ -444,6 +496,12 @@ final_target = target + Vec3(offset_x, 0, offset_z)
 ---
 
 ## Change Log
+
+### 2026-01-10 - v1.1.0
+
+- ネット通過角度の動的計算（REQ-30605-025）
+- 角度変更時の速度再計算（REQ-30605-026）
+- min_launch_angleを固定値から動的計算に変更（REQ-30605-022更新）
 
 ### 2026-01-09 - v1.0.0（初版）
 

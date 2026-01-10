@@ -318,11 +318,6 @@ pub fn calculate_launch_angle(
     let v2 = v * v;
     let v4 = v2 * v2;
 
-    // ネット通過に必要な最小角度を計算
-    let min_net_angle = calculate_min_angle_for_net_clearance(
-        start_pos, target_pos, base_speed, effective_gravity, net_x, net_height,
-    );
-
     // 判別式: v^4 - g(g*d^2 + 2*h*v^2)
     let discriminant = v4 - g * (g * d * d + 2.0 * h * v2);
 
@@ -342,14 +337,27 @@ pub fn calculate_launch_angle(
             angle_2
         };
 
-        // ネット通過角度と比較し、大きい方を採用
-        let angle_with_net = angle.max(min_net_angle);
-
-        // 範囲制限
-        let clamped_angle = angle_with_net.clamp(
-            trajectory_config.min_launch_angle,
-            trajectory_config.max_launch_angle,
+        // ネット通過に必要な最小角度を計算
+        let min_net_angle = calculate_min_angle_for_net_clearance(
+            start_pos, target_pos, v, g, net_x, net_height,
         );
+
+        // ネット通過角度と計算角度の大きい方を採用
+        let final_angle = angle.max(min_net_angle);
+
+        // 上限のみ制限
+        let clamped_angle = final_angle.min(trajectory_config.max_launch_angle);
+
+        // 角度が変更された場合、目標着地点に到達するように速度を調整
+        if (clamped_angle - angle).abs() > 0.1 {
+            // 変更後の角度で目標着地点に到達する速度を計算
+            let adjusted_speed = calculate_speed_for_target(
+                clamped_angle, horizontal_distance, g, h,
+            );
+            if adjusted_speed > 0.0 {
+                return (clamped_angle, adjusted_speed, target_pos);
+            }
+        }
 
         return (clamped_angle, v, target_pos);
     }
@@ -400,13 +408,13 @@ pub fn calculate_launch_angle(
         let sqrt_disc = new_discriminant.sqrt();
         let tan_theta = (v2 - sqrt_disc) / (g * new_d);
         let angle = tan_theta.atan().to_degrees();
-        
-        // ネット通過角度と比較
-        let angle_with_net = angle.max(min_net_angle);
-        let clamped = angle_with_net.clamp(
-            trajectory_config.min_launch_angle,
-            trajectory_config.max_launch_angle,
+
+        // ネット通過角度を計算
+        let min_net_angle = calculate_min_angle_for_net_clearance(
+            start_pos, new_target, v, g, net_x, net_height,
         );
+        let final_angle = angle.max(min_net_angle);
+        let clamped = final_angle.min(trajectory_config.max_launch_angle);
         return (clamped, v, new_target);
     }
 
@@ -446,6 +454,71 @@ pub fn calculate_launch_angle(
     );
 
     (trajectory_config.max_launch_angle, v, actual_target)
+}
+
+/// 指定した角度・初速・重力での水平飛距離を計算
+/// h: 着地高さ - 発射高さ（負の値 = 着地点が低い）
+fn calculate_landing_distance_for_angle(angle_deg: f32, speed: f32, gravity: f32, h: f32) -> f32 {
+    let angle_rad = angle_deg.to_radians();
+    let cos_a = angle_rad.cos();
+    let sin_a = angle_rad.sin();
+
+    if cos_a.abs() < 0.001 {
+        return 0.0; // ほぼ真上に打つ場合
+    }
+
+    let v_horizontal = speed * cos_a;
+    let v_vertical = speed * sin_a;
+
+    // 飛行時間を計算: y(t) = v_y*t - 0.5*g*t² + h = 0
+    // 0.5*g*t² - v_y*t - h = 0
+    // t = (v_y + sqrt(v_y² + 2*g*h)) / g (hが負なら +2gh は正)
+    let discriminant = v_vertical * v_vertical + 2.0 * gravity * (-h);
+
+    if discriminant < 0.0 {
+        return 0.0; // 到達不可能
+    }
+
+    let flight_time = (v_vertical + discriminant.sqrt()) / gravity;
+
+    if flight_time < 0.0 {
+        return 0.0;
+    }
+
+    v_horizontal * flight_time
+}
+
+/// 指定した角度で目標地点に到達するために必要な初速を計算
+/// 公式: v = √[ g·d² / (2·cos²(θ)·(d·tan(θ) - h)) ]
+fn calculate_speed_for_target(
+    angle_deg: f32,
+    horizontal_distance: f32,
+    gravity: f32,
+    height_diff: f32, // 着地高さ - 発射高さ（負の値 = 着地点が低い）
+) -> f32 {
+    let angle_rad = angle_deg.to_radians();
+    let cos_a = angle_rad.cos();
+    let tan_a = angle_rad.tan();
+
+    if cos_a.abs() < 0.001 {
+        return 0.0; // ほぼ真上に打つ場合
+    }
+
+    // 解の存在条件: d·tan(θ) - h > 0
+    let denominator = horizontal_distance * tan_a - height_diff;
+
+    if denominator <= 0.0 {
+        return 0.0; // その角度では到達不可能
+    }
+
+    let v_squared = gravity * horizontal_distance * horizontal_distance
+        / (2.0 * cos_a * cos_a * denominator);
+
+    if v_squared <= 0.0 {
+        return 0.0;
+    }
+
+    v_squared.sqrt()
 }
 
 /// 与えられた初速と重力で到達可能な最大水平距離を計算
