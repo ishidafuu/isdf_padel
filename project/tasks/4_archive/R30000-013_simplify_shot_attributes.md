@@ -2,7 +2,7 @@
 id: "R30000-013"
 title: "systems/shot/attributes.rs 簡素化"
 type: "refactor"
-status: "todo"
+status: "done"
 priority: "high"
 related_task: "30000"
 spec_ids: []
@@ -41,3 +41,16 @@ code-simplifier エージェントを使用
 
 ## 優先度
 Tier 1（高）
+
+## 実施結果
+
+### 変更内容
+1. `get_factors_from_curve!` マクロ導入 - 6つの類似補間関数の重複パターン統合
+2. `lerp` 関数を `trajectory_calculator` から再利用（重複削除）
+3. BounceStateシステム群のモジュール統合
+
+### 行数比較
+- 変更前: 500行 → 変更後: 484行（-16行）
+
+### 備考
+実装はR30000-020コミット(21ca7bb)に含まれる
