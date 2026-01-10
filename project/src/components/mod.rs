@@ -45,6 +45,19 @@ pub struct Player {
     pub court_side: CourtSide,
 }
 
+/// AI移動状態
+/// @spec 30301_ai_movement_spec.md#req-30301-v05
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum AiMovementState {
+    /// 待機中（ボールが相手側）
+    #[default]
+    Idle,
+    /// 追跡中（ボールが自分側）
+    Tracking,
+    /// リカバリー中（ショット後の復帰）
+    Recovering,
+}
+
 /// AIコントローラーマーカーコンポーネント
 /// @spec 30301_ai_movement_spec.md
 #[derive(Component, Debug, Clone, Copy, Default)]
@@ -52,6 +65,24 @@ pub struct AiController {
     /// ホームポジション（待機位置）
     /// @spec 30301_ai_movement_spec.md#req-30301-005
     pub home_position: Vec3,
+    /// AI移動状態
+    /// @spec 30301_ai_movement_spec.md#req-30301-v05
+    pub movement_state: AiMovementState,
+    /// 目標位置（状態に応じて更新）
+    /// @spec 30301_ai_movement_spec.md#req-30301-v05
+    pub target_position: Vec3,
+}
+
+/// ボール着地予測コンポーネント
+/// @spec 30301_ai_movement_spec.md#req-30301-v05
+#[derive(Component, Debug, Clone, Copy, Default)]
+pub struct BallPrediction {
+    /// 予測着地位置
+    pub landing_position: Vec3,
+    /// 着地までの時間（秒）
+    pub time_to_landing: f32,
+    /// 予測が有効かどうか
+    pub is_valid: bool,
 }
 
 /// 人間操作プレイヤーマーカーコンポーネント

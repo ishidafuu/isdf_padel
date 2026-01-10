@@ -1,8 +1,8 @@
 # AI Movement Spec
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-08
-**Status**: Draft
+**Version**: 1.1.0
+**Last Updated**: 2026-01-10
+**Status**: Active
 
 ---
 
@@ -49,6 +49,42 @@ AIキャラクターの移動とポジショニングを定義します。
 
 ---
 
+## v0.5 Requirements
+
+### REQ-30301-v05-001: 着地点予測移動
+
+- WHEN ボールが自分のコート側に向かっている
+- THE SYSTEM SHALL ボールの軌道から着地点を予測し、その位置に先回り移動する
+- WITH 放物線運動の二次方程式を解いて着地点を計算
+
+### REQ-30301-v05-002: 動的待機位置
+
+- WHEN ボールが相手コート側にある
+- THE SYSTEM SHALL 相手の返球範囲をカバーする動的な待機位置に移動する
+- WITH
+  - X軸: `config.ai.optimal_depth`（デフォルト: 5.0m）
+  - Z軸: ボール位置 × `config.ai.coverage_bias_factor`（デフォルト: 0.3）
+  - Z軸最大: `config.ai.max_z_offset`（デフォルト: 3.0m）
+
+### REQ-30301-v05-003: リカバリーポジショニング
+
+- WHEN AIがショットを打った直後
+- THE SYSTEM SHALL 最適なリカバリー位置へ戻る
+- WITH
+  - X軸: `config.ai.recovery_depth`（デフォルト: 4.0m）
+  - Z軸: 打球方向の逆サイド × `config.ai.recovery_bias_factor`（デフォルト: 0.5）
+  - Z軸最大: `config.ai.max_recovery_z`（デフォルト: 2.5m）
+
+### REQ-30301-v05-004: AI移動状態管理
+
+- THE SYSTEM SHALL AIの移動状態を以下の3つで管理する
+- WITH
+  - `Idle`: 待機中（ボールが相手側）
+  - `Tracking`: 追跡中（ボールが自分側）
+  - `Recovering`: リカバリー中（ショット後）
+
+---
+
 ## Extended Requirements (v0.2)
 
 ### REQ-30301-050: 軌道予測移動
@@ -89,6 +125,33 @@ AIキャラクターの移動とポジショニングを定義します。
 
 ---
 
+## Data References
+
+### v0.5 Parameters
+
+| パラメータ | 設定パス | デフォルト値 | 説明 |
+|-----------|---------|-------------|------|
+| 移動速度 | `config.ai.move_speed` | 5.0 m/s | AI の最大移動速度 |
+| 待機深さ | `config.ai.optimal_depth` | 5.0 m | 待機時のX軸深さ |
+| Z軸調整係数 | `config.ai.coverage_bias_factor` | 0.3 | ボール位置に応じたZ軸調整 |
+| Z軸最大オフセット | `config.ai.max_z_offset` | 3.0 m | Z軸移動の最大値 |
+| リカバリー深さ | `config.ai.recovery_depth` | 4.0 m | リカバリー時のX軸深さ |
+| リカバリーバイアス | `config.ai.recovery_bias_factor` | 0.5 | 打球逆サイドへの寄り係数 |
+| リカバリーZ軸最大 | `config.ai.max_recovery_z` | 2.5 m | リカバリーZ軸の最大値 |
+
+### Legacy Parameters
+
+| パラメータ | 設定パス | デフォルト値 | 説明 |
+|-----------|---------|-------------|------|
+| ホームポジションX | `config.ai.home_position.x` | 0.0 m | 待機位置X座標 |
+| ホームポジションZ | `config.ai.home_position.z` | 5.0 m | 待機位置Z座標（自コート後方） |
+| 反応遅延 | `config.ai.reaction_delay` | 0.1 s | ボール認識の遅れ |
+| 予測精度 | `config.ai.prediction_accuracy` | 0.8 | 軌道予測の正確さ（0.0〜1.0） |
+| 予測誤差 | `config.ai.prediction_error` | 0.5 m | 予測位置の最大誤差 |
+| 先読み精度 | `config.ai.anticipation_accuracy` | 0.6 | 相手ショット予測精度 |
+
+---
+
 ## Constraints
 
 ### Preconditions
@@ -109,20 +172,6 @@ AIキャラクターの移動とポジショニングを定義します。
 
 ---
 
-## Data References
-
-| パラメータ | 設定パス | デフォルト値 | 説明 |
-|-----------|---------|-------------|------|
-| 移動速度 | `config.ai.move_speed` | 5.0 m/s | AI の最大移動速度 |
-| ホームポジションX | `config.ai.home_position.x` | 0.0 m | 待機位置X座標 |
-| ホームポジションZ | `config.ai.home_position.z` | 5.0 m | 待機位置Z座標（自コート後方） |
-| 反応遅延 | `config.ai.reaction_delay` | 0.1 s | ボール認識の遅れ |
-| 予測精度 | `config.ai.prediction_accuracy` | 0.8 | 軌道予測の正確さ（0.0〜1.0） |
-| 予測誤差 | `config.ai.prediction_error` | 0.5 m | 予測位置の最大誤差 |
-| 先読み精度 | `config.ai.anticipation_accuracy` | 0.6 | 相手ショット予測精度 |
-
----
-
 ## Related Specifications
 
 - [30300_overview.md](30300_overview.md) - AI概要
@@ -133,6 +182,13 @@ AIキャラクターの移動とポジショニングを定義します。
 ---
 
 ## Change Log
+
+### 2026-01-10 - v1.1.0
+
+- v0.5: 着地点予測移動（REQ-30301-v05-001）
+- v0.5: 動的待機位置（REQ-30301-v05-002）
+- v0.5: リカバリーポジショニング（REQ-30301-v05-003）
+- v0.5: AI移動状態管理（REQ-30301-v05-004）
 
 ### 2026-01-08 - v1.0.0（初版）
 

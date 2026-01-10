@@ -707,6 +707,33 @@ pub struct AiConfig {
     /// @spec 30102_serve_spec.md#req-30102-071
     #[serde(default = "default_ai_serve_direction_variance")]
     pub serve_direction_variance: f32,
+
+    // === v0.5 追加パラメータ ===
+
+    /// 待機時のX軸深さ（m）
+    /// @spec 30301_ai_movement_spec.md#req-30301-v05
+    #[serde(default = "default_ai_optimal_depth")]
+    pub optimal_depth: f32,
+    /// Z軸調整係数（ボール位置に応じた横移動）
+    /// @spec 30301_ai_movement_spec.md#req-30301-v05
+    #[serde(default = "default_ai_coverage_bias_factor")]
+    pub coverage_bias_factor: f32,
+    /// Z軸移動の最大値（m）
+    /// @spec 30301_ai_movement_spec.md#req-30301-v05
+    #[serde(default = "default_ai_max_z_offset")]
+    pub max_z_offset: f32,
+    /// リカバリー時のX軸深さ（m）
+    /// @spec 30301_ai_movement_spec.md#req-30301-v05
+    #[serde(default = "default_ai_recovery_depth")]
+    pub recovery_depth: f32,
+    /// 打球逆サイドへの寄り係数
+    /// @spec 30301_ai_movement_spec.md#req-30301-v05
+    #[serde(default = "default_ai_recovery_bias_factor")]
+    pub recovery_bias_factor: f32,
+    /// リカバリーZ軸の最大値（m）
+    /// @spec 30301_ai_movement_spec.md#req-30301-v05
+    #[serde(default = "default_ai_max_recovery_z")]
+    pub max_recovery_z: f32,
 }
 
 impl Default for AiConfig {
@@ -719,6 +746,13 @@ impl Default for AiConfig {
             serve_delay_min: default_ai_serve_delay_min(),
             serve_delay_max: default_ai_serve_delay_max(),
             serve_direction_variance: default_ai_serve_direction_variance(),
+            // v0.5 追加パラメータ
+            optimal_depth: default_ai_optimal_depth(),
+            coverage_bias_factor: default_ai_coverage_bias_factor(),
+            max_z_offset: default_ai_max_z_offset(),
+            recovery_depth: default_ai_recovery_depth(),
+            recovery_bias_factor: default_ai_recovery_bias_factor(),
+            max_recovery_z: default_ai_max_recovery_z(),
         }
     }
 }
@@ -744,6 +778,27 @@ fn default_ai_serve_delay_max() -> f32 {
 }
 fn default_ai_serve_direction_variance() -> f32 {
     0.5 // Z軸方向のバリエーション
+}
+
+// === v0.5 追加パラメータ ===
+
+fn default_ai_optimal_depth() -> f32 {
+    5.0 // 待機時のX軸深さ（m）
+}
+fn default_ai_coverage_bias_factor() -> f32 {
+    0.3 // Z軸調整係数
+}
+fn default_ai_max_z_offset() -> f32 {
+    3.0 // Z軸移動の最大値（m）
+}
+fn default_ai_recovery_depth() -> f32 {
+    4.0 // リカバリー時のX軸深さ（m）
+}
+fn default_ai_recovery_bias_factor() -> f32 {
+    0.5 // 打球逆サイドへの寄り係数
+}
+fn default_ai_max_recovery_z() -> f32 {
+    2.5 // リカバリーZ軸の最大値（m）
 }
 
 /// 視覚フィードバックパラメータ

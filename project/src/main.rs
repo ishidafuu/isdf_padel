@@ -182,6 +182,8 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
     let player2_entity = character::spawn_articulated_player(&mut commands, 2, player2_pos, player2_color);
     commands.entity(player2_entity).insert(components::AiController {
         home_position: player2_pos,
+        target_position: player2_pos,
+        ..Default::default()
     });
     info!("Player 2 (AI) spawned at {:?}", player2_pos);
 

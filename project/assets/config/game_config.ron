@@ -115,6 +115,13 @@ GameConfig(
         serve_delay_min: 0.5,           // AIサーブ待機時間下限（秒）
         serve_delay_max: 1.5,           // AIサーブ待機時間上限（秒）
         serve_direction_variance: 0.5,  // AIサーブ方向バリエーション（Z軸）
+        // v0.5 追加パラメータ
+        optimal_depth: 5.0,             // 待機時のX軸深さ（m）
+        coverage_bias_factor: 0.3,      // Z軸調整係数
+        max_z_offset: 3.0,              // Z軸移動の最大値（m）
+        recovery_depth: 4.0,            // リカバリー時のX軸深さ（m）
+        recovery_bias_factor: 0.5,      // 打球逆サイドへの寄り係数
+        max_recovery_z: 2.5,            // リカバリーZ軸の最大値（m）
     ),
     // @spec 30401_trajectory_spec.md#req-30401-100
     // @spec 30401_trajectory_spec.md#req-30401-101
