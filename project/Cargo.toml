@@ -5,12 +5,32 @@ edition = "2024"
 description = "Padel Game - MVP v0.1"
 license = "MIT"
 
+# ライブラリとして公開（別バイナリから利用可能）
+[lib]
+name = "padel_game"
+path = "src/lib.rs"
+
+# 通常ゲームバイナリ
+[[bin]]
+name = "padel_game"
+path = "src/main.rs"
+
+# ヘッドレスシミュレータバイナリ
+# @spec 77100_headless_sim.md
+[[bin]]
+name = "headless_sim"
+path = "src/bin/headless_sim.rs"
+
 [dependencies]
 bevy = { version = "0.17", features = ["file_watcher", "serialize"] }
 serde = { version = "1.0", features = ["derive"] }
 ron = "0.10"
 thiserror = "2.0"
 rand = "0.9"
+# Headless simulation dependencies
+clap = { version = "4.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = "0.4"
 
 [features]
 default = []

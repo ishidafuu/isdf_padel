@@ -339,6 +339,7 @@ fn calculate_direction_error(
 }
 
 /// 方向にオフセットを適用
+#[allow(dead_code)]
 fn apply_direction_offset(horizontal_dir: Vec3, offset_deg: f32) -> Vec3 {
     if offset_deg.abs() < f32::EPSILON {
         return horizontal_dir;

@@ -491,6 +491,7 @@ fn calculate_max_angle_fallback(
 
 /// 指定した角度・初速・重力での水平飛距離を計算
 /// h: 着地高さ - 発射高さ（負の値 = 着地点が低い）
+#[allow(dead_code)]
 fn calculate_landing_distance_for_angle(angle_deg: f32, speed: f32, gravity: f32, h: f32) -> f32 {
     let angle_rad = angle_deg.to_radians();
     let cos_a = angle_rad.cos();
@@ -577,6 +578,7 @@ fn calculate_max_reachable_distance(base_speed: f32, effective_gravity: f32, hei
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-031
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-032
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-033
+#[allow(dead_code)]
 pub fn calculate_speed_factors(
     spin: f32,
     horizontal_distance: f32,
