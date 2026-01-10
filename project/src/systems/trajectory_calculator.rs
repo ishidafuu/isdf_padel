@@ -321,82 +321,25 @@ pub fn calculate_launch_angle(
     // 判別式: v^4 - g(g*d^2 + 2*h*v^2)
     let discriminant = v4 - g * (g * d * d + 2.0 * h * v2);
 
+    // === 解がある場合: 目標地点に到達可能 ===
     if discriminant >= 0.0 {
-        // 解がある場合: 目標地点に到達可能
-        let sqrt_disc = discriminant.sqrt();
-        let tan_theta_1 = (v2 - sqrt_disc) / (g * d);
-        let tan_theta_2 = (v2 + sqrt_disc) / (g * d);
-
-        // 角度が低い方を採用（テニス的な軌道）
-        let angle_1 = tan_theta_1.atan().to_degrees();
-        let angle_2 = tan_theta_2.atan().to_degrees();
-
-        let angle = if angle_1.abs() < angle_2.abs() {
-            angle_1
-        } else {
-            angle_2
-        };
-
-        // ネット通過に必要な最小角度を計算
-        let min_net_angle = calculate_min_angle_for_net_clearance(
-            start_pos, target_pos, v, g, net_x, net_height,
+        return calculate_angle_when_reachable(
+            start_pos, target_pos, v, g, d, h, discriminant,
+            trajectory_config, net_x, net_height,
         );
-
-        // ネット通過角度と計算角度の大きい方を採用
-        let final_angle = angle.max(min_net_angle);
-
-        // 上限のみ制限
-        let clamped_angle = final_angle.min(trajectory_config.max_launch_angle);
-
-        // 角度が変更された場合、目標着地点に到達するように速度を調整
-        if (clamped_angle - angle).abs() > 0.1 {
-            // 変更後の角度で目標着地点に到達する速度を計算
-            let adjusted_speed = calculate_speed_for_target(
-                clamped_angle, horizontal_distance, g, h,
-            );
-            if adjusted_speed > 0.0 {
-                return (clamped_angle, adjusted_speed, target_pos);
-            }
-        }
-
-        return (clamped_angle, v, target_pos);
     }
 
-    // 解がない場合: パワー不足で目標地点に届かない
-    // → 到達可能な最大距離に着地点を短縮（但しネットは越える）
+    // === 解がない場合: パワー不足で目標地点に届かない ===
     let max_distance = calculate_max_reachable_distance(base_speed, effective_gravity, h);
 
     if max_distance < 0.1 || horizontal_distance < 0.001 {
-        // 到達距離がほぼ0の場合は最大角度で打つ
         return (trajectory_config.max_launch_angle, v, target_pos);
     }
 
     // 着地点を短縮
-    let scale = (max_distance / horizontal_distance).min(0.95); // 95%を上限として安全マージン
-    let mut new_x = start_pos.x + dx * scale;
-    let new_z = start_pos.z + dz * scale;
-
-    // ネットを越える最低位置を保証
-    // ネット位置は X=0、margin=0.5（trajectory_config.landing_margin）
-    let net_margin = trajectory_config.landing_margin;
-    let target_crosses_net = if dx > 0.0 {
-        // 右方向に打っている（Left側プレイヤー）
-        target_pos.x > net_margin
-    } else {
-        // 左方向に打っている（Right側プレイヤー）
-        target_pos.x < -net_margin
-    };
-
-    if target_crosses_net {
-        // 目標がネットを越えている場合、短縮後もネットを越えるよう保証
-        if dx > 0.0 && new_x < net_margin {
-            new_x = net_margin; // ネット直後
-        } else if dx < 0.0 && new_x > -net_margin {
-            new_x = -net_margin; // ネット直後
-        }
-    }
-
-    let new_target = Vec3::new(new_x, target_pos.y, new_z);
+    let new_target = shorten_target_position(
+        start_pos, target_pos, dx, dz, horizontal_distance, max_distance, trajectory_config,
+    );
 
     // 短縮した着地点で角度を再計算
     let new_dx = new_target.x - start_pos.x;
@@ -405,37 +348,127 @@ pub fn calculate_launch_angle(
     let new_discriminant = v4 - g * (g * new_d * new_d + 2.0 * h * v2);
 
     if new_discriminant >= 0.0 {
-        let sqrt_disc = new_discriminant.sqrt();
-        let tan_theta = (v2 - sqrt_disc) / (g * new_d);
-        let angle = tan_theta.atan().to_degrees();
-
-        // ネット通過角度を計算
-        let min_net_angle = calculate_min_angle_for_net_clearance(
-            start_pos, new_target, v, g, net_x, net_height,
+        return calculate_angle_when_reachable(
+            start_pos, new_target, v, g, new_d, h, new_discriminant,
+            trajectory_config, net_x, net_height,
         );
-        let final_angle = angle.max(min_net_angle);
-        let clamped = final_angle.min(trajectory_config.max_launch_angle);
-        return (clamped, v, new_target);
     }
 
-    // それでも解がない場合は最大角度を使用し、実際の到達距離を計算
-    let max_angle_rad = trajectory_config.max_launch_angle.to_radians();
+    // === フォールバック: 最大角度で打つ ===
+    calculate_max_angle_fallback(
+        start_pos, target_pos, dx, dz, horizontal_distance,
+        v, g, h, trajectory_config.max_launch_angle,
+    )
+}
+
+/// 解がある場合（目標地点に到達可能）の角度計算
+/// @spec 30605_trajectory_calculation_spec.md#req-30605-021
+fn calculate_angle_when_reachable(
+    start_pos: Vec3,
+    target_pos: Vec3,
+    v: f32,
+    g: f32,
+    d: f32,
+    h: f32,
+    discriminant: f32,
+    trajectory_config: &TrajectoryConfig,
+    net_x: f32,
+    net_height: f32,
+) -> (f32, f32, Vec3) {
+    let v2 = v * v;
+    let sqrt_disc = discriminant.sqrt();
+    let tan_theta_1 = (v2 - sqrt_disc) / (g * d);
+    let tan_theta_2 = (v2 + sqrt_disc) / (g * d);
+
+    // 角度が低い方を採用（テニス的な軌道）
+    let angle_1 = tan_theta_1.atan().to_degrees();
+    let angle_2 = tan_theta_2.atan().to_degrees();
+
+    let angle = if angle_1.abs() < angle_2.abs() {
+        angle_1
+    } else {
+        angle_2
+    };
+
+    // ネット通過に必要な最小角度を計算
+    let min_net_angle = calculate_min_angle_for_net_clearance(
+        start_pos, target_pos, v, g, net_x, net_height,
+    );
+
+    // ネット通過角度と計算角度の大きい方を採用
+    let final_angle = angle.max(min_net_angle);
+
+    // 上限のみ制限
+    let clamped_angle = final_angle.min(trajectory_config.max_launch_angle);
+
+    // 角度が変更された場合、目標着地点に到達するように速度を調整
+    if (clamped_angle - angle).abs() > 0.1 {
+        let adjusted_speed = calculate_speed_for_target(clamped_angle, d, g, h);
+        if adjusted_speed > 0.0 {
+            return (clamped_angle, adjusted_speed, target_pos);
+        }
+    }
+
+    (clamped_angle, v, target_pos)
+}
+
+/// 着地点を短縮してネットを越える位置に調整
+/// @spec 30605_trajectory_calculation_spec.md#req-30605-022
+fn shorten_target_position(
+    start_pos: Vec3,
+    target_pos: Vec3,
+    dx: f32,
+    dz: f32,
+    horizontal_distance: f32,
+    max_distance: f32,
+    trajectory_config: &TrajectoryConfig,
+) -> Vec3 {
+    // 着地点を短縮
+    let scale = (max_distance / horizontal_distance).min(0.95); // 95%を上限として安全マージン
+    let mut new_x = start_pos.x + dx * scale;
+    let new_z = start_pos.z + dz * scale;
+
+    // ネットを越える最低位置を保証
+    let net_margin = trajectory_config.landing_margin;
+    let target_crosses_net = if dx > 0.0 {
+        target_pos.x > net_margin
+    } else {
+        target_pos.x < -net_margin
+    };
+
+    if target_crosses_net {
+        if dx > 0.0 && new_x < net_margin {
+            new_x = net_margin;
+        } else if dx < 0.0 && new_x > -net_margin {
+            new_x = -net_margin;
+        }
+    }
+
+    Vec3::new(new_x, target_pos.y, new_z)
+}
+
+/// 最大角度でのフォールバック軌道を計算
+/// @spec 30605_trajectory_calculation_spec.md#req-30605-024
+fn calculate_max_angle_fallback(
+    start_pos: Vec3,
+    target_pos: Vec3,
+    dx: f32,
+    dz: f32,
+    horizontal_distance: f32,
+    v: f32,
+    g: f32,
+    h: f32,
+    max_launch_angle: f32,
+) -> (f32, f32, Vec3) {
+    let max_angle_rad = max_launch_angle.to_radians();
     let cos_angle = max_angle_rad.cos();
     let sin_angle = max_angle_rad.sin();
 
-    // 最大角度で打った場合の水平速度成分
     let v_horizontal = v * cos_angle;
     let v_vertical = v * sin_angle;
 
-    // 飛行時間を計算: h + v_y*t - 0.5*g*t^2 = 0
-    // t = (v_y + sqrt(v_y^2 + 2*g*h)) / g （h < 0 の場合）
-    let flight_time = if h >= 0.0 {
-        // 打点より上に着地する場合
-        (v_vertical + (v_vertical * v_vertical + 2.0 * g * h.abs()).sqrt()) / g
-    } else {
-        // 打点より下に着地する場合（通常）
-        (v_vertical + (v_vertical * v_vertical + 2.0 * g * h.abs()).sqrt()) / g
-    };
+    // 飛行時間を計算
+    let flight_time = (v_vertical + (v_vertical * v_vertical + 2.0 * g * h.abs()).sqrt()) / g;
 
     // 実際の水平到達距離
     let actual_distance = v_horizontal * flight_time;
@@ -453,7 +486,7 @@ pub fn calculate_launch_angle(
         start_pos.z + dz * actual_scale,
     );
 
-    (trajectory_config.max_launch_angle, v, actual_target)
+    (max_launch_angle, v, actual_target)
 }
 
 /// 指定した角度・初速・重力での水平飛距離を計算
