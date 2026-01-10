@@ -109,7 +109,7 @@ impl ReplayManager {
             let path = entry.path();
 
             // .ron ファイルのみ
-            if path.extension().map_or(false, |ext| ext == "ron") {
+            if path.extension().is_some_and(|ext| ext == "ron") {
                 if let Some(info) = self.get_replay_info(&path) {
                     replays.push(info);
                 }

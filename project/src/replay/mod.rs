@@ -77,7 +77,7 @@ fn auto_save_on_match_end_system(
     let current = *match_state.get();
 
     // 状態変化を検出
-    let state_changed = prev_state.map_or(true, |prev| prev != current);
+    let state_changed = prev_state.is_none_or(|prev| prev != current);
     *prev_state = Some(current);
 
     if !state_changed {

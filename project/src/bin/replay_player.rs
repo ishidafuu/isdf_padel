@@ -198,7 +198,7 @@ fn check_replay_finished(
     *frame_count += 1;
 
     // 詳細出力
-    if config.verbose && *frame_count % 60 == 0 {
+    if config.verbose && (*frame_count).is_multiple_of(60) {
         println!(
             "Frame {}: MatchState={:?}, ReplayFrame={}/{}",
             *frame_count,

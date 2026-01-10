@@ -39,6 +39,7 @@ impl Plugin for ScoringPlugin {
 /// @spec 30701_point_spec.md#req-30701-002
 /// @spec 30903_serve_authority_spec.md#req-30903-002
 /// @spec 30903_serve_authority_spec.md#req-30903-003
+#[allow(clippy::too_many_arguments)]
 pub fn rally_end_system(
     mut rally_events: MessageReader<RallyEndEvent>,
     mut point_events: MessageWriter<PointScoredEvent>,

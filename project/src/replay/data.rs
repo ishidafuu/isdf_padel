@@ -116,21 +116,12 @@ impl InputSnapshot {
 
 /// リプレイ設定
 /// @data 87103_replay_config.md
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ReplayConfig {
     /// ファイル管理設定
     pub file_management: FileManagementConfig,
     /// クリーンアップポリシー
     pub cleanup_policy: CleanupPolicyConfig,
-}
-
-impl Default for ReplayConfig {
-    fn default() -> Self {
-        Self {
-            file_management: FileManagementConfig::default(),
-            cleanup_policy: CleanupPolicyConfig::default(),
-        }
-    }
 }
 
 /// ファイル管理設定

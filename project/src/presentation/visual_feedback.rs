@@ -56,6 +56,7 @@ pub fn player_hold_visual_system(
 
 /// プレイヤーの元の色を保存するシステム
 /// @spec 30802_visual_feedback_spec.md#req-30802-001
+#[allow(clippy::type_complexity)]
 pub fn save_player_original_color_system(
     query: Query<(Entity, &Sprite), (With<Player>, Without<OriginalColor>)>,
     mut commands: Commands,

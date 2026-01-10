@@ -123,10 +123,10 @@ fn find_closest_collision(
         let distance_2d = distance_xz(ball_pos, player_pos);
 
         // 衝突判定 & 最も近いプレイヤーを記録
-        if distance_2d <= params.collision_distance {
-            if closest.as_ref().map_or(true, |(_, _, d)| distance_2d < *d) {
-                closest = Some((player_entity, player_pos, distance_2d));
-            }
+        if distance_2d <= params.collision_distance
+            && closest.as_ref().is_none_or(|(_, _, d)| distance_2d < *d)
+        {
+            closest = Some((player_entity, player_pos, distance_2d));
         }
     }
 

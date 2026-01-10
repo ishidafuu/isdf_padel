@@ -86,6 +86,7 @@ pub fn ai_serve_timer_init_system(
 /// @spec 30102_serve_spec.md#req-30102-087
 ///
 /// タイマーが完了したらトスを実行する。
+#[allow(clippy::too_many_arguments)]
 pub fn ai_serve_toss_system(
     mut commands: Commands,
     fixed_dt: Res<FixedDeltaTime>,
@@ -153,6 +154,7 @@ pub fn ai_serve_toss_system(
 /// @spec 30102_serve_spec.md#req-30102-088
 ///
 /// ボールが最適高さに達したらヒットを実行する。
+#[allow(clippy::too_many_arguments)]
 pub fn ai_serve_hit_system(
     mut commands: Commands,
     config: Res<GameConfig>,

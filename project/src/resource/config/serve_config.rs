@@ -89,7 +89,7 @@ impl ServeSide {
     /// @spec 30903_serve_authority_spec.md#req-30903-003
     #[inline]
     pub fn from_point_total(total: usize) -> Self {
-        if total % 2 == 0 {
+        if total.is_multiple_of(2) {
             ServeSide::Deuce
         } else {
             ServeSide::Ad

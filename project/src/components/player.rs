@@ -22,16 +22,10 @@ pub struct Player {
 
 /// 人間操作プレイヤーマーカーコンポーネント
 /// @spec 20006_input_system.md
-#[derive(Component, Debug, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy, Default)]
 pub struct HumanControlled {
     /// 入力デバイスID（キーボード=0, ゲームパッド=1,2,...）
     pub device_id: usize,
-}
-
-impl Default for HumanControlled {
-    fn default() -> Self {
-        Self { device_id: 0 }
-    }
 }
 
 /// ふっとばし状態コンポーネント

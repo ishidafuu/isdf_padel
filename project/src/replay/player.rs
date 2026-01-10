@@ -14,7 +14,7 @@ use super::data::{InputSnapshot, ReplayData};
 
 /// リプレイ再生リソース
 /// @spec REQ-77103-008
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct ReplayPlayer {
     /// 再生中のリプレイデータ
     data: Option<ReplayData>,
@@ -24,17 +24,6 @@ pub struct ReplayPlayer {
     is_playing: bool,
     /// 再生完了かどうか
     is_finished: bool,
-}
-
-impl Default for ReplayPlayer {
-    fn default() -> Self {
-        Self {
-            data: None,
-            current_frame: 0,
-            is_playing: false,
-            is_finished: false,
-        }
-    }
 }
 
 impl ReplayPlayer {

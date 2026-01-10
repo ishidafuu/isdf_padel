@@ -80,6 +80,7 @@ pub fn calculate_launch_angle(
 
 /// 解がある場合（目標地点に到達可能）の角度計算
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-021
+#[allow(clippy::too_many_arguments)]
 fn calculate_angle_when_reachable(
     start_pos: Vec3,
     target_pos: Vec3,
@@ -196,6 +197,7 @@ fn calculate_min_angle_for_net_clearance(
 
 /// 最大角度でのフォールバック軌道を計算
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-024
+#[allow(clippy::too_many_arguments)]
 fn calculate_max_angle_fallback(
     start_pos: Vec3,
     target_pos: Vec3,

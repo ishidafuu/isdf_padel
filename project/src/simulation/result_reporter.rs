@@ -140,7 +140,7 @@ impl SimulationReporter {
     /// JSONファイルに出力
     pub fn save_to_file(&self, path: &str, report: &SimulationReport) -> std::io::Result<()> {
         let json = serde_json::to_string_pretty(report)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            .map_err(std::io::Error::other)?;
 
         let mut file = File::create(path)?;
         file.write_all(json.as_bytes())?;

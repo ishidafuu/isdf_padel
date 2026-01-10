@@ -105,14 +105,8 @@ pub struct AnomalyDetectorResource {
 }
 
 /// 異常検出閾値リソース（simulation_config.ron から読み込み）
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct AnomalyThresholdsResource(pub AnomalyThresholds);
-
-impl Default for AnomalyThresholdsResource {
-    fn default() -> Self {
-        Self(AnomalyThresholds::default())
-    }
-}
 
 /// 異常検出プラグイン
 pub struct AnomalyDetectorPlugin;

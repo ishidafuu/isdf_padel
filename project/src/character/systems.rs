@@ -183,6 +183,7 @@ pub fn trigger_shot_animation_system(
 /// @spec 31002_animation_spec.md#req-31002-051
 /// @data config.character.walk_velocity_threshold
 /// @data config.character.jump_velocity_threshold
+#[allow(clippy::type_complexity)]
 pub fn update_animation_state_system(
     config: Res<GameConfig>,
     animations: Res<CharacterAnimations>,

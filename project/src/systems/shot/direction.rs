@@ -52,6 +52,7 @@ struct NormalShotResult {
 /// @spec 30602_shot_direction_spec.md#req-30602-001
 /// @spec 30602_shot_direction_spec.md#req-30602-031 - サーブ処理分岐
 /// @spec 30602_shot_direction_spec.md#req-30602-032 - 通常ショット処理
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn shot_direction_system(
     mut commands: Commands,
     config: Res<GameConfig>,
@@ -94,6 +95,7 @@ pub fn shot_direction_system(
 
 /// 通常ショット処理
 /// @spec 30602_shot_direction_spec.md#req-30602-032
+#[allow(clippy::type_complexity)]
 fn handle_normal_shot(
     event: &ShotEvent,
     config: &GameConfig,
@@ -326,6 +328,7 @@ fn handle_serve_shot(
 
 /// デバッグ情報を更新
 /// @spec 30602_shot_direction_spec.md
+#[allow(clippy::too_many_arguments)]
 fn update_shot_debug_info(
     debug_info: &mut LastShotDebugInfo,
     player_id: u8,

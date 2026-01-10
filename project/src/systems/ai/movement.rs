@@ -163,6 +163,7 @@ fn calculate_idle_position(
 /// @spec 30301_ai_movement_spec.md#req-30301-v07-003
 ///
 /// インターセプト方式移動、短いボール判定、目標ロック機構を実装
+#[allow(clippy::type_complexity)]
 pub fn ai_movement_system(
     fixed_dt: Res<FixedDeltaTime>,
     config: Res<GameConfig>,
