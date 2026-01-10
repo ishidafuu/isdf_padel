@@ -26,12 +26,8 @@ pub fn player_hold_visual_system(
         let original = match original_color {
             Some(oc) => oc.color,
             None => {
-                // OriginalColor がない場合は現在の色を保存
-                let color = sprite.color;
-                // Entity ID を取得するために再度クエリが必要だが、
-                // ここでは commands を使って後から追加する
-                sprite.color = color; // 現在の色を維持
-                color
+                // OriginalColor がない場合は現在の色を使用
+                sprite.color
             }
         };
 
