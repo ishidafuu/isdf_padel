@@ -5,6 +5,7 @@ mod character;
 mod components;
 mod core;
 mod presentation;
+mod replay;
 mod resource;
 mod systems;
 
@@ -70,6 +71,8 @@ fn main() {
         .add_plugins(AiServePlugin)
         .add_plugins(DebugUiPlugin)
         .add_plugins(CharacterPlugin)
+        // @spec 77103_replay_spec.md: リプレイ記録機能
+        .add_plugins(replay::ReplayRecordPlugin)
         .insert_resource(config)
         .init_resource::<LastShotDebugInfo>()
         .add_message::<PlayerMoveEvent>()

@@ -12,7 +12,7 @@
 
 /// コート区分（Left/Rightのどちら側か）
 /// @spec 30501_court_spec.md#req-30501-006
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
 pub enum CourtSide {
     /// 左コート側（X < net_x）
     #[default]
