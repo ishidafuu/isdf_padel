@@ -2,7 +2,7 @@
 id: "R30000-023"
 title: "unsafe ブロック排除（simulation_runner.rs）"
 type: "refactor"
-status: "in_review"
+status: "completed"
 priority: "high"
 related_task: null
 spec_ids: []
@@ -15,7 +15,7 @@ tags: ["audit", "unsafe", "thread-safety"]
 parent_task_id: null
 created_at: "2026-01-11"
 updated_at: "2026-01-11"
-completed_at: null
+completed_at: "2026-01-11"
 ---
 
 # Task R30000-023: unsafe ブロック排除（simulation_runner.rs）
@@ -53,7 +53,7 @@ completed_at: null
 - [x] テスト全PASS（`cargo test`）
 - [x] `unsafe` が simulation_runner.rs から除去されていること
 - [x] in-review に移動済み
-- [ ] レビュー完了
+- [x] レビュー完了
 
 ## メモ
 
