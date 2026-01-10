@@ -87,6 +87,19 @@ pub struct BallSpin {
     pub value: f32,
 }
 
+/// `Option<&BallSpin>` からスピン値を取得するための拡張トレイト
+pub trait BallSpinExt {
+    /// スピン値を取得（Noneまたはデフォルトの場合は0.0を返す）
+    fn value_or_default(&self) -> f32;
+}
+
+impl BallSpinExt for Option<&BallSpin> {
+    #[inline]
+    fn value_or_default(&self) -> f32 {
+        self.map_or(0.0, |s| s.value)
+    }
+}
+
 /// ボールバンドル（ボール生成時に使用）
 /// @spec 30401_trajectory_spec.md
 /// @spec 30604_shot_attributes_spec.md

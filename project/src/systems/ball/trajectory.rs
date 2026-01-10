@@ -4,7 +4,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, BallSpin, LogicalPosition, Velocity};
+use crate::components::{Ball, BallSpin, BallSpinExt, LogicalPosition, Velocity};
 use crate::core::events::{BallOutOfBoundsEvent, GroundBounceEvent, WallReflectionEvent};
 use crate::core::WallReflection;
 use crate::resource::config::GameConfig;
@@ -64,7 +64,7 @@ pub fn ball_gravity_system(
             // effective_gravity = base_gravity * (1.0 + spin * gravity_spin_factor)
             // トップスピン（spin > 0）: 重力増加 → 早く落ちる
             // スライス（spin < 0）: 重力減少 → 浮く
-            let spin_value = ball_spin.map_or(0.0, |s| s.value);
+            let spin_value = ball_spin.value_or_default();
             let effective_gravity = base_gravity * (1.0 + spin_value * gravity_spin_factor);
 
             // REQ-30401-004: 速度更新（重力適用）
@@ -110,7 +110,7 @@ pub fn ball_ground_bounce_system(
         // Y速度が0の場合もバウンドさせる（プレイヤー衝突で水平に跳ね返った場合対応）
         if pos.y <= 0.0 && velocity.value.y <= 0.0 {
             // REQ-30402-100: スピンによるバウンド挙動変化
-            let spin_value = ball_spin.map_or(0.0, |s| s.value);
+            let spin_value = ball_spin.value_or_default();
 
             // 水平方向（X, Z）: velocity *= base_bounce * (1.0 + spin * h_factor)
             // トップスピン（spin > 0）: 水平維持率上昇 → 低く伸びる
@@ -245,7 +245,7 @@ pub fn ball_air_drag_system(
     for (mut velocity, logical_pos, ball_spin) in query.iter_mut() {
         // 空中にある場合のみ適用
         if logical_pos.value.y > 0.0 {
-            let spin_value = ball_spin.map_or(0.0, |s| s.value);
+            let spin_value = ball_spin.value_or_default();
             let drag = base_air_drag + spin_value.abs() * spin_drag_factor;
 
             // 速度減衰（最低0.9を保証して極端な減速を防ぐ）
