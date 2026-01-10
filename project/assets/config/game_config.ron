@@ -122,6 +122,14 @@ GameConfig(
         recovery_depth: 4.0,            // リカバリー時のX軸深さ（m）
         recovery_bias_factor: 0.5,      // 打球逆サイドへの寄り係数
         max_recovery_z: 2.5,            // リカバリーZ軸の最大値（m）
+        // v0.6 AI不完全性パラメータ
+        // @spec 30301_ai_movement_spec.md#req-30301-052
+        // @spec 30301_ai_movement_spec.md#req-30301-053
+        // @spec 30302_ai_shot_spec.md#req-30302-055
+        prediction_accuracy: 0.7,       // 予測精度（Normal難易度: 0.7）
+        prediction_error: 0.5,          // 最大予測誤差（m）
+        direction_variance: 10.0,       // 打球方向ブレ（度）
+        reaction_delay: 0.15,           // 反応遅延（秒、150ms）
     ),
     // @spec 30401_trajectory_spec.md#req-30401-100
     // @spec 30401_trajectory_spec.md#req-30401-101

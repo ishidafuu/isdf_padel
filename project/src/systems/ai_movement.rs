@@ -1,7 +1,8 @@
-//! AI移動システム v0.5
+//! AI移動システム v0.6
 //! @spec 30301_ai_movement_spec.md
 
 use bevy::prelude::*;
+use rand::Rng;
 
 use crate::components::{
     AiController, AiMovementState, Ball, KnockbackState, LogicalPosition, Player, Velocity,
@@ -56,6 +57,29 @@ fn calculate_landing_position(position: Vec3, velocity: Vec3, gravity: f32) -> O
     Some(Vec3::new(landing_x, 0.0, landing_z))
 }
 
+/// 着地点予測に誤差を適用
+/// @spec 30301_ai_movement_spec.md#req-30301-052
+///
+/// 誤差範囲 = (1.0 - prediction_accuracy) * prediction_error
+fn apply_prediction_error(landing_pos: Vec3, config: &GameConfig) -> Vec3 {
+    let mut rng = rand::rng();
+    let accuracy = config.ai.prediction_accuracy.clamp(0.0, 1.0);
+    let max_error = config.ai.prediction_error;
+
+    // 誤差範囲: 精度が低いほど誤差が大きい
+    let error_range = (1.0 - accuracy) * max_error;
+
+    if error_range <= 0.0 {
+        return landing_pos;
+    }
+
+    // XZ平面上のランダムな誤差を追加
+    let error_x = rng.random_range(-error_range..=error_range);
+    let error_z = rng.random_range(-error_range..=error_range);
+
+    Vec3::new(landing_pos.x + error_x, landing_pos.y, landing_pos.z + error_z)
+}
+
 /// 待機位置を計算
 /// @spec 30301_ai_movement_spec.md#req-30301-v05
 ///
@@ -106,10 +130,13 @@ fn calculate_recovery_position(
     Vec3::new(base_x, 0.0, z_offset)
 }
 
-/// AI移動システム v0.5
+/// AI移動システム v0.6
 /// @spec 30301_ai_movement_spec.md#req-30301-v05
+/// @spec 30301_ai_movement_spec.md#req-30301-052
+/// @spec 30301_ai_movement_spec.md#req-30301-053
 ///
 /// 着地点予測移動、動的待機位置、リカバリーポジショニングを統合
+/// v0.6: 予測誤差（REQ-30301-052）と反応遅延（REQ-30301-053）を追加
 pub fn ai_movement_system(
     time: Res<Time>,
     config: Res<GameConfig>,
@@ -143,6 +170,8 @@ pub fn ai_movement_system(
         let (ball_pos, ball_vel) = match ball_info {
             Some((pos, vel)) => (pos, vel),
             None => {
+                // 反応タイマーをリセット
+                ai.reaction_timer = 0.0;
                 // ホームポジションへ移動
                 move_towards_target(
                     &mut logical_pos,
@@ -166,17 +195,43 @@ pub fn ai_movement_system(
         // 動的待機位置（フォールバック用に先に計算）
         let idle_pos = calculate_idle_position(ball_pos, player.court_side, &config);
 
+        // === 反応遅延の処理 ===
+        // @spec 30301_ai_movement_spec.md#req-30301-053
+        // ボールが自分に向かっていて、かつ前フレームで待機中だった場合 → 反応遅延を開始
+        if ball_coming_to_me && ai.movement_state == AiMovementState::Idle {
+            // 状態遷移を検知 → 反応タイマーをセット
+            ai.reaction_timer = config.ai.reaction_delay;
+        }
+
+        // 反応タイマーの更新
+        if ai.reaction_timer > 0.0 {
+            ai.reaction_timer -= delta;
+            if ai.reaction_timer < 0.0 {
+                ai.reaction_timer = 0.0;
+            }
+        }
+
         // 状態遷移と目標位置計算
         let (new_state, target_pos) = if ball_coming_to_me {
-            // ボールが自分に向かっている: 着地予測位置へ移動
-            let landing_pos = calculate_landing_position(ball_pos, ball_vel, gravity)
-                .unwrap_or(idle_pos); // フォールバック: 待機位置
+            // 反応遅延中は追跡を開始しない
+            // @spec 30301_ai_movement_spec.md#req-30301-053
+            if ai.reaction_timer > 0.0 {
+                // まだ反応できない → 待機位置に留まる
+                (AiMovementState::Idle, idle_pos)
+            } else {
+                // ボールが自分に向かっている: 着地予測位置へ移動
+                let raw_landing_pos = calculate_landing_position(ball_pos, ball_vel, gravity)
+                    .unwrap_or(idle_pos); // フォールバック: 待機位置
 
-            (AiMovementState::Tracking, landing_pos)
+                // 予測誤差を適用
+                // @spec 30301_ai_movement_spec.md#req-30301-052
+                let landing_pos = apply_prediction_error(raw_landing_pos, &config);
+
+                (AiMovementState::Tracking, landing_pos)
+            }
         } else {
             // ボールが相手側: 動的待機位置へ移動
             // ショット直後はリカバリー状態を維持（簡易実装: 待機位置で代用）
-            // TODO: 将来的にはショットイベントをトリガーにしてRecovering状態へ遷移
             (AiMovementState::Idle, idle_pos)
         };
 

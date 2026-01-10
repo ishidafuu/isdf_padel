@@ -734,6 +734,25 @@ pub struct AiConfig {
     /// @spec 30301_ai_movement_spec.md#req-30301-v05
     #[serde(default = "default_ai_max_recovery_z")]
     pub max_recovery_z: f32,
+
+    // === v0.6 AI不完全性パラメータ ===
+
+    /// 予測精度（0.0～1.0、1.0で完璧）
+    /// @spec 30301_ai_movement_spec.md#req-30301-052
+    #[serde(default = "default_ai_prediction_accuracy")]
+    pub prediction_accuracy: f32,
+    /// 最大予測誤差（m）
+    /// @spec 30301_ai_movement_spec.md#req-30301-052
+    #[serde(default = "default_ai_prediction_error")]
+    pub prediction_error: f32,
+    /// 打球方向のランダムブレ（度）
+    /// @spec 30302_ai_shot_spec.md#req-30302-055
+    #[serde(default = "default_ai_direction_variance")]
+    pub direction_variance: f32,
+    /// 反応遅延（秒）
+    /// @spec 30301_ai_movement_spec.md#req-30301-053
+    #[serde(default = "default_ai_reaction_delay")]
+    pub reaction_delay: f32,
 }
 
 impl Default for AiConfig {
@@ -753,6 +772,11 @@ impl Default for AiConfig {
             recovery_depth: default_ai_recovery_depth(),
             recovery_bias_factor: default_ai_recovery_bias_factor(),
             max_recovery_z: default_ai_max_recovery_z(),
+            // v0.6 AI不完全性パラメータ
+            prediction_accuracy: default_ai_prediction_accuracy(),
+            prediction_error: default_ai_prediction_error(),
+            direction_variance: default_ai_direction_variance(),
+            reaction_delay: default_ai_reaction_delay(),
         }
     }
 }
@@ -799,6 +823,29 @@ fn default_ai_recovery_bias_factor() -> f32 {
 }
 fn default_ai_max_recovery_z() -> f32 {
     2.5 // リカバリーZ軸の最大値（m）
+}
+
+// === v0.6 AI不完全性パラメータ ===
+
+/// 予測精度（Normal難易度相当: 0.7）
+/// @spec 30301_ai_movement_spec.md#req-30301-052
+fn default_ai_prediction_accuracy() -> f32 {
+    0.7
+}
+/// 最大予測誤差（Normal難易度相当: 0.5m）
+/// @spec 30301_ai_movement_spec.md#req-30301-052
+fn default_ai_prediction_error() -> f32 {
+    0.5
+}
+/// 打球方向のランダムブレ（Normal難易度相当: 10度）
+/// @spec 30302_ai_shot_spec.md#req-30302-055
+fn default_ai_direction_variance() -> f32 {
+    10.0
+}
+/// 反応遅延（Normal難易度相当: 150ms）
+/// @spec 30301_ai_movement_spec.md#req-30301-053
+fn default_ai_reaction_delay() -> f32 {
+    0.15
 }
 
 /// 視覚フィードバックパラメータ

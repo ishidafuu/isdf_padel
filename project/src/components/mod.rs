@@ -71,6 +71,9 @@ pub struct AiController {
     /// 目標位置（状態に応じて更新）
     /// @spec 30301_ai_movement_spec.md#req-30301-v05
     pub target_position: Vec3,
+    /// 反応遅延タイマー（秒）- 0より大きい間は追跡を開始しない
+    /// @spec 30301_ai_movement_spec.md#req-30301-053
+    pub reaction_timer: f32,
 }
 
 /// 人間操作プレイヤーマーカーコンポーネント

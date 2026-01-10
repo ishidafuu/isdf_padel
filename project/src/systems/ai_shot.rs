@@ -1,7 +1,8 @@
-//! AIショットシステム
+//! AIショットシステム v0.6
 //! @spec 30302_ai_shot_spec.md
 
 use bevy::prelude::*;
+use rand::Rng;
 
 use crate::components::{
     AiController, Ball, BounceCount, KnockbackState, LastShooter, LogicalPosition, Player, ShotState,
@@ -10,12 +11,35 @@ use crate::core::events::ShotEvent;
 use crate::resource::config::GameConfig;
 use crate::resource::{MatchScore, RallyPhase, RallyState};
 
-/// AIショットシステム
+/// 打球方向にランダムブレを追加
+/// @spec 30302_ai_shot_spec.md#req-30302-055
+///
+/// 2D回転行列で方向ベクトルを回転させる
+fn apply_direction_variance(base_direction: Vec2, variance_deg: f32) -> Vec2 {
+    if variance_deg <= 0.0 {
+        return base_direction;
+    }
+
+    let mut rng = rand::rng();
+    let variance_rad = variance_deg.to_radians();
+    let offset = rng.random_range(-variance_rad..=variance_rad);
+
+    // 2D回転行列を適用
+    let cos = offset.cos();
+    let sin = offset.sin();
+    Vec2::new(
+        base_direction.x * cos - base_direction.y * sin,
+        base_direction.x * sin + base_direction.y * cos,
+    )
+}
+
+/// AIショットシステム v0.6
 /// @spec 30302_ai_shot_spec.md#req-30302-001
 /// @spec 30302_ai_shot_spec.md#req-30302-002
 /// @spec 30302_ai_shot_spec.md#req-30302-003
 /// @spec 30302_ai_shot_spec.md#req-30302-004
 /// @spec 30302_ai_shot_spec.md#req-30302-005
+/// @spec 30302_ai_shot_spec.md#req-30302-055
 pub fn ai_shot_system(
     config: Res<GameConfig>,
     rally_state: Res<RallyState>,
@@ -79,13 +103,17 @@ pub fn ai_shot_system(
         }
 
         // REQ-30302-003: 打球方向（相手コート中央に向かう方向）
-        // AIは Player 2 なので、相手コートは -Z 側（Player 1 のコート）
-        // 相手コート中央 = (0, 0, -court_depth/2)
-        let opponent_court_center = Vec3::new(0.0, 0.0, -config.court.depth / 2.0);
+        // 相手コート中央に向かう方向を計算
+        let opponent_court_center = Vec3::new(0.0, 0.0, 0.0);
         let direction_to_opponent = (opponent_court_center - ai_position).normalize();
-        // X軸方向のみを ShotEvent の direction として渡す
-        // (Z軸方向は shot_direction.rs で court_side に基づいて決定される)
-        let direction = Vec2::new(direction_to_opponent.x, 0.0);
+
+        // REQ-30302-055: 打球方向にランダムブレを適用
+        // XZ平面上で方向ベクトルを回転させる
+        let base_dir_xz = Vec2::new(direction_to_opponent.x, direction_to_opponent.z);
+        let varied_dir_xz = apply_direction_variance(base_dir_xz, config.ai.direction_variance);
+
+        // ShotEventのdirectionとして渡す（X成分とZ成分）
+        let direction = varied_dir_xz;
 
         // REQ-30302-004: クールダウン開始
         shot_state.start_cooldown(config.ai.shot_cooldown);
