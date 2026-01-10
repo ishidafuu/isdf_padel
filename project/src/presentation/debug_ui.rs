@@ -49,6 +49,71 @@ fn setup_debug_ui(mut commands: Commands) {
     ));
 }
 
+
+/// スコア表示テキストを生成
+fn format_score_text(match_score: &MatchScore, point_values: &[u32]) -> String {
+    let p1_point = match_score.get_point_display(CourtSide::Left, point_values);
+    let p2_point = match_score.get_point_display(CourtSide::Right, point_values);
+    let p1_score = match_score.get_score(CourtSide::Left);
+    let p2_score = match_score.get_score(CourtSide::Right);
+    format!(
+        "Score: {} - {} (G: {}-{}, S: {}-{})",
+        p1_point, p2_point,
+        p1_score.games, p2_score.games,
+        p1_score.sets, p2_score.sets,
+    )
+}
+
+/// フェーズ情報テキストを生成
+fn format_phase_info(rally_state: &RallyState) -> String {
+    let phase = match rally_state.phase {
+        RallyPhase::WaitingServe => "WAITING SERVE",
+        RallyPhase::Serving => "SERVING",
+        RallyPhase::Rally => "RALLY",
+        RallyPhase::PointEnded => "POINT END",
+    };
+    let server = match rally_state.server {
+        CourtSide::Left => "P1",
+        CourtSide::Right => "P2",
+    };
+    format!("Phase: {} | Server: {} | Fault: {}", phase, server, rally_state.fault_count)
+}
+
+/// バウンス情報テキストを生成
+fn format_bounce_info(ball_query: &Query<&BounceCount, With<Ball>>) -> String {
+    if let Some(bounce) = ball_query.iter().next() {
+        let side = match bounce.last_court_side {
+            Some(CourtSide::Left) => "P1",
+            Some(CourtSide::Right) => "P2",
+            None => "-",
+        };
+        format!("Bounce: {} ({})", bounce.count, side)
+    } else {
+        "Ball: None".to_string()
+    }
+}
+
+/// プレイヤー状態テキストを生成
+fn format_player_states(player_query: &Query<(&Player, &KnockbackState, &ShotState)>) -> String {
+    let mut states = Vec::new();
+    for (player, knockback, shot_state) in player_query.iter() {
+        let knockback_icon = if knockback.is_knockback_active() {
+            "KNOCKED"
+        } else if knockback.is_invincible() {
+            "INVINCIBLE"
+        } else {
+            "OK"
+        };
+        let shot_icon = if shot_state.is_on_cooldown() {
+            format!("CD:{:.1}", shot_state.cooldown_timer)
+        } else {
+            "READY".to_string()
+        };
+        states.push(format!("P{}: {} | Shot: {}", player.id, knockback_icon, shot_icon));
+    }
+    states.join("\n")
+}
+
 /// デバッグUI更新システム
 fn update_debug_ui(
     match_score: Res<MatchScore>,
@@ -62,85 +127,12 @@ fn update_debug_ui(
         return;
     };
 
-    let point_values = &config.scoring.point_values;
+    let score_text = format_score_text(&match_score, &config.scoring.point_values);
+    let phase_info = format_phase_info(&rally_state);
+    let bounce_info = format_bounce_info(&ball_query);
+    let player_states = format_player_states(&player_query);
 
-    // スコア表示
-    let p1_point = match_score.get_point_display(CourtSide::Left, point_values);
-    let p2_point = match_score.get_point_display(CourtSide::Right, point_values);
-
-    let p1_score = match_score.get_score(CourtSide::Left);
-    let p2_score = match_score.get_score(CourtSide::Right);
-
-    let score_text = format!(
-        "Score: {} - {} (G: {}-{}, S: {}-{})",
-        p1_point,
-        p2_point,
-        p1_score.games,
-        p2_score.games,
-        p1_score.sets,
-        p2_score.sets,
-    );
-
-    // ラリー状態表示
-    let phase_text = match rally_state.phase {
-        RallyPhase::WaitingServe => "WAITING SERVE",
-        RallyPhase::Serving => "SERVING",
-        RallyPhase::Rally => "RALLY",
-        RallyPhase::PointEnded => "POINT END",
-    };
-
-    let server_text = match rally_state.server {
-        CourtSide::Left => "P1",
-        CourtSide::Right => "P2",
-    };
-
-    // ボールバウンス状態
-    let bounce_text = if let Some(bounce) = ball_query.iter().next() {
-        let side = match bounce.last_court_side {
-            Some(CourtSide::Left) => "P1",
-            Some(CourtSide::Right) => "P2",
-            None => "-",
-        };
-        format!("Bounce: {} ({})", bounce.count, side)
-    } else {
-        "Ball: None".to_string()
-    };
-
-    // プレイヤー状態
-    let mut player_states = Vec::new();
-    for (player, knockback, shot_state) in player_query.iter() {
-        let knockback_icon = if knockback.is_knockback_active() {
-            "KNOCKED"
-        } else if knockback.is_invincible() {
-            "INVINCIBLE"
-        } else {
-            "OK"
-        };
-
-        let shot_icon = if shot_state.is_on_cooldown() {
-            format!("CD:{:.1}", shot_state.cooldown_timer)
-        } else {
-            "READY".to_string()
-        };
-
-        player_states.push(format!(
-            "P{}: {} | Shot: {}",
-            player.id, knockback_icon, shot_icon
-        ));
-    }
-
-    // テキスト組み立て
-    let full_text = format!(
-        "{}\nPhase: {} | Server: {} | Fault: {}\n{}\n{}",
-        score_text,
-        phase_text,
-        server_text,
-        rally_state.fault_count,
-        bounce_text,
-        player_states.join("\n")
-    );
-
-    **text = full_text;
+    **text = format!("{}\n{}\n{}\n{}", score_text, phase_info, bounce_info, player_states);
 }
 
 /// ショット判定枠のセットアップ（プレイヤー生成時に呼ばれる）

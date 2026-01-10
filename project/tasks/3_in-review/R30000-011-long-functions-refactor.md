@@ -2,7 +2,7 @@
 id: "R30000-011"
 title: "長関数のリファクタリング"
 type: "refactor"
-status: "todo"
+status: "in-review"
 priority: "low"
 related_task: "30000"
 spec_ids: []
@@ -32,7 +32,25 @@ completed_at: null
 
 ### Completed
 
-(なし)
+1. **spawn_court (114行→35行)** - `main.rs`
+   - `spawn_rect` ヘルパー関数を追加
+   - 繰り返しパターンを統一し可読性向上
+
+2. **main (108行)** - 現状維持
+   - Bevy のビルダーパターンに従った構造
+   - 分割するとイディオムから外れ可読性低下のため維持
+
+3. **handle_normal_shot (94行)** - 現状維持
+   - 既に早期リターン、構造体構築、関数呼び出しで構造化済み
+   - 過度な分割は避け現状維持
+
+4. **update_debug_ui (92行→20行)** - `debug_ui.rs`
+   - `format_score_text`, `format_phase_info`, `format_bounce_info`, `format_player_states` ヘルパー関数を追加
+   - セクションごとに責務を分離
+
+5. ビルド・テスト確認 ✅
+   - `cargo build` 成功
+   - `cargo test` 149件 PASS
 
 ## Next Actions
 
@@ -62,9 +80,9 @@ completed_at: null
 
 > このタスクは in-review 経由必須
 
-- [ ] ビルド成功（`cargo build`）
-- [ ] テスト全PASS（`cargo test`）
-- [ ] in-review に移動済み
+- [x] ビルド成功（`cargo build`）
+- [x] テスト全PASS（`cargo test`）
+- [x] in-review に移動済み
 - [ ] レビュー完了
 
 ## メモ
