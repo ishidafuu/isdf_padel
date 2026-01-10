@@ -156,23 +156,25 @@ pub fn ai_movement_system(
             }
         };
 
-        // ボールが自分側にあるかチェック
-        let ball_on_my_side = match player.court_side {
-            CourtSide::Left => ball_pos.x < 0.0,
-            CourtSide::Right => ball_pos.x > 0.0,
+        // ボールが自分に向かっているかチェック（飛行方向で判定）
+        // @spec 30301_ai_movement_spec.md#req-30301-v05
+        let ball_coming_to_me = match player.court_side {
+            CourtSide::Left => ball_vel.x < 0.0,  // 左に向かっている
+            CourtSide::Right => ball_vel.x > 0.0, // 右に向かっている
         };
 
+        // 動的待機位置（フォールバック用に先に計算）
+        let idle_pos = calculate_idle_position(ball_pos, player.court_side, &config);
+
         // 状態遷移と目標位置計算
-        let (new_state, target_pos) = if ball_on_my_side {
-            // ボールが自分側: 着地予測位置へ移動
+        let (new_state, target_pos) = if ball_coming_to_me {
+            // ボールが自分に向かっている: 着地予測位置へ移動
             let landing_pos = calculate_landing_position(ball_pos, ball_vel, gravity)
-                .unwrap_or(ball_pos);
+                .unwrap_or(idle_pos); // フォールバック: 待機位置
 
             (AiMovementState::Tracking, landing_pos)
         } else {
             // ボールが相手側: 動的待機位置へ移動
-            let idle_pos = calculate_idle_position(ball_pos, player.court_side, &config);
-
             // ショット直後はリカバリー状態を維持（簡易実装: 待機位置で代用）
             // TODO: 将来的にはショットイベントをトリガーにしてRecovering状態へ遷移
             (AiMovementState::Idle, idle_pos)
