@@ -84,11 +84,9 @@ fn match_start_system(
     *rally_state = RallyState::new(CourtSide::Left);
 
     // @spec 30101_flow_spec.md#req-30101-001: プレイヤーを配置する
-    // 論理座標を設定（表示座標は sync_transform_system で自動更新）
-    for (player, mut logical_pos) in query.iter_mut() {
-        let pos = get_initial_position(player.court_side, &config);
-        logical_pos.value = pos;
-        info!("Player {} positioned at {:?}", player.id, pos);
+    reset_player_positions(&mut query, &config);
+    for (player, logical_pos) in query.iter() {
+        info!("Player {} positioned at {:?}", player.id, logical_pos.value);
     }
 
     // @spec 30101_flow_spec.md#req-30101-005: MatchStartEvent 発行
@@ -193,11 +191,7 @@ fn point_end_to_next_system(
 
     // @spec 30101_flow_spec.md#req-30101-004: 試合が終了していない場合
     // @spec 30101_flow_spec.md#req-30101-004: プレイヤーを初期位置に戻す
-    // 論理座標を設定（表示座標は sync_transform_system で自動更新）
-    for (player, mut logical_pos) in query.iter_mut() {
-        let pos = get_initial_position(player.court_side, &config);
-        logical_pos.value = pos;
-    }
+    reset_player_positions(&mut query, &config);
 
     // ラリー状態を次のサーブ待ちに更新
     rally_state.next_serve();
@@ -218,6 +212,17 @@ fn match_end_system(match_score: Res<MatchScore>, mut match_end_events: MessageW
         // @spec 30101_flow_spec.md#req-30101-005: MatchWonEvent を発行する
         match_end_events.write(MatchWonEvent { winner });
         info!("Match ended! Winner: {:?}", winner);
+    }
+}
+
+/// プレイヤーを初期位置にリセット
+/// @spec 30101_flow_spec.md#req-30101-001
+fn reset_player_positions(
+    query: &mut Query<(&Player, &mut LogicalPosition)>,
+    config: &GameConfig,
+) {
+    for (player, mut logical_pos) in query.iter_mut() {
+        logical_pos.value = get_initial_position(player.court_side, config);
     }
 }
 

@@ -2,7 +2,7 @@
 id: "R30000-014"
 title: "systems/match_control/ (scoring + flow) 簡素化"
 type: "refactor"
-status: "todo"
+status: "done"
 priority: "high"
 related_task: "30000"
 spec_ids: []
@@ -42,3 +42,19 @@ code-simplifier エージェントを使用
 
 ## 優先度
 Tier 1（高）
+
+## 完了内容
+
+### flow.rs の簡素化
+- プレイヤー位置リセットロジックの重複排除
+- `reset_player_positions` ヘルパー関数を追加
+- `match_start_system` と `point_end_to_next_system` で共通化
+
+### scoring.rs の分析結果
+- 既に良好な構造（関心分離済み）
+- `rally_end_system`, `handle_game_win`, `handle_set_win`, `handle_point_scored` の分離が適切
+- Bevy ECS の DI パターンにより、これ以上の分離は不適切と判断
+
+### 検証結果
+- `cargo build`: 成功
+- `cargo test`: 151テスト全て成功
