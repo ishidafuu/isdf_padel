@@ -12,6 +12,7 @@ use bevy::prelude::*;
 use crate::components::{
     AiController, Ball, InputState, LogicalPosition, Player, TossBall, TossBallBundle, Velocity,
 };
+use crate::systems::ai::AiServeTimer;
 use crate::core::{CourtSide, ShotEvent};
 use crate::resource::config::ServeSide;
 use crate::resource::scoring::{MatchFlowState, ServeState, ServeSubPhase};
@@ -245,11 +246,12 @@ pub fn serve_hit_input_system(
 
 /// トスタイムアウト/落下判定システム
 /// @spec 30102_serve_spec.md#req-30102-084
-/// タイムアウトまたはボールが落下しすぎた場合Faultとする
+/// タイムアウトまたはボールが落下しすぎた場合let（打ち直し）とする
 pub fn serve_toss_timeout_system(
     mut commands: Commands,
     config: Res<GameConfig>,
     mut serve_state: ResMut<ServeState>,
+    mut ai_serve_timer: ResMut<AiServeTimer>,
     toss_ball_query: Query<(Entity, &LogicalPosition, &Velocity), With<TossBall>>,
 ) {
     // Tossing状態でのみ実行
@@ -274,6 +276,11 @@ pub fn serve_toss_timeout_system(
     // @spec 30102_serve_spec.md#req-30102-084: 打ち直し(let)
     commands.entity(toss_entity).despawn();
     serve_state.reset_for_retry();
+
+    // AIタイマーリセット（let後の再トス用）
+    // @spec 30102_serve_spec.md#req-30102-087
+    ai_serve_timer.toss_timer = None;
+    ai_serve_timer.hit_executed = false;
 
     let reason = if is_timeout { "timeout" } else { "ball too low" };
     info!("Serve let: {} (retry without fault)", reason);
