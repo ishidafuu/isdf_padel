@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Replay Data Structures
 //! @spec 77103_replay_spec.md
 //!

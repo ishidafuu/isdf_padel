@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Replay Manager
 //! @spec 77103_replay_spec.md
 //!

@@ -16,10 +16,7 @@ use bevy::prelude::*;
 
 use crate::resource::MatchFlowState;
 
-pub use data::{FrameInput, InputSnapshot, ReplayConfig, ReplayData, ReplayMetadata};
-pub use loader::load_replay;
-pub use manager::{ReplayFileInfo, ReplayManager};
-pub use player::{ReplayPlaybackFinished, ReplayPlayer};
+pub use manager::ReplayManager;
 pub use recorder::{ReplayRecorder, StartReplayRecording, StopReplayRecording};
 
 /// リプレイプラグイン（記録機能）
