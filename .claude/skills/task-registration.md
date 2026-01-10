@@ -276,6 +276,19 @@ completed_at: null
 - ❌ 依存関係の設定（blocked_by, blocks）
 - ❌ `1_todo/` 以外への配置
 - ❌ **プラン作成後の直接実装**（タスク登録必須）
+- ❌ **MCPツールでのタスクファイル作成**（フックが発火しない）
+
+## ツール使用ルール（CRITICAL）
+
+**タスクファイル作成には必ず標準の `Write` ツールを使用すること。**
+
+```
+✅ Write(file_path="project/tasks/1_todo/R30000-027_xxx.md", content="...")
+❌ mcp__plugin_serena_serena__create_text_file(...)
+```
+
+理由: PostToolUse フック（frontmatterバリデーション）は標準ツールのみ対象。
+MCPツール使用時はフックが発火せず、不正なfrontmatterが検出されない。
 
 ---
 
