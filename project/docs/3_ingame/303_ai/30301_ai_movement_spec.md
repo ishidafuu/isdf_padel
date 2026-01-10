@@ -1,7 +1,7 @@
 # AI Movement Spec
 
-**Version**: 1.1.0
-**Last Updated**: 2026-01-10
+**Version**: 1.2.0
+**Last Updated**: 2026-01-11
 **Status**: Active
 
 ---
@@ -172,6 +172,34 @@ AIキャラクターの移動とポジショニングを定義します。
 
 ---
 
+## v0.7 Requirements
+
+### REQ-30301-v07-001: インターセプト方式移動
+
+- WHEN ボールが自分のコート側に向かっている
+- THE SYSTEM SHALL AIは自身のX座標を維持し、ボールが通過するZ座標を予測してそこに移動する
+- WITH
+  - X座標: 現在のAI X座標を維持（固定）
+  - Z座標: ボールがAIのX座標を通過する時点でのZ座標を予測
+  - 予測式: `intercept_z = ball_z + ball_vel_z * (ai_x - ball_x) / ball_vel_x`
+
+### REQ-30301-v07-002: 短いボール判定
+
+- WHEN ボールがAIのX座標に到達する前に着地する
+- THE SYSTEM SHALL AIはボールの現在位置を追跡する
+- WITH 判定条件: `time_to_landing < time_to_intercept`
+
+### REQ-30301-v07-003: 目標ロック機構（振動防止）
+
+- WHEN ボールの移動状態が変化した（方向転換、新規ショット）
+- THE SYSTEM SHALL 新しい目標Z座標を計算し、誤差を1回だけ適用してロックする
+- WITH
+  - ロック条件: ボール速度X成分の符号変化を検知
+  - ロック解除: ボール速度X成分の符号が再度変化したとき
+  - 振動防止: ロック中は毎フレームの再計算を行わない
+
+---
+
 ## Related Specifications
 
 - [30300_overview.md](30300_overview.md) - AI概要
@@ -182,6 +210,12 @@ AIキャラクターの移動とポジショニングを定義します。
 ---
 
 ## Change Log
+
+### 2026-01-11 - v1.2.0
+
+- v0.7: インターセプト方式移動（REQ-30301-v07-001）
+- v0.7: 短いボール判定（REQ-30301-v07-002）
+- v0.7: 目標ロック機構（REQ-30301-v07-003）
 
 ### 2026-01-10 - v1.1.0
 

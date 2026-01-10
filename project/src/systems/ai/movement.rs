@@ -1,4 +1,4 @@
-//! AI移動システム v0.6
+//! AI移動システム v0.7
 //! @spec 30301_ai_movement_spec.md
 
 use bevy::prelude::*;
@@ -11,18 +11,18 @@ use crate::core::court::CourtSide;
 use crate::resource::config::GameConfig;
 use crate::resource::FixedDeltaTime;
 
-/// 着地点を計算
-/// @spec 30301_ai_movement_spec.md#req-30301-v05
+/// 着地時間を計算
+/// @spec 30301_ai_movement_spec.md#req-30301-v07-002
 ///
-/// 二次方程式を解いて Y=0 となる時間を求め、その時点でのXZ位置を返す
-fn calculate_landing_position(position: Vec3, velocity: Vec3, gravity: f32) -> Option<Vec3> {
+/// 二次方程式を解いて Y=0 となる時間を求める
+fn calculate_time_to_landing(position: Vec3, velocity: Vec3, gravity: f32) -> Option<f32> {
     let y0 = position.y;
     let vy = velocity.y;
     let g = gravity;
 
     // すでに地面上または地面以下の場合
     if y0 <= 0.0 {
-        return Some(Vec3::new(position.x, 0.0, position.z));
+        return Some(0.0);
     }
 
     // 二次方程式: 0.5 * g * t² + vy * t + y0 = 0
@@ -41,28 +41,79 @@ fn calculate_landing_position(position: Vec3, velocity: Vec3, gravity: f32) -> O
     let t2 = (-b + sqrt_d) / (2.0 * a);
 
     // 正の時間のうち最も近い未来を選択
-    let time_to_landing = if t1 > 0.0 && t2 > 0.0 {
-        t1.min(t2)
+    if t1 > 0.0 && t2 > 0.0 {
+        Some(t1.min(t2))
     } else if t1 > 0.0 {
-        t1
+        Some(t1)
     } else if t2 > 0.0 {
-        t2
+        Some(t2)
     } else {
-        return None;
-    };
-
-    // 着地時のXZ位置を計算（等速直線運動）
-    let landing_x = position.x + velocity.x * time_to_landing;
-    let landing_z = position.z + velocity.z * time_to_landing;
-
-    Some(Vec3::new(landing_x, 0.0, landing_z))
+        None
+    }
 }
 
-/// 着地点予測に誤差を適用
+/// インターセプト位置を計算
+/// @spec 30301_ai_movement_spec.md#req-30301-v07-001
+///
+/// AIのX座標にボールが到達する時のZ座標を予測
+fn calculate_intercept_z(
+    ai_x: f32,
+    ball_pos: Vec3,
+    ball_vel: Vec3,
+) -> Option<f32> {
+    // ボールがAIの方向に向かっていない、または速度がほぼ0の場合
+    if ball_vel.x.abs() < 0.001 {
+        return None;
+    }
+
+    // ボールがAIのX座標に到達する時間
+    let time_to_intercept = (ai_x - ball_pos.x) / ball_vel.x;
+
+    // 負の時間 = すでに通り過ぎた
+    if time_to_intercept < 0.0 {
+        return None;
+    }
+
+    // その時点でのZ座標
+    let intercept_z = ball_pos.z + ball_vel.z * time_to_intercept;
+
+    Some(intercept_z)
+}
+
+/// 短いボール判定
+/// @spec 30301_ai_movement_spec.md#req-30301-v07-002
+///
+/// ボールがAIのX座標に到達する前に着地するかを判定
+fn is_short_ball(
+    ai_x: f32,
+    ball_pos: Vec3,
+    ball_vel: Vec3,
+    gravity: f32,
+) -> bool {
+    // インターセプト時間を計算
+    if ball_vel.x.abs() < 0.001 {
+        return true; // X方向に動いていない = 短いボールとみなす
+    }
+
+    let time_to_intercept = (ai_x - ball_pos.x) / ball_vel.x;
+    if time_to_intercept < 0.0 {
+        return true; // すでに通り過ぎた = 短いボールとみなす
+    }
+
+    // 着地時間を計算
+    let time_to_landing = calculate_time_to_landing(ball_pos, ball_vel, gravity);
+
+    match time_to_landing {
+        Some(t_land) => t_land < time_to_intercept,
+        None => true, // 着地しない場合も短いボールとみなす
+    }
+}
+
+/// Z座標に誤差を適用
 /// @spec 30301_ai_movement_spec.md#req-30301-052
 ///
 /// 誤差範囲 = (1.0 - prediction_accuracy) * prediction_error
-fn apply_prediction_error(landing_pos: Vec3, config: &GameConfig) -> Vec3 {
+fn apply_z_error(z: f32, config: &GameConfig) -> f32 {
     let mut rng = rand::rng();
     let accuracy = config.ai.prediction_accuracy.clamp(0.0, 1.0);
     let max_error = config.ai.prediction_error;
@@ -71,14 +122,13 @@ fn apply_prediction_error(landing_pos: Vec3, config: &GameConfig) -> Vec3 {
     let error_range = (1.0 - accuracy) * max_error;
 
     if error_range <= 0.0 {
-        return landing_pos;
+        return z;
     }
 
-    // XZ平面上のランダムな誤差を追加
-    let error_x = rng.random_range(-error_range..=error_range);
+    // Z座標にのみランダムな誤差を追加
     let error_z = rng.random_range(-error_range..=error_range);
 
-    Vec3::new(landing_pos.x + error_x, landing_pos.y, landing_pos.z + error_z)
+    z + error_z
 }
 
 /// 待機位置を計算
@@ -107,13 +157,12 @@ fn calculate_idle_position(
 }
 
 
-/// AI移動システム v0.6
-/// @spec 30301_ai_movement_spec.md#req-30301-v05
-/// @spec 30301_ai_movement_spec.md#req-30301-052
-/// @spec 30301_ai_movement_spec.md#req-30301-053
+/// AI移動システム v0.7
+/// @spec 30301_ai_movement_spec.md#req-30301-v07-001
+/// @spec 30301_ai_movement_spec.md#req-30301-v07-002
+/// @spec 30301_ai_movement_spec.md#req-30301-v07-003
 ///
-/// 着地点予測移動、動的待機位置、リカバリーポジショニングを統合
-/// v0.6: 予測誤差（REQ-30301-052）と反応遅延（REQ-30301-053）を追加
+/// インターセプト方式移動、短いボール判定、目標ロック機構を実装
 pub fn ai_movement_system(
     fixed_dt: Res<FixedDeltaTime>,
     config: Res<GameConfig>,
@@ -147,7 +196,9 @@ pub fn ai_movement_system(
         let (ball_pos, ball_vel) = match ball_info {
             Some((pos, vel)) => (pos, vel),
             None => {
-                // 反応タイマーをリセット
+                // ロック解除
+                ai.locked_target_z = None;
+                ai.lock_ball_velocity_x_sign = None;
                 ai.reaction_timer = 0.0;
                 // ホームポジションへ移動
                 move_towards_target(
@@ -163,24 +214,20 @@ pub fn ai_movement_system(
         };
 
         // ボールが自分に向かっているかチェック（飛行方向で判定）
-        // @spec 30301_ai_movement_spec.md#req-30301-v05
         let ball_coming_to_me = match player.court_side {
             CourtSide::Left => ball_vel.x < 0.0,  // 左に向かっている
             CourtSide::Right => ball_vel.x > 0.0, // 右に向かっている
         };
 
-        // 動的待機位置（フォールバック用に先に計算）
+        // 動的待機位置（フォールバック用）
         let idle_pos = calculate_idle_position(ball_pos, player.court_side, &config);
 
         // === 反応遅延の処理 ===
         // @spec 30301_ai_movement_spec.md#req-30301-053
-        // ボールが自分に向かっていて、かつ前フレームで待機中だった場合 → 反応遅延を開始
         if ball_coming_to_me && ai.movement_state == AiMovementState::Idle {
-            // 状態遷移を検知 → 反応タイマーをセット
             ai.reaction_timer = config.ai.reaction_delay;
         }
 
-        // 反応タイマーの更新
         if ai.reaction_timer > 0.0 {
             ai.reaction_timer -= delta;
             if ai.reaction_timer < 0.0 {
@@ -188,27 +235,61 @@ pub fn ai_movement_system(
             }
         }
 
+        // === 目標ロック機構 ===
+        // @spec 30301_ai_movement_spec.md#req-30301-v07-003
+        let current_ball_vel_x_sign = ball_vel.x > 0.0;
+
+        // ボール速度X成分の符号変化を検知 → ロック解除
+        let state_changed = match ai.lock_ball_velocity_x_sign {
+            Some(prev_sign) => prev_sign != current_ball_vel_x_sign,
+            None => ball_coming_to_me, // 初回かつボールが向かっている
+        };
+
+        // ボールが相手側に向かった場合はロック解除
+        if !ball_coming_to_me {
+            ai.locked_target_z = None;
+            ai.lock_ball_velocity_x_sign = None;
+        }
+
         // 状態遷移と目標位置計算
         let (new_state, target_pos) = if ball_coming_to_me {
             // 反応遅延中は追跡を開始しない
-            // @spec 30301_ai_movement_spec.md#req-30301-053
             if ai.reaction_timer > 0.0 {
-                // まだ反応できない → 待機位置に留まる
                 (AiMovementState::Idle, idle_pos)
             } else {
-                // ボールが自分に向かっている: 着地予測位置へ移動
-                let raw_landing_pos = calculate_landing_position(ball_pos, ball_vel, gravity)
-                    .unwrap_or(idle_pos); // フォールバック: 待機位置
+                // === インターセプト方式 ===
+                // @spec 30301_ai_movement_spec.md#req-30301-v07-001
+                // @spec 30301_ai_movement_spec.md#req-30301-v07-002
 
-                // 予測誤差を適用
-                // @spec 30301_ai_movement_spec.md#req-30301-052
-                let landing_pos = apply_prediction_error(raw_landing_pos, &config);
+                // 状態変化時のみ目標を再計算
+                let target_z = if state_changed || ai.locked_target_z.is_none() {
+                    // 短いボール判定
+                    let target_z = if is_short_ball(ai_pos.x, ball_pos, ball_vel, gravity) {
+                        // 短いボール: ボールの現在Z座標を追跡
+                        ball_pos.z
+                    } else {
+                        // インターセプト: AIのX座標でのZ座標を予測
+                        calculate_intercept_z(ai_pos.x, ball_pos, ball_vel)
+                            .unwrap_or(ball_pos.z)
+                    };
 
-                (AiMovementState::Tracking, landing_pos)
+                    // 誤差を1回だけ適用してロック
+                    let with_error = apply_z_error(target_z, &config);
+                    ai.locked_target_z = Some(with_error);
+                    ai.lock_ball_velocity_x_sign = Some(current_ball_vel_x_sign);
+
+                    with_error
+                } else {
+                    // ロック済みの目標を使用
+                    ai.locked_target_z.unwrap_or(ball_pos.z)
+                };
+
+                // X座標は維持、Z座標のみ移動
+                let target = Vec3::new(ai_pos.x, 0.0, target_z);
+                (AiMovementState::Tracking, target)
             }
         } else {
             // ボールが相手側: 動的待機位置へ移動
-            // ショット直後はリカバリー状態を維持（簡易実装: 待機位置で代用）
             (AiMovementState::Idle, idle_pos)
         };
 
@@ -216,19 +297,16 @@ pub fn ai_movement_system(
         ai.movement_state = new_state;
         ai.target_position = target_pos;
 
-        // 到達判定
-        let diff = Vec2::new(target_pos.x - ai_pos.x, target_pos.z - ai_pos.z);
-        let distance_xz = diff.length();
+        // 到達判定（Z座標のみで判定）
+        let distance_z = (target_pos.z - ai_pos.z).abs();
 
         let stop_distance = if matches!(new_state, AiMovementState::Tracking) {
-            // 追跡中は打球可能距離で停止
             config.shot.max_distance
         } else {
-            // 待機中はホーム復帰停止距離で停止
             config.ai.home_return_stop_distance
         };
 
-        if distance_xz <= stop_distance {
+        if distance_z <= stop_distance {
             // 目標に到達 → 停止
             velocity.value.x = 0.0;
             velocity.value.z = 0.0;
@@ -275,23 +353,59 @@ fn move_towards_target(
 mod tests {
     use super::*;
 
-    /// 着地計算テスト
+    /// 着地時間計算テスト
+    /// @spec 30301_ai_movement_spec.md#req-30301-v07-002
     #[test]
-    fn test_landing_calculation() {
+    fn test_time_to_landing_calculation() {
         // 位置: (0, 5, 0)、速度: (10, 0, 5)、重力: -10
         let position = Vec3::new(0.0, 5.0, 0.0);
         let velocity = Vec3::new(10.0, 0.0, 5.0);
         let gravity = -10.0;
 
-        let result = calculate_landing_position(position, velocity, gravity);
+        let result = calculate_time_to_landing(position, velocity, gravity);
         assert!(result.is_some());
 
-        let landing_pos = result.unwrap();
+        let time = result.unwrap();
         // t = √(2h/g) = √(2*5/10) = 1.0秒
-        // X = 0 + 10 * 1.0 = 10.0
-        assert!((landing_pos.x - 10.0).abs() < 0.1);
-        // Z = 0 + 5 * 1.0 = 5.0
-        assert!((landing_pos.z - 5.0).abs() < 0.1);
+        assert!((time - 1.0).abs() < 0.1);
+    }
+
+    /// インターセプトZ座標計算テスト
+    /// @spec 30301_ai_movement_spec.md#req-30301-v07-001
+    #[test]
+    fn test_intercept_z_calculation() {
+        // AI位置X = 5.0, ボール位置 = (0, 2, 0), ボール速度 = (10, 0, 5)
+        let ai_x = 5.0;
+        let ball_pos = Vec3::new(0.0, 2.0, 0.0);
+        let ball_vel = Vec3::new(10.0, 0.0, 5.0);
+
+        let result = calculate_intercept_z(ai_x, ball_pos, ball_vel);
+        assert!(result.is_some());
+
+        let intercept_z = result.unwrap();
+        // time_to_intercept = (5.0 - 0.0) / 10.0 = 0.5秒
+        // intercept_z = 0.0 + 5.0 * 0.5 = 2.5
+        assert!((intercept_z - 2.5).abs() < 0.1);
+    }
+
+    /// 短いボール判定テスト
+    /// @spec 30301_ai_movement_spec.md#req-30301-v07-002
+    #[test]
+    fn test_short_ball_detection() {
+        let gravity = -10.0;
+
+        // 短いボール: 着地が早い
+        let ai_x = 10.0;
+        let ball_pos = Vec3::new(0.0, 1.0, 0.0);
+        let ball_vel = Vec3::new(5.0, 0.0, 0.0); // ゆっくり移動
+
+        assert!(is_short_ball(ai_x, ball_pos, ball_vel, gravity));
+
+        // 長いボール: インターセプト可能
+        let ball_pos2 = Vec3::new(0.0, 5.0, 0.0);
+        let ball_vel2 = Vec3::new(20.0, 5.0, 0.0); // 速い
+
+        assert!(!is_short_ball(ai_x, ball_pos2, ball_vel2, gravity));
     }
 
     /// 待機位置計算テスト

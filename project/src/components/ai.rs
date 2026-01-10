@@ -33,4 +33,10 @@ pub struct AiController {
     /// 反応遅延タイマー（秒）- 0より大きい間は追跡を開始しない
     /// @spec 30301_ai_movement_spec.md#req-30301-053
     pub reaction_timer: f32,
+    /// 確定済みの目標Z座標（振動防止用）
+    /// @spec 30301_ai_movement_spec.md#req-30301-v07-003
+    pub locked_target_z: Option<f32>,
+    /// 目標をロックした時のボール速度X符号（状態変化検知用）
+    /// @spec 30301_ai_movement_spec.md#req-30301-v07-003
+    pub lock_ball_velocity_x_sign: Option<bool>,
 }
