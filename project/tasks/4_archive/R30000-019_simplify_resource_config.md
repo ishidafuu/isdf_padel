@@ -2,13 +2,13 @@
 id: "R30000-019"
 title: "resource/config/ 簡素化"
 type: "refactor"
-status: "todo"
+status: "done"
 priority: "medium"
 related_task: "30000"
 spec_ids: []
 blocked_by: []
 blocks: []
-branch_name: null
+branch_name: "refactor/R30000-019-simplify-resource-config"
 worktree_path: null
 plan_file: null
 tags: ["code-simplifier", "resource", "config", "refactor"]
