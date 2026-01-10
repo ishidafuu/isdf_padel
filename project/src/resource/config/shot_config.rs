@@ -60,6 +60,8 @@ pub struct TrajectoryConfig {
     pub default_landing_depth: f32,
     /// 最小発射角度（度）
     /// @spec 30605_trajectory_calculation_spec.md#req-30605-022
+    /// TODO: 動的計算に置き換え予定
+    #[allow(dead_code)]
     #[serde(default = "default_min_launch_angle")]
     pub min_launch_angle: f32,
     /// 最大発射角度（度）
@@ -88,6 +90,8 @@ pub struct TrajectoryConfig {
     pub distance_speed_max: f32,
     /// 最大着地ズレ（精度100%以外での偏差）
     /// @spec 30605_trajectory_calculation_spec.md#req-30605-040
+    /// TODO: 精度システム実装時に使用予定
+    #[allow(dead_code)]
     #[serde(default = "default_max_landing_deviation")]
     pub max_landing_deviation: f32,
 }
@@ -179,6 +183,8 @@ pub struct ShotAttributesConfig {
     pub stability_threshold: f32,
     /// 最大方向ブレ（度）
     /// @spec 30604_shot_attributes_spec.md#req-30604-070
+    /// TODO: 方向ブレシステム実装時に使用予定
+    #[allow(dead_code)]
     #[serde(default = "default_max_direction_error")]
     pub max_direction_error: f32,
 

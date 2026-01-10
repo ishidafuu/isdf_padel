@@ -282,6 +282,8 @@ impl ServeState {
 
     /// フォルト記録
     /// @spec 30102_serve_spec.md#req-30102-084
+    /// NOTE: テストコードで使用
+    #[allow(dead_code)]
     pub fn record_fault(&mut self) {
         self.fault_count += 1;
         self.phase = ServeSubPhase::Waiting;

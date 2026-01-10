@@ -27,7 +27,7 @@ pub use scoring_config::ScoringConfig;
 pub use serve_config::{ServeConfig, ServeSide};
 pub use shot_config::{
     ApproachCurvePoint, DistanceCurvePoint, HeightCurvePoint, ShotAttributesConfig, ShotConfig,
-    SpinCurvePoint, TimingCurvePoint, TrajectoryConfig, VolleyFactors,
+    SpinCurvePoint, TimingCurvePoint, TrajectoryConfig,
 };
 pub use visual_config::{ShadowConfig, VisualFeedbackConfig};
 
