@@ -169,12 +169,9 @@ impl MatchScore {
     #[allow(dead_code)]
     pub fn check_game_win(&self, scorer: CourtSide, win_index: usize) -> bool {
         let scorer_index = self.get_point_index(scorer);
-        let opponent_index = self.get_point_index(scorer.opponent());
-
         // MVP v0.1: デュースなし（40から得点で即勝利）
         // win_index = 4 の場合、index 3 (40) から得点で勝利
-        scorer_index >= win_index && opponent_index < win_index - 1
-            || scorer_index >= win_index
+        scorer_index >= win_index
     }
 
     /// ポイントをリセット（ゲーム終了後）
