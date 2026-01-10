@@ -1,43 +1,71 @@
-# B30102-003: サーブトス打たず→打ち直し（let）に修正
+---
+id: "B30102-003"
+title: "AIサーブlet条件後のスタック修正"
+type: "bugfix"
+status: "done"
+priority: "high"
+related_task: "30102"
+spec_ids: ["REQ-30102-084"]
+blocked_by: []
+blocks: []
+branch_name: null
+worktree_path: null
+completed_at: "2026-01-11"
+plan_file: null
+tags: ["ai", "serve", "bugfix"]
+parent_task_id: null
+---
+
+# B30102-003: AIサーブlet条件後のスタック修正
 
 ## 概要
-トスをして打たなかった場合（タイムアウト/低すぎ）がフォルト扱いになっている。
-実際のパデル/テニスでは打ち直し（let）が正しい。
 
-## 問題
-- 現状: `serve_toss_timeout_system` で `record_fault()` を呼び、フォルトカウント増加
-- 正しい挙動: fault_count を変更せず、単に打ち直しにする
+AIサーブがlet条件（トスタイムアウト/高さ不足）発生後にスタックする問題を修正。
+
+## 根本原因
+
+1. **`hit_executed`フラグのリセット漏れ** - AI連続サーブ時にフラグがtrueのまま
+2. **let条件後のタイマー再初期化漏れ** - `AiServeTimer`が再初期化されない
+3. **タイマー初期化の競合チェック** - 既存タイマーがあると新規初期化スキップ
 
 ## 修正内容
 
-### 1. 仕様書更新
-**ファイル**: `project/docs/3_ingame/301_match/30102_serve_spec.md`
-- REQ-30102-084: 「Fault と判定する」→「打ち直し（let）にする」
-- fault_count は変更しない旨を明記
+### 1. serve_toss_timeout_system にAIタイマーリセット追加
 
-### 2. ServeState にメソッド追加
-**ファイル**: `project/src/resource/scoring.rs`
+**ファイル**: `project/src/systems/match_control/serve.rs`
+
 ```rust
-/// 打ち直し（let）時のリセット
-/// @spec 30102_serve_spec.md#req-30102-084
-pub fn reset_for_retry(&mut self) {
-    self.phase = ServeSubPhase::Waiting;
-    self.toss_time = 0.0;
-    self.toss_origin = None;
-    // fault_count は変更しない
+// serve_toss_timeout_system 内
+if is_timeout || is_too_low {
+    commands.entity(toss_entity).despawn();
+    serve_state.reset_for_retry();
+
+    // 追加: AIタイマーリセット
+    ai_serve_timer.toss_timer = None;
+    ai_serve_timer.hit_executed = false;
 }
 ```
 
-### 3. システム修正
-**ファイル**: `project/src/systems/match_control/serve.rs`
-- `serve_toss_timeout_system` で `record_fault()` → `reset_for_retry()` に変更
-- ログメッセージを「Serve fault」→「Serve let」に変更
+### 2. ai_serve_timer_init_system の確認
 
-## 検証方法
-1. ゲームを起動
-2. サーブ時にトスして打たずに待つ
-3. フォルトにならず、打ち直しになることを確認
-4. 2回連続でトスを打たなくてもダブルフォルトにならないことを確認
+**ファイル**: `project/src/systems/ai/serve.rs`
 
-## 関連
-- 仕様: REQ-30102-084
+- `hit_executed = false` が初期化時に設定されていることを確認
+- let条件後に再初期化されることを確認
+
+## 対象仕様
+
+- REQ-30102-084: トス打ち直し（let）
+
+## 検証
+
+```bash
+# ヘッドレスシミュレーション 10回
+for i in {1..10}; do cargo run --release --features headless; done
+```
+
+## 関連ファイル
+
+- `project/src/systems/ai/serve.rs`
+- `project/src/systems/match_control/serve.rs`
+- `project/docs/3_ingame/301_match/30102_serve_spec.md`

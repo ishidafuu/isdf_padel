@@ -312,19 +312,15 @@ fn debug_simulation_state(
     >,
     players: Query<&crate::components::LogicalPosition, With<crate::components::Player>>,
     match_score: Option<Res<MatchScore>>,
+    mut last_log_time: Local<f32>,
 ) {
     if !sim_config.verbose {
         return;
     }
 
     // 5秒ごとに出力
-    static mut LAST_LOG_TIME: f32 = 0.0;
-    let elapsed = unsafe { LAST_LOG_TIME };
-
-    if time.elapsed_secs() - elapsed > 5.0 {
-        unsafe {
-            LAST_LOG_TIME = time.elapsed_secs();
-        }
+    if time.elapsed_secs() - *last_log_time > 5.0 {
+        *last_log_time = time.elapsed_secs();
 
         let ball_count = balls.iter().count();
         let player_count = players.iter().count();
@@ -357,29 +353,25 @@ fn debug_state_transitions(
     sim_config: Res<SimulationConfig>,
     match_flow_state: Res<State<MatchFlowState>>,
     rally_state: Option<Res<crate::resource::RallyState>>,
+    mut last_flow_state: Local<Option<MatchFlowState>>,
+    mut last_phase: Local<Option<crate::resource::RallyPhase>>,
 ) {
     if !sim_config.verbose {
         return;
     }
 
     // MatchFlowState 変化追跡
-    static mut LAST_FLOW_STATE: Option<MatchFlowState> = None;
     let current_flow = *match_flow_state.get();
-    unsafe {
-        if LAST_FLOW_STATE != Some(current_flow) {
-            eprintln!("[DEBUG] MatchFlowState: {:?}", current_flow);
-            LAST_FLOW_STATE = Some(current_flow);
-        }
+    if *last_flow_state != Some(current_flow) {
+        eprintln!("[DEBUG] MatchFlowState: {:?}", current_flow);
+        *last_flow_state = Some(current_flow);
     }
 
     // RallyPhase 変化追跡
-    static mut LAST_PHASE: Option<crate::resource::RallyPhase> = None;
     if let Some(state) = rally_state {
-        unsafe {
-            if LAST_PHASE != Some(state.phase) {
-                eprintln!("[DEBUG] RallyPhase: {:?}", state.phase);
-                LAST_PHASE = Some(state.phase);
-            }
+        if *last_phase != Some(state.phase) {
+            eprintln!("[DEBUG] RallyPhase: {:?}", state.phase);
+            *last_phase = Some(state.phase);
         }
     }
 }
