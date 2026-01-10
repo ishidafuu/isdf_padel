@@ -107,12 +107,13 @@
 **THE SYSTEM SHALL** ヒットを無視する（何も起こらない）
 **テスト**: TST-30104-083
 
-### REQ-30102-084: トスタイムアウト
+### REQ-30102-084: トス打ち直し（let）
 **WHEN** ServeSubPhase == Tossing
 **AND** トス開始から `config.serve.toss_timeout` 秒経過
-**THE SYSTEM SHALL** Fault と判定する
+**OR** ボールが `config.serve.hit_height_min` 未満に落下
+**THE SYSTEM SHALL** 打ち直し（let）にする
 - トスボールを削除
-- fault_count をインクリメント
+- fault_count は変更しない
 - ServeSubPhase を Waiting に戻す
 **テスト**: TST-30104-084
 

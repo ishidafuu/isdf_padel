@@ -272,15 +272,12 @@ pub fn serve_toss_timeout_system(
     let is_too_low = is_falling && ball_height < config.serve.hit_height_min;
 
     if is_timeout || is_too_low {
-        // @spec 30102_serve_spec.md#req-30102-084: Fault
+        // @spec 30102_serve_spec.md#req-30102-084: 打ち直し(let)
         commands.entity(toss_entity).despawn();
-        serve_state.record_fault();
+        serve_state.reset_for_retry();
 
         let reason = if is_timeout { "timeout" } else { "ball too low" };
-        info!(
-            "Serve fault: {} (fault_count: {})",
-            reason, serve_state.fault_count
-        );
+        info!("Serve let: {} (retry without fault)", reason);
     }
 }
 

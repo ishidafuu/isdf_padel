@@ -302,6 +302,15 @@ impl ServeState {
         self.toss_origin = None;
     }
 
+    /// 打ち直し（let）時のリセット
+    /// @spec 30102_serve_spec.md#req-30102-084
+    pub fn reset_for_retry(&mut self) {
+        self.phase = ServeSubPhase::Waiting;
+        self.toss_time = 0.0;
+        self.toss_origin = None;
+        // fault_count は変更しない
+    }
+
     /// ポイント開始時のリセット
     pub fn reset_for_new_point(&mut self) {
         self.phase = ServeSubPhase::Waiting;
