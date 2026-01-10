@@ -1,0 +1,32 @@
+// Debug Simulation Config
+// @spec 77100_headless_sim.md
+//
+// デバッグ用設定（トレース有効、1試合、verbose）
+
+(
+    execution: (
+        match_count: 1,
+        timeout_secs: 60,
+        seed: None,
+        verbose: true,
+    ),
+    output: (
+        result_file: Some("debug_result.json"),
+        trace_file: Some("debug_trace.csv"),
+    ),
+    trace: (
+        enabled: true,
+        position: true,
+        velocity: true,
+        events: true,
+        interval_frames: 10,
+    ),
+    anomaly_thresholds: (
+        bounds_margin: 50.0,
+        height_limit: 100.0,
+        height_floor: -10.0,
+        state_stuck_secs: 30.0,
+        infinite_rally_secs: 120.0,
+        max_velocity: 1000.0,
+    ),
+)

@@ -10,8 +10,11 @@ mod headless_plugins;
 mod result_reporter;
 mod simulation_runner;
 
-pub use anomaly_detector::{AnomalyDetector, AnomalyDetectorPlugin, AnomalyReport, AnomalyThresholdsResource, AnomalyType};
-pub use config::{load_simulation_config, AnomalyThresholds, SimulationFileConfig};
+pub use anomaly_detector::{AnomalyDetector, AnomalyDetectorPlugin, AnomalyDetectorResource, AnomalyReport, AnomalyThresholdsResource, AnomalyType};
+pub use config::{
+    load_simulation_config, AnomalyThresholds, ExecutionConfig, OutputConfig,
+    SimulationFileConfig, TraceConfig,
+};
 pub use headless_plugins::HeadlessPlugins;
 pub use result_reporter::{MatchResult, SimulationReport, SimulationReporter};
-pub use simulation_runner::{SimulationConfig, SimulationRunner};
+pub use simulation_runner::{SimulationConfig, SimulationRunner, SimulationStateResource};

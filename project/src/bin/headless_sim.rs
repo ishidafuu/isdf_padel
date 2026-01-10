@@ -6,14 +6,12 @@
 //! # Usage
 //!
 //! ```bash
-//! cargo run --bin headless_sim -- [OPTIONS]
+//! # デフォルト設定で実行（simulation_config.ron を使用）
+//! cargo run --bin headless_sim
 //!
-//! Options:
-//!   -n, --matches <COUNT>    試合数 [default: 10]
-//!   -t, --timeout <SECONDS>  1試合の最大時間 [default: 300]
-//!   -o, --output <FILE>      JSON出力パス
-//!   -s, --seed <SEED>        乱数シード（再現性用）
-//!   -v, --verbose            詳細ログ
+//! # 設定名を指定
+//! cargo run --bin headless_sim -- -c debug
+//! # → assets/config/simulation_debug.ron を読み込み
 //! ```
 
 use clap::Parser;
@@ -25,25 +23,20 @@ use padel_game::simulation::{load_simulation_config, SimulationConfig, Simulatio
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Number of matches to simulate
-    #[arg(short = 'n', long, default_value_t = 10)]
-    matches: u32,
-
-    /// Timeout per match in seconds
-    #[arg(short, long, default_value_t = 300)]
-    timeout: u32,
-
-    /// Output JSON file path
+    /// Configuration name (e.g., "debug" -> simulation_debug.ron)
+    /// If omitted, uses simulation_config.ron
     #[arg(short, long)]
-    output: Option<String>,
+    config: Option<String>,
+}
 
-    /// Random seed for reproducibility
-    #[arg(short, long)]
-    seed: Option<u64>,
-
-    /// Enable verbose logging
-    #[arg(short, long)]
-    verbose: bool,
+/// 設定ファイルパスを解決
+/// - None -> "assets/config/simulation_config.ron"
+/// - Some("debug") -> "assets/config/simulation_debug.ron"
+fn resolve_config_path(config_name: Option<&str>) -> String {
+    match config_name {
+        Some(name) => format!("assets/config/simulation_{}.ron", name),
+        None => "assets/config/simulation_config.ron".to_string(),
+    }
 }
 
 fn main() {
@@ -52,7 +45,7 @@ fn main() {
     println!("=== Padel Game Headless Simulator ===\n");
 
     // GameConfig をロード
-    let config = match load_game_config("assets/config/game_config.ron") {
+    let game_config = match load_game_config("assets/config/game_config.ron") {
         Ok(c) => c,
         Err(e) => {
             eprintln!("Failed to load game config: {}", e);
@@ -60,8 +53,11 @@ fn main() {
         }
     };
 
-    // SimulationFileConfig をロード（異常検出閾値等）
-    let sim_file_config = match load_simulation_config("assets/config/simulation_config.ron") {
+    // SimulationFileConfig をロード
+    let config_path = resolve_config_path(args.config.as_deref());
+    println!("Loading config: {}", config_path);
+
+    let sim_file_config = match load_simulation_config(&config_path) {
         Ok(c) => c,
         Err(e) => {
             eprintln!("Warning: Failed to load simulation config: {}", e);
@@ -70,35 +66,70 @@ fn main() {
         }
     };
 
-    if args.verbose {
-        println!("Anomaly thresholds:");
-        println!("  bounds_margin: {}", sim_file_config.anomaly_thresholds.bounds_margin);
-        println!("  height_limit: {}", sim_file_config.anomaly_thresholds.height_limit);
-        println!("  state_stuck_secs: {}", sim_file_config.anomaly_thresholds.state_stuck_secs);
-        println!("  infinite_rally_secs: {}", sim_file_config.anomaly_thresholds.infinite_rally_secs);
-        println!("  max_velocity: {}", sim_file_config.anomaly_thresholds.max_velocity);
+    if sim_file_config.execution.verbose {
+        println!("\nExecution settings:");
+        println!("  match_count: {}", sim_file_config.execution.match_count);
+        println!("  timeout_secs: {}", sim_file_config.execution.timeout_secs);
+        println!("  seed: {:?}", sim_file_config.execution.seed);
+        println!("  verbose: {}", sim_file_config.execution.verbose);
+
+        println!("\nOutput settings:");
+        println!("  result_file: {:?}", sim_file_config.output.result_file);
+        println!("  trace_file: {:?}", sim_file_config.output.trace_file);
+
+        println!("\nTrace settings:");
+        println!("  enabled: {}", sim_file_config.trace.enabled);
+        println!("  position: {}", sim_file_config.trace.position);
+        println!("  velocity: {}", sim_file_config.trace.velocity);
+        println!("  events: {}", sim_file_config.trace.events);
+        println!("  interval_frames: {}", sim_file_config.trace.interval_frames);
+
+        println!("\nAnomaly thresholds:");
+        println!(
+            "  bounds_margin: {}",
+            sim_file_config.anomaly_thresholds.bounds_margin
+        );
+        println!(
+            "  height_limit: {}",
+            sim_file_config.anomaly_thresholds.height_limit
+        );
+        println!(
+            "  state_stuck_secs: {}",
+            sim_file_config.anomaly_thresholds.state_stuck_secs
+        );
+        println!(
+            "  infinite_rally_secs: {}",
+            sim_file_config.anomaly_thresholds.infinite_rally_secs
+        );
+        println!(
+            "  max_velocity: {}",
+            sim_file_config.anomaly_thresholds.max_velocity
+        );
         println!();
     }
 
-    // シミュレーション設定（CLI引数）
+    // SimulationConfig を設定ファイルから構築
     let sim_config = SimulationConfig {
-        match_count: args.matches,
-        timeout_secs: args.timeout,
-        seed: args.seed,
-        verbose: args.verbose,
-        output_path: args.output,
+        match_count: sim_file_config.execution.match_count,
+        timeout_secs: sim_file_config.execution.timeout_secs,
+        seed: sim_file_config.execution.seed,
+        verbose: sim_file_config.execution.verbose,
+        output_path: sim_file_config.output.result_file.clone(),
     };
 
     // シミュレーション実行
-    let mut runner = SimulationRunner::new(sim_config);
-    let report = runner.run(&config);
+    let mut runner = SimulationRunner::new(sim_config).with_file_config(sim_file_config);
+    let report = runner.run(&game_config);
 
     // サマリー出力
     padel_game::simulation::SimulationReporter::new().print_summary(&report);
 
     // 異常があった場合は終了コード1
     if report.total_anomalies > 0 {
-        eprintln!("\nSimulation completed with {} anomalies.", report.total_anomalies);
+        eprintln!(
+            "\nSimulation completed with {} anomalies.",
+            report.total_anomalies
+        );
         std::process::exit(1);
     }
 

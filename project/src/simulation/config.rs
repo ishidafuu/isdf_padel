@@ -8,6 +8,66 @@ use serde::Deserialize;
 use std::fs;
 use std::path::Path;
 
+/// 実行設定
+#[derive(Clone, Debug, Deserialize)]
+pub struct ExecutionConfig {
+    /// 実行試合数
+    pub match_count: u32,
+    /// 1試合タイムアウト（秒）
+    pub timeout_secs: u32,
+    /// 乱数シード（None=ランダム）
+    pub seed: Option<u64>,
+    /// 詳細ログ
+    pub verbose: bool,
+}
+
+impl Default for ExecutionConfig {
+    fn default() -> Self {
+        Self {
+            match_count: 10,
+            timeout_secs: 300,
+            seed: None,
+            verbose: false,
+        }
+    }
+}
+
+/// 出力設定
+#[derive(Clone, Debug, Deserialize, Default)]
+pub struct OutputConfig {
+    /// JSON結果出力先（None=出力なし）
+    pub result_file: Option<String>,
+    /// トレース出力先
+    pub trace_file: Option<String>,
+}
+
+/// トレース設定
+#[derive(Clone, Debug, Deserialize)]
+pub struct TraceConfig {
+    /// トレース有効化
+    pub enabled: bool,
+    /// 座標記録
+    pub position: bool,
+    /// 速度記録
+    pub velocity: bool,
+    /// イベント記録
+    pub events: bool,
+    /// 記録間隔（フレーム）
+    pub interval_frames: u32,
+}
+
+impl Default for TraceConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            position: true,
+            velocity: true,
+            events: false,
+            interval_frames: 10,
+        }
+    }
+}
+
 /// 異常検出の閾値設定
 #[derive(Clone, Debug, Deserialize)]
 pub struct AnomalyThresholds {
@@ -41,7 +101,17 @@ impl Default for AnomalyThresholds {
 /// シミュレーター設定ファイル構造
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct SimulationFileConfig {
+    /// 実行設定
+    #[serde(default)]
+    pub execution: ExecutionConfig,
+    /// 出力設定
+    #[serde(default)]
+    pub output: OutputConfig,
+    /// トレース設定
+    #[serde(default)]
+    pub trace: TraceConfig,
     /// 異常検出の閾値
+    #[serde(default)]
     pub anomaly_thresholds: AnomalyThresholds,
 }
 

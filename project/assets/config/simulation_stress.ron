@@ -1,0 +1,32 @@
+// Stress Test Simulation Config
+// @spec 77100_headless_sim.md
+//
+// ストレステスト用（100試合、長時間タイムアウト）
+
+(
+    execution: (
+        match_count: 100,
+        timeout_secs: 600,
+        seed: None,
+        verbose: false,
+    ),
+    output: (
+        result_file: Some("stress_result.json"),
+        trace_file: None,
+    ),
+    trace: (
+        enabled: false,
+        position: true,
+        velocity: true,
+        events: false,
+        interval_frames: 60,
+    ),
+    anomaly_thresholds: (
+        bounds_margin: 50.0,
+        height_limit: 100.0,
+        height_floor: -10.0,
+        state_stuck_secs: 60.0,
+        infinite_rally_secs: 300.0,
+        max_velocity: 1000.0,
+    ),
+)

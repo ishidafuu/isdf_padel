@@ -4,14 +4,24 @@
 //! シミュレーション実行の制御を担当。
 //! AI vs AI の対戦をセットアップし、指定回数の試合を実行する。
 
+use bevy::app::ScheduleRunnerPlugin;
+use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
+use bevy::state::app::StatesPlugin;
 
+use crate::components::AiController;
+use crate::core::CourtSide;
 use crate::resource::config::GameConfig;
+use crate::resource::scoring::{GameState, MatchScore};
+use crate::resource::MatchFlowState;
 
-use super::{AnomalyDetector, MatchResult, SimulationReport, SimulationReporter};
+use super::{
+    AnomalyDetectorResource, AnomalyThresholdsResource, HeadlessPlugins, MatchResult,
+    SimulationFileConfig, SimulationReport, SimulationReporter,
+};
 
 /// シミュレーション設定
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Resource)]
 pub struct SimulationConfig {
     /// 実行する試合数
     pub match_count: u32,
@@ -37,13 +47,42 @@ impl Default for SimulationConfig {
     }
 }
 
+/// シミュレーション状態リソース（App内で使用）
+#[derive(Resource)]
+pub struct SimulationStateResource {
+    /// 試合が終了したか
+    pub match_finished: bool,
+    /// タイムアウトしたか
+    pub timed_out: bool,
+    /// 勝者（1 or 2, None = 未決着）
+    pub winner: Option<u8>,
+    /// 経過時間（秒）
+    pub elapsed_secs: f32,
+    /// タイムアウト閾値（秒）
+    pub timeout_secs: f32,
+    /// ラリー数
+    pub rally_count: u32,
+}
+
+impl SimulationStateResource {
+    pub fn new(timeout_secs: u32) -> Self {
+        Self {
+            match_finished: false,
+            timed_out: false,
+            winner: None,
+            elapsed_secs: 0.0,
+            timeout_secs: timeout_secs as f32,
+            rally_count: 0,
+        }
+    }
+}
+
 /// シミュレーション実行器
 pub struct SimulationRunner {
     config: SimulationConfig,
     reporter: SimulationReporter,
-    /// TODO: Bevy App 実装時に使用
-    #[allow(dead_code)]
-    anomaly_detector: AnomalyDetector,
+    /// シミュレーション設定ファイル（オプション）
+    file_config: Option<SimulationFileConfig>,
 }
 
 impl SimulationRunner {
@@ -52,8 +91,14 @@ impl SimulationRunner {
         Self {
             config,
             reporter: SimulationReporter::new(),
-            anomaly_detector: AnomalyDetector::new(),
+            file_config: None,
         }
+    }
+
+    /// シミュレーション設定ファイルを設定
+    pub fn with_file_config(mut self, file_config: SimulationFileConfig) -> Self {
+        self.file_config = Some(file_config);
+        self
     }
 
     /// シミュレーション実行
@@ -86,23 +131,250 @@ impl SimulationRunner {
     }
 
     /// 単一試合を実行
-    fn run_single_match(&mut self, _game_config: &GameConfig, match_index: u32) -> MatchResult {
-        // TODO: Bevy App を構築して実行
-        // 現在はスタブ実装
+    fn run_single_match(&mut self, game_config: &GameConfig, match_index: u32) -> MatchResult {
+        // Bevy App を構築
+        let mut app = App::new();
+
+        // MinimalPlugins（時間とタスク処理のみ）
+        // ScheduleRunnerPlugin で固定タイムステップを使用
+        app.add_plugins(MinimalPlugins.set(ScheduleRunnerPlugin::run_loop(
+            std::time::Duration::from_secs_f64(1.0 / 60.0),
+        )));
+
+        // StatesPlugin（State管理用、MinimalPluginsに含まれない）
+        app.add_plugins(StatesPlugin);
+
+        // AssetPlugin（CharacterPluginがアセットローダーを使用）
+        app.add_plugins(AssetPlugin::default());
+
+        // ゲームロジックプラグイン
+        app.add_plugins(HeadlessPlugins);
+
+        // GameConfig リソースを挿入
+        app.insert_resource(game_config.clone());
+
+        // シミュレーション状態リソースを挿入
+        app.insert_resource(SimulationStateResource::new(self.config.timeout_secs));
+
+        // SimulationConfig をリソースとして挿入（デバッグシステム用）
+        app.insert_resource(self.config.clone());
+
+        // 異常検出閾値を設定
+        if let Some(ref file_config) = self.file_config {
+            app.insert_resource(AnomalyThresholdsResource(
+                file_config.anomaly_thresholds.clone(),
+            ));
+        }
+
+        // セットアップシステム（プレイヤーのスポーン）
+        app.add_systems(Startup, simulation_setup_system);
+
+        // シミュレーション終了検出システム
+        app.add_systems(
+            Update,
+            (
+                check_match_end_system,
+                check_timeout_system,
+                debug_simulation_state,
+                debug_state_transitions,
+            )
+                .chain(),
+        );
+
+        // Appの初期化
+        app.finish();
+        app.cleanup();
+
+        // 試合ループ
+        loop {
+            app.update();
+
+            // シミュレーション状態を確認
+            let sim_state = app.world().resource::<SimulationStateResource>();
+
+            if sim_state.match_finished || sim_state.timed_out {
+                break;
+            }
+        }
+
+        // 結果を取得
+        let sim_state = app.world().resource::<SimulationStateResource>();
+        let anomaly_detector = app.world().resource::<AnomalyDetectorResource>();
+
+        let completed = sim_state.match_finished && !sim_state.timed_out;
+        let winner = sim_state.winner;
+        let duration_secs = sim_state.elapsed_secs;
+        let rally_count = sim_state.rally_count;
+        let anomalies = anomaly_detector.detector.anomalies().to_vec();
+
+        if self.config.verbose {
+            println!(
+                "  Match {} result: winner={:?}, duration={:.2}s, rallies={}, anomalies={}",
+                match_index + 1,
+                winner,
+                duration_secs,
+                rally_count,
+                anomalies.len()
+            );
+        }
+
         MatchResult {
             match_index,
-            winner: Some(1),
-            duration_secs: 0.0,
-            rally_count: 0,
-            anomalies: vec![],
-            completed: true,
+            winner,
+            duration_secs,
+            rally_count,
+            anomalies,
+            completed,
         }
     }
 }
 
 /// セットアップシステム（Startup で実行）
-/// TODO: Bevy App 実装時に使用
-#[allow(dead_code)]
-pub fn simulation_setup_system(mut commands: Commands, config: Res<GameConfig>) {
-    super::headless_plugins::headless_setup(&mut commands, &config);
+fn simulation_setup_system(mut commands: Commands, config: Res<GameConfig>) {
+    // Player 1 (AI) - Left側
+    let player1_pos = Vec3::new(config.player.x_min + 1.0, 0.0, 0.0);
+    let (r, g, b) = config.player_visual.player1_color;
+    let player1_color = Color::srgb(r, g, b);
+    let player1_entity =
+        crate::character::spawn_articulated_player(&mut commands, 1, player1_pos, player1_color);
+    // Player 1 も AI として動作させる
+    commands.entity(player1_entity).insert(AiController {
+        home_position: player1_pos,
+        target_position: player1_pos,
+        ..Default::default()
+    });
+
+    // Player 2 (AI) - Right側
+    let player2_pos = Vec3::new(config.player.x_max - 1.0, 0.0, 0.0);
+    let (r, g, b) = config.player_visual.player2_color;
+    let player2_color = Color::srgb(r, g, b);
+    let player2_entity =
+        crate::character::spawn_articulated_player(&mut commands, 2, player2_pos, player2_color);
+    commands.entity(player2_entity).insert(AiController {
+        home_position: player2_pos,
+        target_position: player2_pos,
+        ..Default::default()
+    });
+}
+
+/// 試合終了検出システム
+fn check_match_end_system(
+    mut sim_state: ResMut<SimulationStateResource>,
+    match_flow_state: Res<State<MatchFlowState>>,
+    match_score: Option<Res<MatchScore>>,
+) {
+    // MatchFlowState::MatchEnd で試合終了
+    if *match_flow_state.get() == MatchFlowState::MatchEnd {
+        sim_state.match_finished = true;
+
+        // 勝者を取得
+        if let Some(score) = match_score {
+            if let GameState::MatchWon(winner_side) = score.game_state {
+                // CourtSide から Player番号に変換
+                // Left (Player 1), Right (Player 2)
+                sim_state.winner = Some(match winner_side {
+                    CourtSide::Left => 1,
+                    CourtSide::Right => 2,
+                });
+            }
+        }
+    }
+}
+
+/// タイムアウト検出システム
+fn check_timeout_system(mut sim_state: ResMut<SimulationStateResource>, time: Res<Time>) {
+    sim_state.elapsed_secs += time.delta_secs();
+
+    if sim_state.elapsed_secs >= sim_state.timeout_secs {
+        sim_state.timed_out = true;
+        eprintln!(
+            "[TIMEOUT] Match exceeded {}s limit at {:.2}s",
+            sim_state.timeout_secs, sim_state.elapsed_secs
+        );
+    }
+}
+
+/// デバッグシステム: ボールとスコアの状態を定期的に出力（verbose時のみ）
+fn debug_simulation_state(
+    sim_config: Res<SimulationConfig>,
+    time: Res<Time>,
+    balls: Query<
+        (
+            &crate::components::LogicalPosition,
+            &crate::components::Velocity,
+        ),
+        With<crate::components::Ball>,
+    >,
+    players: Query<&crate::components::LogicalPosition, With<crate::components::Player>>,
+    match_score: Option<Res<MatchScore>>,
+) {
+    if !sim_config.verbose {
+        return;
+    }
+
+    // 5秒ごとに出力
+    static mut LAST_LOG_TIME: f32 = 0.0;
+    let elapsed = unsafe { LAST_LOG_TIME };
+
+    if time.elapsed_secs() - elapsed > 5.0 {
+        unsafe {
+            LAST_LOG_TIME = time.elapsed_secs();
+        }
+
+        let ball_count = balls.iter().count();
+        let player_count = players.iter().count();
+
+        eprintln!(
+            "[DEBUG] t={:.1}s: balls={}, players={}",
+            time.elapsed_secs(),
+            ball_count,
+            player_count
+        );
+
+        for (pos, vel) in balls.iter() {
+            eprintln!(
+                "[DEBUG] Ball pos=({:.2},{:.2},{:.2}), vel=({:.2},{:.2},{:.2})",
+                pos.value.x, pos.value.y, pos.value.z, vel.value.x, vel.value.y, vel.value.z
+            );
+        }
+
+        if let Some(score) = match_score {
+            eprintln!(
+                "[DEBUG] Score: {:?}, Server: {:?}, State: {:?}",
+                score.scores, score.server, score.game_state
+            );
+        }
+    }
+}
+
+/// デバッグシステム: 状態遷移を確認（verbose時のみ）
+fn debug_state_transitions(
+    sim_config: Res<SimulationConfig>,
+    match_flow_state: Res<State<MatchFlowState>>,
+    rally_state: Option<Res<crate::resource::RallyState>>,
+) {
+    if !sim_config.verbose {
+        return;
+    }
+
+    // MatchFlowState 変化追跡
+    static mut LAST_FLOW_STATE: Option<MatchFlowState> = None;
+    let current_flow = *match_flow_state.get();
+    unsafe {
+        if LAST_FLOW_STATE != Some(current_flow) {
+            eprintln!("[DEBUG] MatchFlowState: {:?}", current_flow);
+            LAST_FLOW_STATE = Some(current_flow);
+        }
+    }
+
+    // RallyPhase 変化追跡
+    static mut LAST_PHASE: Option<crate::resource::RallyPhase> = None;
+    if let Some(state) = rally_state {
+        unsafe {
+            if LAST_PHASE != Some(state.phase) {
+                eprintln!("[DEBUG] RallyPhase: {:?}", state.phase);
+                LAST_PHASE = Some(state.phase);
+            }
+        }
+    }
 }

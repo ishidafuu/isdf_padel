@@ -7,12 +7,10 @@
 use bevy::prelude::*;
 
 use crate::character::CharacterPlugin;
-use crate::components::AiController;
 use crate::core::{
     BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent,
     ShotEvent, ShotExecutedEvent,
 };
-use crate::resource::config::{GameConfig, GameConfigLoader};
 use crate::resource::debug::LastShotDebugInfo;
 use crate::resource::MatchFlowState;
 use crate::systems::{
@@ -31,11 +29,9 @@ pub struct HeadlessPlugins;
 
 impl Plugin for HeadlessPlugins {
     fn build(&self, app: &mut App) {
-        // GameConfig の Asset 登録
-        app.init_asset::<GameConfig>()
-            .init_asset_loader::<GameConfigLoader>();
-
         // ゲームロジックプラグイン
+        // Note: GameConfig はシミュレーション実行前にリソースとして挿入済み
+        // （AssetPlugin は MinimalPlugins に含まれないため使用しない）
         app.add_plugins(BoundaryPlugin)
             .add_plugins(BallTrajectoryPlugin)
             .add_plugins(BallCollisionPlugin)
@@ -91,33 +87,3 @@ impl Plugin for HeadlessPlugins {
     }
 }
 
-/// ヘッドレスセットアップ（プレイヤー・コートのスポーンなし版）
-/// シミュレーション実行時に SimulationRunner から呼び出す
-/// TODO: Bevy App 実装時に使用
-#[allow(dead_code)]
-pub fn headless_setup(commands: &mut Commands, config: &GameConfig) {
-    // Player 1 (AI)
-    let player1_pos = Vec3::new(config.player.x_min + 1.0, 0.0, 0.0);
-    let (r, g, b) = config.player_visual.player1_color;
-    let player1_color = Color::srgb(r, g, b);
-    let player1_entity =
-        crate::character::spawn_articulated_player(commands, 1, player1_pos, player1_color);
-    // Player 1 も AI として動作させる
-    commands.entity(player1_entity).insert(AiController {
-        home_position: player1_pos,
-        target_position: player1_pos,
-        ..Default::default()
-    });
-
-    // Player 2 (AI)
-    let player2_pos = Vec3::new(config.player.x_max - 1.0, 0.0, 0.0);
-    let (r, g, b) = config.player_visual.player2_color;
-    let player2_color = Color::srgb(r, g, b);
-    let player2_entity =
-        crate::character::spawn_articulated_player(commands, 2, player2_pos, player2_color);
-    commands.entity(player2_entity).insert(AiController {
-        home_position: player2_pos,
-        target_position: player2_pos,
-        ..Default::default()
-    });
-}
