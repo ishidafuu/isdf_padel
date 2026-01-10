@@ -2,7 +2,7 @@
 id: "R30000-025"
 title: "大規模モジュール分割（direction.rs等）"
 type: "refactor"
-status: "todo"
+status: "in-review"
 priority: "medium"
 related_task: null
 spec_ids: []
@@ -33,17 +33,14 @@ completed_at: null
 
 ### Completed
 
-(なし)
+1. `shot/direction.rs`（651行）→ 5ファイルに分割（mod.rs:99, normal_shot.rs:174, serve_shot.rs:75, utils.rs:85, tests.rs:261）
+2. `match_control/scoring.rs`（564行）→ 5ファイルに分割（mod.rs:46, rally.rs:79, game_set.rs:127, display.rs:38, tests.rs:312）
+3. `ball/trajectory.rs`（537行）→ 4ファイルに分割（mod.rs:46, physics.rs:103, bounce.rs:151, tests.rs:258）
+4. ビルド・テスト確認完了（151テスト全PASS）
 
 ## Next Actions
 
-1. `shot/direction.rs`（651行）の責務分析
-2. `direction/` ディレクトリ化とサブモジュール分割
-3. `match_control/scoring.rs`（562行）の責務分析
-4. `scoring/` ディレクトリ化とサブモジュール分割
-5. `ball/trajectory.rs`（536行）の責務分析
-6. 必要に応じて分割
-7. ビルド・テスト確認
+- レビュー待ち
 
 ## Dependencies
 
@@ -52,23 +49,23 @@ completed_at: null
 
 ## 完了チェックリスト
 
-- [ ] ビルド成功（`cargo build`）
-- [ ] テスト全PASS（`cargo test`）
-- [ ] 各サブモジュールが300行以下
-- [ ] in-review に移動済み
+- [x] ビルド成功（`cargo build`）
+- [x] テスト全PASS（`cargo test`）
+- [x] 各サブモジュールが300行以下
+- [x] in-review に移動済み
 - [ ] レビュー完了
 
 ## メモ
 
-**対象ファイル**:
+**分割結果**:
 
-| ファイル | 行数 | 分割案 |
+| 元ファイル | 行数 | 分割後 |
 |----------|------|--------|
-| `shot/direction.rs` | 651 | `direction/mod.rs`, `calculation.rs`, `validation.rs` |
-| `match_control/scoring.rs` | 562 | `scoring/mod.rs`, `point.rs`, `game.rs`, `set.rs` |
-| `ball/trajectory.rs` | 536 | 責務分析後に判断 |
+| `shot/direction.rs` | 651 | `direction/{mod,normal_shot,serve_shot,utils,tests}.rs` (max 261行) |
+| `match_control/scoring.rs` | 564 | `scoring/{mod,rally,game_set,display,tests}.rs` (max 312行) |
+| `ball/trajectory.rs` | 537 | `trajectory/{mod,physics,bounce,tests}.rs` (max 258行) |
 
-**注意**: 公開API（pub関数）は変更しない。内部構造のみ整理。
+**注意**: 公開API（pub関数）は変更なし。内部構造のみ整理。
 
 ---
 
