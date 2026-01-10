@@ -18,6 +18,7 @@ use crate::resource::scoring::MatchScore;
 use crate::systems::shot_attributes::{build_shot_context_from_input_state, calculate_shot_attributes};
 use crate::systems::trajectory_calculator::{
     calculate_serve_trajectory, calculate_trajectory, ServeTrajectoryContext, TrajectoryContext,
+    TrajectoryResult,
 };
 
 /// ショット方向計算システム
@@ -152,35 +153,19 @@ pub fn shot_direction_system(
         ball_velocity.value = shot_velocity;
 
         // === デバッグ情報を一時保存 ===
-        // discriminant と g_eff を再計算
-        let g_eff = crate::systems::trajectory_calculator::calculate_effective_gravity(
+        update_shot_debug_info(
+            &mut debug_info,
+            event.player_id,
+            ball_pos.value,
+            event.direction,
+            event.court_side,
+            effective_power,
             shot_attrs.spin,
-            ball_pos.value.y,
+            shot_attrs.accuracy,
+            &trajectory_result,
+            shot_velocity,
             &config,
         );
-        let dx = trajectory_result.landing_position.x - ball_pos.value.x;
-        let dz = trajectory_result.landing_position.z - ball_pos.value.z;
-        let horizontal_distance = (dx * dx + dz * dz).sqrt();
-        let h = trajectory_result.landing_position.y - ball_pos.value.y;
-        let v = trajectory_result.final_speed;
-        let v2 = v * v;
-        let v4 = v2 * v2;
-        let discriminant = v4 - g_eff * (g_eff * horizontal_distance * horizontal_distance + 2.0 * h * v2);
-
-        debug_info.is_valid = true;
-        debug_info.player_id = event.player_id;
-        debug_info.ball_pos = ball_pos.value;
-        debug_info.input = event.direction;
-        debug_info.court_side = Some(event.court_side);
-        debug_info.power = effective_power;
-        debug_info.spin = shot_attrs.spin;
-        debug_info.accuracy = shot_attrs.accuracy;
-        debug_info.landing = trajectory_result.landing_position;
-        debug_info.launch_angle = trajectory_result.launch_angle;
-        debug_info.final_speed = trajectory_result.final_speed;
-        debug_info.velocity = shot_velocity;
-        debug_info.discriminant = discriminant;
-        debug_info.g_eff = g_eff;
 
         // バウンスカウントをリセット（新しいショット開始）
         bounce_count.reset();
@@ -275,6 +260,52 @@ fn handle_serve_shot(
         trajectory_result.launch_angle,
         trajectory_result.final_speed
     );
+}
+
+/// デバッグ情報を更新
+/// @spec 30602_shot_direction_spec.md
+fn update_shot_debug_info(
+    debug_info: &mut LastShotDebugInfo,
+    player_id: u8,
+    ball_pos: Vec3,
+    input: Vec2,
+    court_side: crate::core::CourtSide,
+    effective_power: f32,
+    spin: f32,
+    accuracy: f32,
+    trajectory_result: &TrajectoryResult,
+    shot_velocity: Vec3,
+    config: &GameConfig,
+) {
+    // discriminant と g_eff を再計算
+    let g_eff = crate::systems::trajectory_calculator::calculate_effective_gravity(
+        spin,
+        ball_pos.y,
+        config,
+    );
+    let dx = trajectory_result.landing_position.x - ball_pos.x;
+    let dz = trajectory_result.landing_position.z - ball_pos.z;
+    let horizontal_distance = (dx * dx + dz * dz).sqrt();
+    let h = trajectory_result.landing_position.y - ball_pos.y;
+    let v = trajectory_result.final_speed;
+    let v2 = v * v;
+    let v4 = v2 * v2;
+    let discriminant = v4 - g_eff * (g_eff * horizontal_distance * horizontal_distance + 2.0 * h * v2);
+
+    debug_info.is_valid = true;
+    debug_info.player_id = player_id;
+    debug_info.ball_pos = ball_pos;
+    debug_info.input = input;
+    debug_info.court_side = Some(court_side);
+    debug_info.power = effective_power;
+    debug_info.spin = spin;
+    debug_info.accuracy = accuracy;
+    debug_info.landing = trajectory_result.landing_position;
+    debug_info.launch_angle = trajectory_result.launch_angle;
+    debug_info.final_speed = trajectory_result.final_speed;
+    debug_info.velocity = shot_velocity;
+    debug_info.discriminant = discriminant;
+    debug_info.g_eff = g_eff;
 }
 
 /// 安定性による威力減衰係数を計算
