@@ -6,12 +6,12 @@
 
 use bevy::prelude::*;
 
-
 use crate::components::{
-    Ball, BallBundle, BallSpin, BounceCount, BounceState, InputState, LastShooter, LogicalPosition, Player,
-    Velocity,
+    Ball, BallBundle, BallSpin, BounceCount, BounceState, InputState, LastShooter, LogicalPosition,
+    Player, Velocity,
 };
 use crate::core::events::{ShotEvent, ShotExecutedEvent};
+use crate::core::CourtSide;
 use crate::resource::config::{GameConfig, ServeSide};
 use crate::resource::debug::LastShotDebugInfo;
 use crate::resource::scoring::MatchScore;
@@ -21,20 +21,37 @@ use crate::systems::trajectory_calculator::{
     TrajectoryResult,
 };
 
+/// 通常ショット処理用コンテキスト
+/// @spec 30602_shot_direction_spec.md#req-30602-032
+struct NormalShotContext {
+    player_id: u8,
+    court_side: CourtSide,
+    direction: Vec2,
+    jump_height: f32,
+    hold_time: f32,
+    player_pos: Vec3,
+    player_velocity: Vec3,
+    ball_pos: Vec3,
+    bounce_state: BounceState,
+}
+
+/// 通常ショット計算結果
+/// @spec 30602_shot_direction_spec.md#req-30602-032
+struct NormalShotResult {
+    shot_velocity: Vec3,
+    trajectory_result: TrajectoryResult,
+    effective_power: f32,
+    spin: f32,
+    accuracy: f32,
+    stability: f32,
+    is_jump_shot: bool,
+}
+
 /// ショット方向計算システム
 /// ShotEvent を受信してボールの速度を設定する
 /// @spec 30602_shot_direction_spec.md#req-30602-001
-/// @spec 30602_shot_direction_spec.md#req-30602-002
-/// @spec 30602_shot_direction_spec.md#req-30602-003
-/// @spec 30602_shot_direction_spec.md#req-30602-004
-/// @spec 30602_shot_direction_spec.md#req-30602-005
-/// @spec 30602_shot_direction_spec.md#req-30602-007
 /// @spec 30602_shot_direction_spec.md#req-30602-031 - サーブ処理分岐
 /// @spec 30602_shot_direction_spec.md#req-30602-032 - 通常ショット処理
-/// @spec 30604_shot_attributes_spec.md#req-30604-068
-/// @spec 30604_shot_attributes_spec.md#req-30604-069
-/// @spec 30604_shot_attributes_spec.md#req-30604-070
-/// @spec 30605_trajectory_calculation_spec.md - 着地点逆算型弾道システム
 pub fn shot_direction_system(
     mut commands: Commands,
     config: Res<GameConfig>,
@@ -57,143 +74,188 @@ pub fn shot_direction_system(
     mut debug_info: ResMut<LastShotDebugInfo>,
 ) {
     for event in shot_events.read() {
-        // === サーブ処理分岐 ===
-        // @spec 30602_shot_direction_spec.md#req-30602-031
+        // サーブ処理分岐
         if event.is_serve {
-            // サーブ処理: ボールを新規生成
-            handle_serve_shot(
-                &mut commands,
-                &config,
-                &match_score,
-                event,
-                &mut shot_executed_writer,
-            );
+            handle_serve_shot(&mut commands, &config, &match_score, event, &mut shot_executed_writer);
             continue;
         }
 
-        // === 通常ショット処理 ===
-        // @spec 30602_shot_direction_spec.md#req-30602-032
-        // ボールを取得
-        let Ok((
-            _entity,
-            mut ball_velocity,
-            mut bounce_count,
-            mut last_shooter,
-            ball_pos,
-            bounce_state,
-            mut ball_spin,
-        )) = ball_query.single_mut()
-        else {
-            warn!("No ball found for shot direction calculation");
-            continue;
-        };
-
-        // 最後にショットを打ったプレイヤーを記録（自己衝突回避のため）
-        last_shooter.record(event.court_side);
-
-        // プレイヤー情報を取得（InputState も含む）
-        let player_info = player_query
-            .iter()
-            .find(|(p, _, _, _)| p.id == event.player_id);
-        let (player_pos, player_velocity, hold_time) = match player_info {
-            Some((_, pos, vel, input_state)) => (pos.value, vel.value, input_state.hold_time),
-            None => {
-                warn!("Player {} not found", event.player_id);
-                continue;
-            }
-        };
-
-        // === ショット属性計算（v0.2新機能） ===
-        // @spec 30604_shot_attributes_spec.md
-        // @spec 20006_input_system.md - InputState 対応
-        let shot_context = build_shot_context_from_input_state(
-            hold_time,
-            player_pos,
-            player_velocity,
-            ball_pos.value,
-            bounce_state,
-            &config.shot_attributes,
-        );
-
-        let shot_attrs = calculate_shot_attributes(&shot_context, &config.shot_attributes);
-
-        // REQ-30604-069: 安定性による威力減衰（ランダム性なし）
-        let stability_factor =
-            calculate_stability_power_factor(shot_attrs.stability, &config.shot_attributes);
-        let effective_power = shot_attrs.power * stability_factor;
-
-        // === 着地点逆算型弾道計算（v0.4新機能） ===
-        // @spec 30605_trajectory_calculation_spec.md
-
-        // 弾道計算コンテキストを構築
-        let trajectory_ctx = TrajectoryContext {
-            input: event.direction, // X=左右, Y=前後
-            court_side: event.court_side,
-            ball_position: ball_pos.value,
-            spin: shot_attrs.spin,
-            base_speed: effective_power,
-            accuracy: shot_attrs.accuracy,
-        };
-
-        // 弾道を計算
-        let trajectory_result = calculate_trajectory(&trajectory_ctx, &config);
-
-        // 最終的な打球ベクトルを計算（方向ブレなし: 決定的）
-        let shot_velocity = trajectory_result.direction * trajectory_result.final_speed;
-
-        // REQ-30602-005: ボール速度の設定
-        info!(
-            "shot_direction(v0.4): landing={:?}, angle={:.1}, speed={:.1}, stability_factor={:.2}, velocity={:?}",
-            trajectory_result.landing_position,
-            trajectory_result.launch_angle,
-            trajectory_result.final_speed,
-            stability_factor,
-            shot_velocity
-        );
-        ball_velocity.value = shot_velocity;
-
-        // === デバッグ情報を一時保存 ===
-        update_shot_debug_info(
-            &mut debug_info,
-            event.player_id,
-            ball_pos.value,
-            event.direction,
-            event.court_side,
-            effective_power,
-            shot_attrs.spin,
-            shot_attrs.accuracy,
-            &trajectory_result,
-            shot_velocity,
+        // 通常ショット処理
+        handle_normal_shot(
+            event,
             &config,
+            &mut ball_query,
+            &player_query,
+            &mut shot_executed_writer,
+            &mut debug_info,
         );
+    }
+}
 
-        // バウンスカウントをリセット（新しいショット開始）
-        bounce_count.reset();
+/// 通常ショット処理
+/// @spec 30602_shot_direction_spec.md#req-30602-032
+fn handle_normal_shot(
+    event: &ShotEvent,
+    config: &GameConfig,
+    ball_query: &mut Query<
+        (
+            Entity,
+            &mut Velocity,
+            &mut BounceCount,
+            &mut LastShooter,
+            &LogicalPosition,
+            &BounceState,
+            &mut BallSpin,
+        ),
+        With<Ball>,
+    >,
+    player_query: &Query<(&Player, &LogicalPosition, &Velocity, &InputState), Without<Ball>>,
+    shot_executed_writer: &mut MessageWriter<ShotExecutedEvent>,
+    debug_info: &mut LastShotDebugInfo,
+) {
+    // ボールを取得
+    let Ok((_, mut ball_velocity, mut bounce_count, mut last_shooter, ball_pos, bounce_state, mut ball_spin)) =
+        ball_query.single_mut()
+    else {
+        warn!("No ball found for shot direction calculation");
+        return;
+    };
 
-        // REQ-30802-004: スピン属性をボールに設定
-        ball_spin.value = shot_attrs.spin;
+    // プレイヤー情報を取得
+    let Some((player_pos, player_velocity, hold_time)) =
+        get_player_info(player_query, event.player_id)
+    else {
+        warn!("Player {} not found", event.player_id);
+        return;
+    };
 
-        // REQ-30603-001: ジャンプショット判定（ログ用）
-        let is_jump_shot = event.jump_height > config.shot.jump_threshold;
+    // 最後にショットを打ったプレイヤーを記録
+    last_shooter.record(event.court_side);
 
-        // REQ-30602-007: ShotExecutedEvent の発行
-        shot_executed_writer.write(ShotExecutedEvent {
-            player_id: event.player_id,
-            shot_velocity,
-            is_jump_shot,
-        });
+    // ショット計算コンテキストを構築
+    let ctx = NormalShotContext {
+        player_id: event.player_id,
+        court_side: event.court_side,
+        direction: event.direction,
+        jump_height: event.jump_height,
+        hold_time,
+        player_pos,
+        player_velocity,
+        ball_pos: ball_pos.value,
+        bounce_state: *bounce_state,
+    };
 
-        info!(
-            "Player {} shot executed: power={:.1}, angle={:.1}, stability={:.2}, accuracy={:.2}, spin={:.2}, landing=({:.1}, {:.1})",
-            event.player_id,
-            effective_power,
-            trajectory_result.launch_angle,
-            shot_attrs.stability,
-            shot_attrs.accuracy,
-            shot_attrs.spin,
-            trajectory_result.landing_position.x,
-            trajectory_result.landing_position.z
-        );
+    // ショット計算を実行
+    let result = calculate_normal_shot(&ctx, config);
+
+    // 結果をボールに適用
+    ball_velocity.value = result.shot_velocity;
+    bounce_count.reset();
+    ball_spin.value = result.spin;
+
+    // デバッグ情報を更新
+    update_shot_debug_info(
+        debug_info,
+        ctx.player_id,
+        ctx.ball_pos,
+        ctx.direction,
+        ctx.court_side,
+        result.effective_power,
+        result.spin,
+        result.accuracy,
+        &result.trajectory_result,
+        result.shot_velocity,
+        config,
+    );
+
+    // イベント発行
+    shot_executed_writer.write(ShotExecutedEvent {
+        player_id: ctx.player_id,
+        shot_velocity: result.shot_velocity,
+        is_jump_shot: result.is_jump_shot,
+    });
+
+    info!(
+        "Player {} shot executed: power={:.1}, angle={:.1}, stability={:.2}, accuracy={:.2}, spin={:.2}, landing=({:.1}, {:.1})",
+        ctx.player_id,
+        result.effective_power,
+        result.trajectory_result.launch_angle,
+        result.stability,
+        result.accuracy,
+        result.spin,
+        result.trajectory_result.landing_position.x,
+        result.trajectory_result.landing_position.z
+    );
+}
+
+/// プレイヤー情報を取得
+fn get_player_info(
+    player_query: &Query<(&Player, &LogicalPosition, &Velocity, &InputState), Without<Ball>>,
+    player_id: u8,
+) -> Option<(Vec3, Vec3, f32)> {
+    player_query
+        .iter()
+        .find(|(p, _, _, _)| p.id == player_id)
+        .map(|(_, pos, vel, input_state)| (pos.value, vel.value, input_state.hold_time))
+}
+
+/// 通常ショットの弾道を計算
+/// @spec 30602_shot_direction_spec.md#req-30602-002
+/// @spec 30602_shot_direction_spec.md#req-30602-003
+/// @spec 30602_shot_direction_spec.md#req-30602-004
+/// @spec 30602_shot_direction_spec.md#req-30602-005
+/// @spec 30604_shot_attributes_spec.md#req-30604-068
+/// @spec 30604_shot_attributes_spec.md#req-30604-069
+/// @spec 30604_shot_attributes_spec.md#req-30604-070
+/// @spec 30605_trajectory_calculation_spec.md - 着地点逆算型弾道システム
+fn calculate_normal_shot(ctx: &NormalShotContext, config: &GameConfig) -> NormalShotResult {
+    // ショット属性計算
+    let shot_context = build_shot_context_from_input_state(
+        ctx.hold_time,
+        ctx.player_pos,
+        ctx.player_velocity,
+        ctx.ball_pos,
+        &ctx.bounce_state,
+        &config.shot_attributes,
+    );
+    let shot_attrs = calculate_shot_attributes(&shot_context, &config.shot_attributes);
+
+    // 安定性による威力減衰
+    let stability_factor = calculate_stability_power_factor(shot_attrs.stability, &config.shot_attributes);
+    let effective_power = shot_attrs.power * stability_factor;
+
+    // 弾道計算
+    let trajectory_ctx = TrajectoryContext {
+        input: ctx.direction,
+        court_side: ctx.court_side,
+        ball_position: ctx.ball_pos,
+        spin: shot_attrs.spin,
+        base_speed: effective_power,
+        accuracy: shot_attrs.accuracy,
+    };
+    let trajectory_result = calculate_trajectory(&trajectory_ctx, config);
+    let shot_velocity = trajectory_result.direction * trajectory_result.final_speed;
+
+    // ジャンプショット判定
+    let is_jump_shot = ctx.jump_height > config.shot.jump_threshold;
+
+    info!(
+        "shot_direction(v0.4): landing={:?}, angle={:.1}, speed={:.1}, stability_factor={:.2}, velocity={:?}",
+        trajectory_result.landing_position,
+        trajectory_result.launch_angle,
+        trajectory_result.final_speed,
+        stability_factor,
+        shot_velocity
+    );
+
+    NormalShotResult {
+        shot_velocity,
+        trajectory_result,
+        effective_power,
+        spin: shot_attrs.spin,
+        accuracy: shot_attrs.accuracy,
+        stability: shot_attrs.stability,
+        is_jump_shot,
     }
 }
 
