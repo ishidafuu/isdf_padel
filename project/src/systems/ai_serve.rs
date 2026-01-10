@@ -158,7 +158,6 @@ pub fn ai_serve_hit_system(
     config: Res<GameConfig>,
     match_score: Res<MatchScore>,
     mut serve_state: ResMut<ServeState>,
-    mut next_state: ResMut<NextState<MatchFlowState>>,
     mut ai_serve_timer: ResMut<AiServeTimer>,
     ai_query: Query<(&Player, &LogicalPosition), With<AiController>>,
     toss_ball_query: Query<(Entity, &LogicalPosition), With<TossBall>>,
@@ -215,9 +214,7 @@ pub fn ai_serve_hit_system(
     // ServeState更新
     serve_state.on_hit_success();
 
-    // Rally状態に遷移
-    next_state.set(MatchFlowState::Rally);
-
+    // 注: 状態遷移は serve_landing_judgment_system で行う
     // ShotEvent発行（is_serve = true）
     // @spec 30602_shot_direction_spec.md#req-30602-031
     // ボール生成と弾道計算は shot_direction_system で実行
