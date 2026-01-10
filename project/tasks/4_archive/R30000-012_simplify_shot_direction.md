@@ -2,7 +2,7 @@
 id: "R30000-012"
 title: "systems/shot/direction.rs 簡素化"
 type: "refactor"
-status: "todo"
+status: "done"
 priority: "high"
 related_task: "30000"
 spec_ids: []
@@ -42,3 +42,16 @@ code-simplifier エージェントを使用
 
 ## 優先度
 Tier 1（高）
+
+## 完了内容
+
+### 実施した変更
+1. `#[allow(dead_code)]` 付き未使用関数を本体から削除
+   - `calculate_direction_error`
+   - `apply_direction_offset`
+2. テストモジュール内に関数を移動（テスト専用として維持）
+
+### 検証結果
+- `cargo build` - コンパイル成功
+- `cargo test` - 全151テストパス
+- `cargo clippy` - direction.rs関連の新規警告なし

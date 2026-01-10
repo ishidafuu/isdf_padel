@@ -387,36 +387,7 @@ fn calculate_stability_power_factor(
     1.0 - power_reduction * 0.5
 }
 
-/// 精度によるコースブレ計算（決定的）
-/// @spec 30604_shot_attributes_spec.md#req-30604-070
-/// ランダム性なし: 精度が低いほどコート中央寄りに収束
-#[allow(dead_code)]
-fn calculate_direction_error(
-    _accuracy: f32,
-    _config: &crate::resource::config::ShotAttributesConfig,
-) -> f32 {
-    // ランダム性を排除: 常に0を返す
-    // 精度による影響は着地位置の収束で表現（trajectory_calculator側）
-    0.0
-}
 
-/// 方向にオフセットを適用
-#[allow(dead_code)]
-fn apply_direction_offset(horizontal_dir: Vec3, offset_deg: f32) -> Vec3 {
-    if offset_deg.abs() < f32::EPSILON {
-        return horizontal_dir;
-    }
-
-    // XZ平面での回転
-    let offset_rad = offset_deg.to_radians();
-    let cos_offset = offset_rad.cos();
-    let sin_offset = offset_rad.sin();
-
-    let new_x = horizontal_dir.x * cos_offset - horizontal_dir.z * sin_offset;
-    let new_z = horizontal_dir.x * sin_offset + horizontal_dir.z * cos_offset;
-
-    Vec3::new(new_x, horizontal_dir.y, new_z).normalize()
-}
 
 #[cfg(test)]
 mod tests {
@@ -587,6 +558,35 @@ mod tests {
             // 安定性が低い場合はミス判定（テスト用に常にfalse）
             (false, 0.0)
         }
+    }
+
+    /// 精度によるコースブレ計算（テスト用）
+    /// @spec 30604_shot_attributes_spec.md#req-30604-070
+    /// ランダム性なし: 精度が低いほどコート中央寄りに収束
+    fn calculate_direction_error(
+        _accuracy: f32,
+        _config: &crate::resource::config::ShotAttributesConfig,
+    ) -> f32 {
+        // ランダム性を排除: 常に0を返す
+        // 精度による影響は着地位置の収束で表現（trajectory_calculator側）
+        0.0
+    }
+
+    /// 方向にオフセットを適用（テスト用）
+    fn apply_direction_offset(horizontal_dir: Vec3, offset_deg: f32) -> Vec3 {
+        if offset_deg.abs() < f32::EPSILON {
+            return horizontal_dir;
+        }
+
+        // XZ平面での回転
+        let offset_rad = offset_deg.to_radians();
+        let cos_offset = offset_rad.cos();
+        let sin_offset = offset_rad.sin();
+
+        let new_x = horizontal_dir.x * cos_offset - horizontal_dir.z * sin_offset;
+        let new_z = horizontal_dir.x * sin_offset + horizontal_dir.z * cos_offset;
+
+        Vec3::new(new_x, horizontal_dir.y, new_z).normalize()
     }
 
     /// TST-30604-068: ミスショット判定テスト（安定性が閾値以上）
