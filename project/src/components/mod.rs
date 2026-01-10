@@ -73,18 +73,6 @@ pub struct AiController {
     pub target_position: Vec3,
 }
 
-/// ボール着地予測コンポーネント
-/// @spec 30301_ai_movement_spec.md#req-30301-v05
-#[derive(Component, Debug, Clone, Copy, Default)]
-pub struct BallPrediction {
-    /// 予測着地位置
-    pub landing_position: Vec3,
-    /// 着地までの時間（秒）
-    pub time_to_landing: f32,
-    /// 予測が有効かどうか
-    pub is_valid: bool,
-}
-
 /// 人間操作プレイヤーマーカーコンポーネント
 /// @spec 20006_input_system.md
 #[derive(Component, Debug, Clone, Copy)]
