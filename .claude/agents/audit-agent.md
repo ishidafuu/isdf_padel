@@ -152,7 +152,7 @@ description: |
   ↓
 ユーザー確認「タスクを作成しますか？」
   ↓
-Yes → task-registration-agent でタスク作成
+Yes → task-registration.md を参照してタスク作成
   ↓
 R30XXX-NNN ファイル生成（project/tasks/1_todo/）
 ```

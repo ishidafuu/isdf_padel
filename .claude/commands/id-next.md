@@ -31,7 +31,7 @@ python3 scripts/id-next.py $ARGUMENTS
 | design-agent | DES-xxxxx | 新しいComponent追加時 |
 | behavior-agent | BHV-xxxxx | 新しいSystem追加時 |
 | test-agent | TST-xxxxx | 新しいテストケース追加時 |
-| task-registration-agent | FXXX/30XXX/PXXX | タスク登録時 |
+| task-registration.md | FXXX/30XXX/PXXX | タスク登録時 |
 
 **自動実行**: エージェントが ID 採番時に自動的に実行
 

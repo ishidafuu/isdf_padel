@@ -119,6 +119,14 @@ match player.id { 1 => ..., 2 => ... }
 
 詳細: `.claude/skills/task-workflow.md`
 
+### タスク登録ルール（CRITICAL）
+
+**タスク登録時は必ず `.claude/skills/task-registration.md` を参照。**
+
+- **配置先は `1_todo/` のみ** - 他ディレクトリへの配置禁止
+- **プラン作成後は必ずタスク登録** - プランから直接実装は禁止
+- **順序厳守**: プラン作成 → タスク登録 → タスク開始 → 実装
+
 ## 人間専用コマンド
 
 - `/handover [--task <id>]` - セッション終了前に引き継ぎ情報を記録

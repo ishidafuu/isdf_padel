@@ -12,7 +12,8 @@
 | **task-file-format.md** | ファイル配置、Frontmatter形式、本文構造 |
 | **task-operations.md** | 基本操作、検索、依存関係管理、worktree管理 |
 | **task-status.md** | タスク状況表示形式、アイコン定義 |
-| **task-planning.md** | プランモード → タスク登録フロー |
+| **task-planning.md** | プランモードフロー |
+| **task-registration.md** | タスク登録（配置ルール、バリデーション） |
 
 ### 人間向け詳細ガイド
 
@@ -21,9 +22,12 @@
 ### 参照元ガイドライン
 
 - task-manager-agent.md（主担当）
-- task-registration-agent.md（タスク登録）
 - impl-agent.md（タスク参照・更新）
 - session-manager-agent.md（worktree連携）
+
+### タスク登録
+
+**タスク登録時は必ず `task-registration.md` を参照。**
 
 ---
 
@@ -32,7 +36,7 @@
 ### タスク作成フロー
 
 1. **プラン作成** - ユーザーがプランモードで実行
-2. **タスク登録** - task-registration-agent が実行
+2. **タスク登録** - task-registration.md を参照して実行
 
 詳細: `task-lifecycle.md`, `task-planning.md`
 
@@ -79,6 +83,7 @@ todo → in-progress → in-review → done
 - `skills/task-operations.md` - タスク操作
 - `skills/task-status.md` - 状況表示形式
 - `skills/task-planning.md` - プランモードフロー
+- `skills/task-registration.md` - タスク登録
 
 ### 人間向けドキュメント
 
@@ -87,7 +92,6 @@ todo → in-progress → in-review → done
 ### ガイドライン
 
 - `agents/task-manager-agent.md` - タスク管理専門ガイドライン
-- `agents/task-registration-agent.md` - タスク登録ガイドライン
 - `agents/session-manager-agent.md` - 並列セッション管理
 
 ### コマンド

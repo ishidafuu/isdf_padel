@@ -16,7 +16,7 @@
 
 ### 1. タスク作成
 
-**task-registration-agent が担当**。詳細: `skills/task-lifecycle.md`
+**task-registration.md を参照して実行**。詳細: `skills/task-lifecycle.md`
 
 ### 2. タスク開始
 

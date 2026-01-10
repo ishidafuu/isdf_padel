@@ -6,8 +6,8 @@
 
 ### 参照先
 
-- task-registration-agent.md（タスク登録時の詳細）
-- docs/concepts/tasks.md（人間向け詳細ガイド）
+- `task-registration.md`（タスク登録時の詳細）
+- `docs/concepts/tasks.md`（人間向け詳細ガイド）
 
 ## タスクタイプ別ワークフロー（IMPORTANT）
 
@@ -70,12 +70,12 @@
 ```
 ユーザー：「プランからタスクを作成して」
 ↓
-メイン Claude Code が task-registration-agent.md を参照して直接実行
+Claude が task-registration.md を参照して直接実行
 ↓
-タスク登録完了
+タスク登録完了（1_todo/ に配置）
 ```
 
-**詳細は `.claude/agents/task-registration-agent.md` を参照**
+**詳細は `.claude/skills/task-registration.md` を参照**
 
 ## プランモード実行手順
 

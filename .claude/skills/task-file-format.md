@@ -6,7 +6,7 @@
 
 ### 参照元ガイドライン
 
-- task-registration-agent.md（タスク作成）
+- task-registration.md（タスク作成）
 - task-manager-agent.md（タスク管理）
 
 ---
@@ -310,4 +310,4 @@ completed_at: null
 
 - `skills/task-lifecycle.md` - タスク状態遷移
 - `skills/task-operations.md` - タスク操作
-- `agents/task-registration-agent.md` - タスク登録ガイドライン
+- `skills/task-registration.md` - タスク登録スキル

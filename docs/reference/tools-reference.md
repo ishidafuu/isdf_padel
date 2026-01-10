@@ -293,7 +293,7 @@ argument-hint: [--all | --file <番号>]
 | ears.md | EARS記法のガイド | spec-agent, requirements-agent, critic-agent |
 | task-workflow.md | タスクライフサイクル管理（索引） | task-manager-agent, impl-agent, review-agent |
 | task-lifecycle.md | タスク状態遷移、親子タスク | task-manager-agent |
-| task-file-format.md | タスクファイル形式、Frontmatter | task-registration-agent |
+| task-file-format.md | タスクファイル形式、Frontmatter | task-registration.md |
 | task-operations.md | タスク操作、検索、worktree管理 | task-manager-agent, impl-agent |
 | impl-comments.md | 実装コメント規約（@spec/@test/@data） | impl-agent |
 | extraction-schema.md | 仕様抽出チェックリスト | spec-agent |

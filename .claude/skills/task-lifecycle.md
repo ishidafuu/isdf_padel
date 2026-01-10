@@ -17,7 +17,7 @@
 **タスク作成は2段階に分離されました：**
 
 1. **プラン作成** - ユーザーがプランモードで実行
-2. **タスク登録** - task-registration-agentが実行
+2. **タスク登録** - task-registration.md を参照して実行
 
 ### Phase 1: プラン作成
 
@@ -47,7 +47,7 @@
 ```
 ユーザー：「プランからタスクを作成して」
 ↓
-メイン Claude Code が task-registration-agent.md を参照して直接実行
+Claude が task-registration.md を参照して直接実行
 ↓
 【タスク登録】
 ├─ プランファイル自動検出（~/.claude/plans/、30分以内）
@@ -63,7 +63,7 @@
 
 **詳細:**
 - プラン作成: `.claude/skills/task-planning.md`
-- タスク登録: `.claude/agents/task-registration-agent.md`
+- タスク登録: `.claude/skills/task-registration.md`
 - タスク管理: `.claude/agents/task-manager-agent.md`
 
 ---
@@ -343,7 +343,7 @@ worktree不要のため、全てMAIN側で実行。
 
 ### 必須フロー
 
-**すべてのタスク作成は task-registration-agent 経由で行う**
+**すべてのタスク作成は task-registration.md を参照して行う**
 
 ```
 後続タスクが必要
@@ -354,7 +354,7 @@ worktree不要のため、全てMAIN側で実行。
   ↓
 「プランからタスクを作成して」と依頼
   ↓
-task-registration-agent がタスク作成
+Claude が task-registration.md を参照してタスク作成
 ```
 
 ### 禁止事項
@@ -363,7 +363,7 @@ task-registration-agent がタスク作成
 |------|------|
 | タスクファイルの手動作成 | frontmatter 漏れの原因 |
 | コピペでのタスクファイル複製 | ID 重複、依存関係ミス |
-| task-registration-agent を経由しない作成 | タスク管理システムとの不整合 |
+| task-registration.md を経由しない作成 | タスク管理システムとの不整合 |
 
 ---
 

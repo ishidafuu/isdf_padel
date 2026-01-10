@@ -399,7 +399,7 @@
 - 責務が曖昧になり、ガイドラインが肥大化
 
 **分離後の責務:**
-- **task-registration-agent**: プランファイル → タスクファイル変換専門
+- **task-registration.md**: プランファイル → タスクファイル変換専門
   - プランファイル検出
   - タスクタイプ判定（framework/game-dev/cross-project）
   - ID採番
@@ -418,7 +418,7 @@
 ```
 プランモード → プランファイル作成
          ↓
-task-registration-agent（参照） → タスクファイル作成
+task-registration.md（参照） → タスクファイル作成
          ↓
 task-manager-agent（参照） → タスク開始/完了/worktree管理
 ```

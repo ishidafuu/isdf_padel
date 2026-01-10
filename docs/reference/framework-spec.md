@@ -906,7 +906,7 @@ Player と Enemy は **直接参照しない**。衝突判定などの相互作�
 | 💻 | impl-agent | 仕様に基づく実装 | コード | [定義](../../.claude/agents/impl-agent.md) |
 | ✅ | review-agent | 整合性検証 | 検証レポート | [定義](../../.claude/agents/review-agent.md) |
 | 🔗 | deps-agent | 依存関係管理 | dependencies.md | [定義](../../.claude/agents/deps-agent.md) |
-| 📝 | task-registration-agent | プランファイル→タスクファイル変換 | Markdownタスクファイル | [定義](../../.claude/agents/task-registration-agent.md) |
+| 📝 | task-registration | プランファイル→タスクファイル変換 | Markdownタスクファイル | [定義](../../.claude/skills/task-registration.md) |
 | 🗂️ | task-manager-agent | タスクライフサイクル管理 | 状態遷移, worktree | [定義](../../.claude/agents/task-manager-agent.md) |
 | ♻️ | refactor-agent | 廃止・共有化 | 移行後の仕様書 | [定義](../../.claude/agents/refactor-agent.md) |
 | 📊 | data-agent | マスタデータ管理 | 8_data/*.md | [定義](../../.claude/agents/data-agent.md) |

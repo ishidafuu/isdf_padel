@@ -412,7 +412,7 @@ audit-agent（診断完了）
   ↓
 ユーザー確認「タスクを作成しますか？」
   ↓
-task-registration-agent（タスク作成）
+task-registration.md を参照してタスク作成
   ↓
 R30XXX-NNN ファイル生成（project/tasks/1_todo/）
   ↓

@@ -19,7 +19,7 @@ description: |
 
 タスクのライフサイクル管理を担当するエージェント。タスクの状態遷移、依存関係管理、worktree管理を専門とする。
 
-**IMPORTANT: タスク作成は task-registration-agent が担当します。**
+**IMPORTANT: タスク作成は task-registration.md を参照して実行します。**
 
 ### 責務
 
@@ -182,16 +182,16 @@ Write(
 - エージェントは必ずこのロジックに従うこと
 - タスクタイプの判定を間違えないこと
 
-## task-registration-agent との連携
+## task-registration.md との連携
 
-**タスク作成は task-registration-agent が担当します。**
+**タスク作成は task-registration.md を参照して実行します。**
 
 このエージェントはタスクのライフサイクル管理（状態遷移、worktree管理、依存関係管理）のみを担当します。
 
 ### タスク作成から実装までのフロー
 
 ```
-1. task-registration-agent がタスク作成（status: "todo"）
+1. Claude が task-registration.md を参照してタスク作成（status: "todo"）
    tasks/1_todo/FXXX-*.md または project/tasks/1_todo/30XXX-*.md 生成
 
 2. ユーザーがタスク内容確認
@@ -214,10 +214,10 @@ Write(
 
 | エージェント | 責務 |
 |------------|------|
-| task-registration-agent | プランファイル → タスクファイル変換、ID採番 |
+| task-registration.md | プランファイル → タスクファイル変換、ID採番 |
 | task-manager-agent | 状態遷移、worktree管理、依存関係管理 |
 
-詳細は `.claude/agents/task-registration-agent.md` を参照してください。
+詳細は `.claude/skills/task-registration.md` を参照してください。
 
 ---
 
@@ -360,7 +360,7 @@ task-manager-agent:
 
 タスク完了時または作業中に後続タスクが必要になった場合。
 
-**必須フロー**: task-registration-agent ガイドライン経由で作成
+**必須フロー**: task-registration.md を参照して作成
 
 ```
 後続タスクが必要
@@ -371,7 +371,7 @@ task-manager-agent:
   ↓
 「プランからタスクを作成して」
   ↓
-task-registration-agent 経由でタスク作成
+task-registration.md を参照してタスク作成
   ↓
 frontmatter 付きタスクファイル生成
 ```
@@ -379,7 +379,7 @@ frontmatter 付きタスクファイル生成
 **禁止事項**:
 - ❌ タスクファイルを直接手動作成
 - ❌ frontmatter なしでのファイル生成
-- ❌ task-registration-agent を経由しない作成
+- ❌ task-registration.md を経由しない作成
 
 **理由**:
 - task-next.py が frontmatter を必要とする
@@ -545,7 +545,7 @@ Read("project/tasks/2_in-progress/30101-ジャンプ機能実装.md")
 
 ## 実行例
 
-**注**: タスク作成の例は `.claude/agents/task-registration-agent.md` を参照してください。
+**注**: タスク作成の例は `.claude/skills/task-registration.md` を参照してください。
 
 ### 例1: タスク開始（worktree作成あり）
 
@@ -674,7 +674,7 @@ grep -l 'status: "in-progress"' project/tasks/2_in-progress/*.md
 
 ## 関連ドキュメント
 
-- `.claude/agents/task-registration-agent.md` - タスク登録専門エージェント（プランファイル → タスクファイル変換）
+- `.claude/skills/task-registration.md` - タスク登録スキル（プランファイル → タスクファイル変換）
 - `.claude/skills/task-planning.md` - タスク計画スキル
 - `.claude/skills/task-workflow.md` - タスクライフサイクル管理スキル
 - `.claude/skills/task-status.md` - タスク状況確認スキル（人間専用コマンド）
