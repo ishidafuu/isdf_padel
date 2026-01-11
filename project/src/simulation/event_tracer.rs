@@ -6,12 +6,25 @@
 
 use bevy::prelude::*;
 use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::{BufWriter, Result as IoResult, Write};
 use std::path::Path;
 
 use crate::core::CourtSide;
 
 use super::TraceConfig;
+
+/// JSON配列の要素を書き出すヘルパー
+fn write_json_array<W: Write>(
+    writer: &mut W,
+    items: &[String],
+    indent: &str,
+) -> IoResult<()> {
+    for (i, item) in items.iter().enumerate() {
+        let comma = if i < items.len() - 1 { "," } else { "" };
+        writeln!(writer, "{}{}{}", indent, item, comma)?;
+    }
+    Ok(())
+}
 
 /// エンティティ種別
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -161,6 +174,18 @@ pub struct EntityTrace {
     pub position: Vec3,
     /// 速度
     pub velocity: Vec3,
+}
+
+impl EntityTrace {
+    /// JSON形式の文字列を取得
+    fn to_json(&self) -> String {
+        format!(
+            "{{\"type\": \"{}\", \"position\": [{:.2}, {:.2}, {:.2}], \"velocity\": [{:.2}, {:.2}, {:.2}]}}",
+            self.entity_type.as_str(),
+            self.position.x, self.position.y, self.position.z,
+            self.velocity.x, self.velocity.y, self.velocity.z
+        )
+    }
 }
 
 /// 1フレーム分のトレースデータ
@@ -358,26 +383,16 @@ impl EventTracer {
             writeln!(writer, "      \"timestamp\": {:.3},", frame.timestamp)?;
 
             // entities
+            let entities_json: Vec<String> =
+                frame.entities.iter().map(|e| e.to_json()).collect();
             writeln!(writer, "      \"entities\": [")?;
-            for (j, entity) in frame.entities.iter().enumerate() {
-                let comma = if j < frame.entities.len() - 1 { "," } else { "" };
-                writeln!(
-                    writer,
-                    "        {{\"type\": \"{}\", \"position\": [{:.2}, {:.2}, {:.2}], \"velocity\": [{:.2}, {:.2}, {:.2}]}}{}",
-                    entity.entity_type.as_str(),
-                    entity.position.x, entity.position.y, entity.position.z,
-                    entity.velocity.x, entity.velocity.y, entity.velocity.z,
-                    comma
-                )?;
-            }
+            write_json_array(&mut writer, &entities_json, "        ")?;
             writeln!(writer, "      ],")?;
 
             // events
+            let events_json: Vec<String> = frame.events.iter().map(|e| e.to_json()).collect();
             writeln!(writer, "      \"events\": [")?;
-            for (j, event) in frame.events.iter().enumerate() {
-                let comma = if j < frame.events.len() - 1 { "," } else { "" };
-                writeln!(writer, "        {}{}", event.to_json(), comma)?;
-            }
+            write_json_array(&mut writer, &events_json, "        ")?;
             writeln!(writer, "      ]")?;
 
             let comma = if i < self.frames.len() - 1 { "," } else { "" };

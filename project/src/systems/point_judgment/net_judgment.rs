@@ -9,6 +9,7 @@ use crate::core::events::{NetHitEvent, RallyEndEvent, RallyEndReason};
 use crate::core::CourtSide;
 use crate::resource::config::GameConfig;
 use crate::resource::{GameState, MatchScore, RallyPhase, RallyState};
+use crate::simulation::DebugLogger;
 
 /// レット判定システム
 /// @spec 30901_point_judgment_spec.md#req-30901-003
@@ -17,6 +18,7 @@ pub fn let_judgment_system(
     mut net_events: MessageReader<NetHitEvent>,
     rally_state: Res<RallyState>,
     config: Res<GameConfig>,
+    mut debug_logger: Option<ResMut<DebugLogger>>,
     query: Query<&LogicalPosition, With<Ball>>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
@@ -42,6 +44,14 @@ pub fn let_judgment_system(
             };
 
             if in_opponent_court {
+                // レットログ出力
+                if let Some(ref mut logger) = debug_logger {
+                    logger.log_scoring(&format!(
+                        "LET server={:?} (re-serve)",
+                        server_side
+                    ));
+                }
+
                 // レット（再サーブ）
                 info!(
                     "Let! Ball touched net and landed in opponent's court. Server: {:?}",
@@ -66,6 +76,7 @@ pub fn net_fault_judgment_system(
     rally_state: Res<RallyState>,
     config: Res<GameConfig>,
     match_score: Res<MatchScore>,
+    mut debug_logger: Option<ResMut<DebugLogger>>,
     query: Query<(&LogicalPosition, &LastShooter), With<Ball>>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
@@ -97,6 +108,14 @@ pub fn net_fault_judgment_system(
                 if in_shooter_court {
                     // ネットに当たって相手コートに届かなかった → 失点
                     let winner = shooter.opponent();
+
+                    // ネットフォールト得点ログ出力
+                    if let Some(ref mut logger) = debug_logger {
+                        logger.log_scoring(&format!(
+                            "POINT winner={:?} reason=NetFault shooter={:?}",
+                            winner, shooter
+                        ));
+                    }
 
                     info!(
                         "Net fault! {:?} hit the net and ball stayed on their side. {:?} wins.",

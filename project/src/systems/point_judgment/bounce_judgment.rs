@@ -6,12 +6,14 @@ use bevy::prelude::*;
 use crate::components::{Ball, BounceCount, LastShooter};
 use crate::core::events::{GroundBounceEvent, RallyEndEvent, RallyEndReason};
 use crate::resource::{GameState, MatchScore, RallyPhase, RallyState};
+use crate::simulation::DebugLogger;
 
 /// バウンス回数更新システム
 /// @spec 30901_point_judgment_spec.md#req-30901-002
 /// GroundBounceEvent を受信して BounceCount を更新
 pub fn bounce_count_update_system(
     mut bounce_events: MessageReader<GroundBounceEvent>,
+    mut debug_logger: Option<ResMut<DebugLogger>>,
     mut query: Query<&mut BounceCount, With<Ball>>,
 ) {
     for event in bounce_events.read() {
@@ -19,6 +21,15 @@ pub fn bounce_count_update_system(
             // @spec 30901_point_judgment_spec.md#req-30901-002
             // バウンドしたコート側を記録
             bounce_count.record_bounce(event.court_side);
+
+            // バウンスログ出力
+            if let Some(ref mut logger) = debug_logger {
+                logger.log_physics(&format!(
+                    "BOUNCE court={:?} count={} pos=({:.2},{:.2},{:.2})",
+                    event.court_side, bounce_count.count,
+                    event.bounce_point.x, event.bounce_point.y, event.bounce_point.z
+                ));
+            }
 
             info!(
                 "Ball bounced on {:?} court, count: {}",
@@ -34,6 +45,7 @@ pub fn bounce_count_update_system(
 pub fn double_bounce_judgment_system(
     query: Query<(Entity, &BounceCount), With<Ball>>,
     match_score: Res<MatchScore>,
+    mut debug_logger: Option<ResMut<DebugLogger>>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
     // ゲーム進行中でなければスキップ
@@ -49,6 +61,14 @@ pub fn double_bounce_judgment_system(
                 // バウンドしたコート側のプレイヤーが失点
                 // つまり、相手側が得点
                 let winner = court_side.opponent();
+
+                // ツーバウンス得点ログ出力
+                if let Some(ref mut logger) = debug_logger {
+                    logger.log_scoring(&format!(
+                        "POINT winner={:?} reason=DoubleBounce court={:?}",
+                        winner, court_side
+                    ));
+                }
 
                 info!(
                     "Double bounce on {:?} court! {:?} wins the point.",
@@ -71,6 +91,7 @@ pub fn own_court_hit_judgment_system(
     mut bounce_events: MessageReader<GroundBounceEvent>,
     rally_state: Res<RallyState>,
     match_score: Res<MatchScore>,
+    mut debug_logger: Option<ResMut<DebugLogger>>,
     query: Query<(&BounceCount, &LastShooter), With<Ball>>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
@@ -92,6 +113,14 @@ pub fn own_court_hit_judgment_system(
                 // つまり、ネットを超える前に自コートでバウンドした
                 if bounce_count.count == 1 && event.court_side == shooter {
                     let winner = shooter.opponent();
+
+                    // 自コート打球得点ログ出力
+                    if let Some(ref mut logger) = debug_logger {
+                        logger.log_scoring(&format!(
+                            "POINT winner={:?} reason=OwnCourtHit shooter={:?}",
+                            winner, shooter
+                        ));
+                    }
 
                     info!(
                         "Own court hit! {:?} hit ball landed on their own court. {:?} wins.",

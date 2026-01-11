@@ -7,6 +7,7 @@ mod core;
 mod presentation;
 mod replay;
 mod resource;
+mod simulation;
 mod systems;
 
 use bevy::{asset::AssetPlugin, prelude::*};

@@ -7,6 +7,7 @@ use crate::components::{Ball, LastShooter};
 use crate::core::events::{BallOutOfBoundsEvent, RallyEndEvent, RallyEndReason, WallReflectionEvent};
 use crate::core::CourtSide;
 use crate::resource::{GameState, MatchScore};
+use crate::simulation::DebugLogger;
 
 /// アウト判定システム（主要失点条件）
 /// @spec 30901_point_judgment_spec.md#req-30901-001
@@ -17,6 +18,7 @@ use crate::resource::{GameState, MatchScore};
 pub fn out_of_bounds_judgment_system(
     mut out_events: MessageReader<BallOutOfBoundsEvent>,
     match_score: Res<MatchScore>,
+    mut debug_logger: Option<ResMut<DebugLogger>>,
     query: Query<&LastShooter, With<Ball>>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
@@ -32,6 +34,14 @@ pub fn out_of_bounds_judgment_system(
             if let Some(shooter) = last_shooter.side {
                 // 打った側の失点 = 相手の得点
                 let winner = shooter.opponent();
+
+                // アウト得点ログ出力
+                if let Some(ref mut logger) = debug_logger {
+                    logger.log_scoring(&format!(
+                        "POINT winner={:?} reason=Out pos=({:.2},{:.2},{:.2}) shooter={:?}",
+                        winner, event.final_position.x, event.final_position.y, event.final_position.z, shooter
+                    ));
+                }
 
                 info!(
                     "Out! Ball landed out of bounds at {:?}. {:?} hit the ball. {:?} wins.",
@@ -75,6 +85,7 @@ pub fn out_of_bounds_judgment_system(
 pub fn wall_hit_judgment_system(
     mut wall_events: MessageReader<WallReflectionEvent>,
     match_score: Res<MatchScore>,
+    mut debug_logger: Option<ResMut<DebugLogger>>,
     query: Query<&LastShooter, With<Ball>>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
@@ -89,6 +100,14 @@ pub fn wall_hit_judgment_system(
             if let Some(shooter) = last_shooter.side {
                 // 壁に当てた側の失点 = 相手の得点
                 let winner = shooter.opponent();
+
+                // 壁ヒット得点ログ出力
+                if let Some(ref mut logger) = debug_logger {
+                    logger.log_scoring(&format!(
+                        "POINT winner={:?} reason=WallHit wall={:?} shooter={:?}",
+                        winner, event.wall_type, shooter
+                    ));
+                }
 
                 info!(
                     "Wall hit ({:?})! {:?} hit ball to wall. {:?} wins the point.",

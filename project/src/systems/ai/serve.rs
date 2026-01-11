@@ -13,6 +13,7 @@ use crate::components::{AiController, Ball, LogicalPosition, Player, TossBall, T
 use crate::core::ShotEvent;
 use crate::resource::scoring::{ServeState, ServeSubPhase};
 use crate::resource::{FixedDeltaTime, GameConfig, GameRng, MatchFlowState, MatchScore};
+use crate::simulation::DebugLogger;
 use crate::systems::GameSystemSet;
 
 /// AIサーブ待機タイマー（リソース）
@@ -39,6 +40,7 @@ pub fn ai_serve_timer_init_system(
     mut game_rng: ResMut<GameRng>,
     match_score: Res<MatchScore>,
     serve_state: Res<ServeState>,
+    mut debug_logger: Option<ResMut<DebugLogger>>,
     ai_query: Query<&Player, With<AiController>>,
     mut ai_serve_timer: ResMut<AiServeTimer>,
 ) {
@@ -75,6 +77,14 @@ pub fn ai_serve_timer_init_system(
     ai_serve_timer.direction_z_offset = direction_z_offset;
     ai_serve_timer.hit_executed = false;
 
+    // AIサーブタイマー初期化ログ出力
+    if let Some(ref mut logger) = debug_logger {
+        logger.log_ai(&format!(
+            "SERVE_INIT server={:?} delay={:.2}s z_offset={:.2}",
+            match_score.server, delay, direction_z_offset
+        ));
+    }
+
     info!(
         "AI toss timer initialized: {:.2}s, direction_z_offset: {:.2}",
         delay, direction_z_offset
@@ -93,6 +103,7 @@ pub fn ai_serve_toss_system(
     match_score: Res<MatchScore>,
     mut serve_state: ResMut<ServeState>,
     mut ai_serve_timer: ResMut<AiServeTimer>,
+    mut debug_logger: Option<ResMut<DebugLogger>>,
     ai_query: Query<(&Player, &LogicalPosition), With<AiController>>,
     toss_ball_query: Query<Entity, With<TossBall>>,
     ball_query: Query<Entity, With<Ball>>,
@@ -140,6 +151,14 @@ pub fn ai_serve_toss_system(
     // ServeState更新
     serve_state.start_toss(logical_pos.value);
 
+    // AIトスログ出力
+    if let Some(ref mut logger) = debug_logger {
+        logger.log_ai(&format!(
+            "SERVE_TOSS server={:?} pos=({:.2},{:.2},{:.2}) vel_y={:.2}",
+            match_score.server, toss_pos.x, toss_pos.y, toss_pos.z, toss_vel.y
+        ));
+    }
+
     info!(
         "AI Toss: Ball tossed at {:?} with velocity {:?} by {:?}",
         toss_pos, toss_vel, match_score.server
@@ -160,6 +179,7 @@ pub fn ai_serve_hit_system(
     match_score: Res<MatchScore>,
     mut serve_state: ResMut<ServeState>,
     mut ai_serve_timer: ResMut<AiServeTimer>,
+    mut debug_logger: Option<ResMut<DebugLogger>>,
     ai_query: Query<(&Player, &LogicalPosition), With<AiController>>,
     toss_ball_query: Query<(Entity, &LogicalPosition), With<TossBall>>,
     mut shot_event_writer: MessageWriter<ShotEvent>,
@@ -230,6 +250,14 @@ pub fn ai_serve_hit_system(
 
     // ヒット済みフラグを設定
     ai_serve_timer.hit_executed = true;
+
+    // AIヒットログ出力
+    if let Some(ref mut logger) = debug_logger {
+        logger.log_ai(&format!(
+            "SERVE_HIT server={:?} height={:.2} optimal={:.2} hit_pos=({:.2},{:.2},{:.2})",
+            match_score.server, ball_height, optimal_height, hit_pos.x, hit_pos.y, hit_pos.z
+        ));
+    }
 
     info!(
         "AI Serve hit: ShotEvent sent with hit_pos {:?} by {:?}",

@@ -9,6 +9,7 @@ use crate::components::{
 use crate::core::events::ShotEvent;
 use crate::resource::config::GameConfig;
 use crate::resource::{GameRng, MatchScore, RallyPhase, RallyState};
+use crate::simulation::DebugLogger;
 
 /// 打球方向にランダムブレを追加
 /// @spec 30302_ai_shot_spec.md#req-30302-055
@@ -43,6 +44,7 @@ pub fn ai_shot_system(
     mut game_rng: ResMut<GameRng>,
     rally_state: Res<RallyState>,
     match_score: Res<MatchScore>,
+    mut debug_logger: Option<ResMut<DebugLogger>>,
     ball_query: Query<(&LogicalPosition, &LastShooter, &BounceCount), With<Ball>>,
     mut ai_query: Query<
         (
@@ -129,6 +131,14 @@ pub fn ai_shot_system(
             is_serve: false,
             hit_position: None,
         });
+
+        // AIショットログ出力
+        if let Some(ref mut logger) = debug_logger {
+            logger.log_ai(&format!(
+                "P{} SHOT distance={:.2} height_diff={:.2} dir=({:.2},{:.2}) cooldown={:.2}",
+                player.id, distance_2d, height_diff, direction.x, direction.y, config.ai.shot_cooldown
+            ));
+        }
 
         info!(
             "AI Player {} shot! direction: {:?}, distance: {:.2}",

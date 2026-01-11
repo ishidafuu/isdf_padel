@@ -9,6 +9,7 @@ use crate::components::{
 use crate::core::court::CourtSide;
 use crate::resource::config::GameConfig;
 use crate::resource::{FixedDeltaTime, GameRng};
+use crate::simulation::DebugLogger;
 
 /// 着地時間を計算
 /// @spec 30301_ai_movement_spec.md#req-30301-v07-002
@@ -166,6 +167,7 @@ pub fn ai_movement_system(
     fixed_dt: Res<FixedDeltaTime>,
     config: Res<GameConfig>,
     mut game_rng: ResMut<GameRng>,
+    mut debug_logger: Option<ResMut<DebugLogger>>,
     ball_query: Query<(&LogicalPosition, &Velocity), (With<Ball>, Without<AiController>)>,
     mut ai_query: Query<
         (
@@ -293,8 +295,27 @@ pub fn ai_movement_system(
         };
 
         // 状態と目標位置を更新
+        let prev_state = ai.movement_state;
         ai.movement_state = new_state;
         ai.target_position = target_pos;
+
+        // AI移動ログ出力
+        if let Some(ref mut logger) = debug_logger {
+            if prev_state != new_state || state_changed {
+                let reason = match new_state {
+                    AiMovementState::Tracking => "Tracking",
+                    AiMovementState::Idle => "Idle",
+                    AiMovementState::Recovering => "Recovering",
+                };
+                logger.log_ai(&format!(
+                    "P{} target=({:.2},{:.2},{:.2}) state={} ball_pos=({:.2},{:.2},{:.2})",
+                    player.id,
+                    target_pos.x, target_pos.y, target_pos.z,
+                    reason,
+                    ball_pos.x, ball_pos.y, ball_pos.z
+                ));
+            }
+        }
 
         // 到達判定（Z座標のみで判定）
         let distance_z = (target_pos.z - ai_pos.z).abs();
