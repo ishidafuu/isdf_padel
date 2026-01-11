@@ -24,6 +24,17 @@ pub enum EntityType {
     Ball,
 }
 
+impl EntityType {
+    /// 文字列表現を取得
+    fn as_str(&self) -> &'static str {
+        match self {
+            EntityType::Player1 => "Player1",
+            EntityType::Player2 => "Player2",
+            EntityType::Ball => "Ball",
+        }
+    }
+}
+
 /// ゲームイベント種別
 #[derive(Debug, Clone)]
 pub enum GameEvent {
@@ -56,6 +67,89 @@ pub enum GameEvent {
         from: String,
         to: String,
     },
+}
+
+impl GameEvent {
+    /// イベント種別名を取得
+    fn type_name(&self) -> &'static str {
+        match self {
+            GameEvent::BallHit { .. } => "BallHit",
+            GameEvent::Bounce { .. } => "Bounce",
+            GameEvent::WallReflect { .. } => "WallReflect",
+            GameEvent::Point { .. } => "Point",
+            GameEvent::Fault { .. } => "Fault",
+            GameEvent::StateChange { .. } => "StateChange",
+        }
+    }
+
+    /// CSV形式の詳細文字列を取得
+    fn to_csv_detail(&self) -> String {
+        match self {
+            GameEvent::BallHit { player, shot_type } => {
+                format!("player={},type={}", player, shot_type)
+            }
+            GameEvent::Bounce { position, court_side } => {
+                format!(
+                    "pos=({:.2},{:.2},{:.2}),side={:?}",
+                    position.x, position.y, position.z, court_side
+                )
+            }
+            GameEvent::WallReflect { position, wall_type } => {
+                format!(
+                    "pos=({:.2},{:.2},{:.2}),type={}",
+                    position.x, position.y, position.z, wall_type
+                )
+            }
+            GameEvent::Point { winner, reason } => {
+                format!("winner={},reason={}", winner, reason)
+            }
+            GameEvent::Fault { fault_type } => {
+                format!("type={}", fault_type)
+            }
+            GameEvent::StateChange { from, to } => {
+                format!("from={},to={}", from, to)
+            }
+        }
+    }
+
+    /// JSON形式の文字列を取得
+    fn to_json(&self) -> String {
+        match self {
+            GameEvent::BallHit { player, shot_type } => {
+                format!(
+                    "{{\"type\": \"BallHit\", \"player\": {}, \"shot_type\": \"{}\"}}",
+                    player, shot_type
+                )
+            }
+            GameEvent::Bounce { position, court_side } => {
+                format!(
+                    "{{\"type\": \"Bounce\", \"position\": [{:.2}, {:.2}, {:.2}], \"court_side\": \"{:?}\"}}",
+                    position.x, position.y, position.z, court_side
+                )
+            }
+            GameEvent::WallReflect { position, wall_type } => {
+                format!(
+                    "{{\"type\": \"WallReflect\", \"position\": [{:.2}, {:.2}, {:.2}], \"wall_type\": \"{}\"}}",
+                    position.x, position.y, position.z, wall_type
+                )
+            }
+            GameEvent::Point { winner, reason } => {
+                format!(
+                    "{{\"type\": \"Point\", \"winner\": {}, \"reason\": \"{}\"}}",
+                    winner, reason
+                )
+            }
+            GameEvent::Fault { fault_type } => {
+                format!("{{\"type\": \"Fault\", \"fault_type\": \"{}\"}}", fault_type)
+            }
+            GameEvent::StateChange { from, to } => {
+                format!(
+                    "{{\"type\": \"StateChange\", \"from\": \"{}\", \"to\": \"{}\"}}",
+                    from, to
+                )
+            }
+        }
+    }
 }
 
 /// エンティティ単体のトレースデータ
@@ -218,17 +312,12 @@ impl EventTracer {
         for frame in &self.frames {
             // エンティティ行
             for entity in &frame.entities {
-                let entity_name = match entity.entity_type {
-                    EntityType::Player1 => "Player1",
-                    EntityType::Player2 => "Player2",
-                    EntityType::Ball => "Ball",
-                };
                 writeln!(
                     writer,
                     "{},{:.3},{},{:.2},{:.2},{:.2},{:.2},{:.2},{:.2},,",
                     frame.frame,
                     frame.timestamp,
-                    entity_name,
+                    entity.entity_type.as_str(),
                     entity.position.x,
                     entity.position.y,
                     entity.position.z,
@@ -240,38 +329,13 @@ impl EventTracer {
 
             // イベント行
             for event in &frame.events {
-                let (event_type, event_detail) = match event {
-                    GameEvent::BallHit { player, shot_type } => {
-                        ("BallHit".to_string(), format!("player={},type={}", player, shot_type))
-                    }
-                    GameEvent::Bounce { position, court_side } => (
-                        "Bounce".to_string(),
-                        format!(
-                            "pos=({:.2},{:.2},{:.2}),side={:?}",
-                            position.x, position.y, position.z, court_side
-                        ),
-                    ),
-                    GameEvent::WallReflect { position, wall_type } => (
-                        "WallReflect".to_string(),
-                        format!(
-                            "pos=({:.2},{:.2},{:.2}),type={}",
-                            position.x, position.y, position.z, wall_type
-                        ),
-                    ),
-                    GameEvent::Point { winner, reason } => {
-                        ("Point".to_string(), format!("winner={},reason={}", winner, reason))
-                    }
-                    GameEvent::Fault { fault_type } => {
-                        ("Fault".to_string(), format!("type={}", fault_type))
-                    }
-                    GameEvent::StateChange { from, to } => {
-                        ("StateChange".to_string(), format!("from={},to={}", from, to))
-                    }
-                };
                 writeln!(
                     writer,
                     "{},{:.3},,,,,,,,{},{}",
-                    frame.frame, frame.timestamp, event_type, event_detail
+                    frame.frame,
+                    frame.timestamp,
+                    event.type_name(),
+                    event.to_csv_detail()
                 )?;
             }
         }
@@ -296,16 +360,11 @@ impl EventTracer {
             // entities
             writeln!(writer, "      \"entities\": [")?;
             for (j, entity) in frame.entities.iter().enumerate() {
-                let entity_name = match entity.entity_type {
-                    EntityType::Player1 => "Player1",
-                    EntityType::Player2 => "Player2",
-                    EntityType::Ball => "Ball",
-                };
                 let comma = if j < frame.entities.len() - 1 { "," } else { "" };
                 writeln!(
                     writer,
                     "        {{\"type\": \"{}\", \"position\": [{:.2}, {:.2}, {:.2}], \"velocity\": [{:.2}, {:.2}, {:.2}]}}{}",
-                    entity_name,
+                    entity.entity_type.as_str(),
                     entity.position.x, entity.position.y, entity.position.z,
                     entity.velocity.x, entity.velocity.y, entity.velocity.z,
                     comma
@@ -316,43 +375,8 @@ impl EventTracer {
             // events
             writeln!(writer, "      \"events\": [")?;
             for (j, event) in frame.events.iter().enumerate() {
-                let event_json = match event {
-                    GameEvent::BallHit { player, shot_type } => {
-                        format!(
-                            "{{\"type\": \"BallHit\", \"player\": {}, \"shot_type\": \"{}\"}}",
-                            player, shot_type
-                        )
-                    }
-                    GameEvent::Bounce { position, court_side } => {
-                        format!(
-                            "{{\"type\": \"Bounce\", \"position\": [{:.2}, {:.2}, {:.2}], \"court_side\": \"{:?}\"}}",
-                            position.x, position.y, position.z, court_side
-                        )
-                    }
-                    GameEvent::WallReflect { position, wall_type } => {
-                        format!(
-                            "{{\"type\": \"WallReflect\", \"position\": [{:.2}, {:.2}, {:.2}], \"wall_type\": \"{}\"}}",
-                            position.x, position.y, position.z, wall_type
-                        )
-                    }
-                    GameEvent::Point { winner, reason } => {
-                        format!(
-                            "{{\"type\": \"Point\", \"winner\": {}, \"reason\": \"{}\"}}",
-                            winner, reason
-                        )
-                    }
-                    GameEvent::Fault { fault_type } => {
-                        format!("{{\"type\": \"Fault\", \"fault_type\": \"{}\"}}", fault_type)
-                    }
-                    GameEvent::StateChange { from, to } => {
-                        format!(
-                            "{{\"type\": \"StateChange\", \"from\": \"{}\", \"to\": \"{}\"}}",
-                            from, to
-                        )
-                    }
-                };
                 let comma = if j < frame.events.len() - 1 { "," } else { "" };
-                writeln!(writer, "        {}{}", event_json, comma)?;
+                writeln!(writer, "        {}{}", event.to_json(), comma)?;
             }
             writeln!(writer, "      ]")?;
 
