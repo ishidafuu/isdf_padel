@@ -2,14 +2,14 @@
 id: "R30000-029"
 title: "EventTracer + TraceConfig 実装"
 type: "refactor"
-status: "todo"
+status: "in-review"
 priority: "medium"
 related_task: null
 spec_ids: []
 blocked_by: []
 blocks: ["R30000-030"]
-branch_name: null
-worktree_path: null
+branch_name: "refactor/R30000-029_event_tracer"
+worktree_path: "/Users/ishidafuu/Documents/repository/isdf_padel_R30000-029"
 plan_file: "/Users/ishidafuu/.claude/plans/expressive-seeking-gizmo.md"
 tags: ["trace", "debug", "simulation"]
 parent_task_id: null
@@ -34,7 +34,10 @@ TraceConfig（既存の設定構造）を活用し、位置・速度・イベン
 
 ### Completed
 
-(なし)
+1. `event_tracer.rs` を新規作成（EventTracer, FrameTrace, EntityTrace, GameEvent 型）
+2. `trace_system.rs` を新規作成（TraceSystemPlugin、位置記録・イベント記録システム）
+3. `mod.rs` に公開追加
+4. `simulation_runner.rs` で TraceConfig 有効時に EventTracer を挿入
 
 ## Next Actions
 
@@ -52,10 +55,10 @@ TraceConfig（既存の設定構造）を活用し、位置・速度・イベン
 
 > このタスクは in-review 経由必須
 
-- [ ] ビルド成功（`cargo build`）
-- [ ] テスト全PASS（`cargo test`）
-- [ ] trace.enabled: true で EventTracer にデータが記録されることを確認
-- [ ] in-review に移動済み
+- [x] ビルド成功（`cargo build`）
+- [x] テスト全PASS（`cargo test`）
+- [x] trace.enabled: true で EventTracer にデータが記録されることを確認（frames=120, events=132）
+- [x] in-review に移動済み
 - [ ] レビュー完了
 
 ## メモ

@@ -17,8 +17,8 @@ use crate::resource::{FixedDeltaTime, GameRng};
 use crate::resource::MatchFlowState;
 
 use super::{
-    AnomalyDetectorResource, AnomalyThresholdsResource, HeadlessPlugins, MatchResult,
-    SimulationFileConfig, SimulationReport, SimulationReporter,
+    AnomalyDetectorResource, AnomalyThresholdsResource, EventTracer, HeadlessPlugins, MatchResult,
+    SimulationFileConfig, SimulationReport, SimulationReporter, TraceSystemPlugin,
 };
 
 /// シミュレーション設定
@@ -179,6 +179,19 @@ impl SimulationRunner {
             ));
         }
 
+        // EventTracer を設定（TraceConfig が有効な場合）
+        if let Some(ref file_config) = self.file_config {
+            let tracer = EventTracer::from_config(file_config.trace.clone());
+            if tracer.enabled {
+                app.insert_resource(tracer);
+                app.add_plugins(TraceSystemPlugin);
+            } else {
+                app.insert_resource(EventTracer::default());
+            }
+        } else {
+            app.insert_resource(EventTracer::default());
+        }
+
         // セットアップシステム（プレイヤーのスポーン）
         app.add_systems(Startup, simulation_setup_system);
 
@@ -213,12 +226,22 @@ impl SimulationRunner {
         // 結果を取得
         let sim_state = app.world().resource::<SimulationStateResource>();
         let anomaly_detector = app.world().resource::<AnomalyDetectorResource>();
+        let event_tracer = app.world().resource::<EventTracer>();
 
         let completed = sim_state.match_finished && !sim_state.timed_out;
         let winner = sim_state.winner;
         let duration_secs = sim_state.elapsed_secs;
         let rally_count = sim_state.rally_count;
         let anomalies = anomaly_detector.detector.anomalies().to_vec();
+
+        // トレース統計を出力（有効時のみ）
+        if event_tracer.enabled {
+            println!(
+                "  [Trace] frames={}, events={}",
+                event_tracer.frame_count(),
+                event_tracer.event_count()
+            );
+        }
 
         if self.config.verbose {
             println!(
