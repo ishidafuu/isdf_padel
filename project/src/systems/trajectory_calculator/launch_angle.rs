@@ -123,7 +123,14 @@ fn calculate_angle_when_reachable(
     if (clamped_angle - angle).abs() > 0.1 {
         let adjusted_speed = calculate_speed_for_target(clamped_angle, d, g, h);
         if adjusted_speed > 0.0 {
-            return (clamped_angle, adjusted_speed, target_pos);
+            // 速度が変わったので、その速度でネット通過角度を再計算
+            let min_net_angle_adjusted = calculate_min_angle_for_net_clearance(
+                start_pos, target_pos, adjusted_speed, g, net_x, net_height,
+            );
+            // 調整後の速度でネットを超えるための角度を採用
+            let recalc_angle = clamped_angle.max(min_net_angle_adjusted);
+            let final_clamped = recalc_angle.min(trajectory_config.max_launch_angle);
+            return (final_clamped, adjusted_speed, target_pos);
         }
     }
 

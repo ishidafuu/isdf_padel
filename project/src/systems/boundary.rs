@@ -151,6 +151,7 @@ mod tests {
                 point_values: vec![0, 15, 30, 40],
                 games_to_win_set: 6,
                 sets_to_win_match: 1,
+                point_end_delay: 1.5,
             },
             input: InputConfig {
                 jump_buffer_time: 0.1,

@@ -71,6 +71,7 @@ mod tests {
                 point_values: vec![0, 15, 30, 40],
                 games_to_win_set: 6,
                 sets_to_win_match: 1,
+                point_end_delay: 1.5,
             },
             input: InputConfig {
                 jump_buffer_time: 0.1,
@@ -387,5 +388,94 @@ mod tests {
             (result.z - target.z).abs() < 0.001,
             "Z should not deviate with perfect accuracy"
         );
+    }
+
+    /// TST-30605-040: 速度調整後のネット通過角度再計算テスト
+    /// 速度が調整された場合でもネットを超えられることを検証
+    #[test]
+    fn test_net_clearance_with_adjusted_speed() {
+        let config = make_test_config();
+        let trajectory_config = &config.trajectory;
+        let court_config = &config.court;
+
+        // 低い打点からの打球（ネットを超えにくい条件）
+        let start = Vec3::new(-6.0, 0.5, 0.0);  // 打点が低い
+        let target = Vec3::new(5.0, 0.0, 0.0);  // 遠い着地点
+        let base_speed = 12.0;  // 中程度の速度
+        let effective_gravity = 9.8;
+
+        let (angle, speed, _landing) =
+            calculate_launch_angle(
+                start, target, base_speed, effective_gravity, trajectory_config,
+                court_config.net_x, court_config.net_height,
+            );
+
+        // ネット通過時の高さを計算して検証
+        let dist_to_net = (court_config.net_x - start.x).abs();
+        let angle_rad = angle.to_radians();
+        let cos_a = angle_rad.cos();
+        let sin_a = angle_rad.sin();
+
+        if cos_a.abs() > 0.001 {
+            let t_net = dist_to_net / (speed * cos_a);
+            let height_at_net = start.y + speed * sin_a * t_net
+                - 0.5 * effective_gravity * t_net * t_net;
+
+            // ネット高さ（1.0m）を超えていること
+            assert!(
+                height_at_net > court_config.net_height,
+                "Ball should clear net: height_at_net={:.3} > net_height={:.1}, angle={:.1}, speed={:.1}",
+                height_at_net, court_config.net_height, angle, speed
+            );
+        }
+    }
+
+    /// TST-30605-041: 極端に遠い着地点でのネット通過テスト
+    /// 着地点が遠い場合でも角度が適切に計算されることを検証
+    #[test]
+    fn test_net_clearance_with_far_target() {
+        let config = make_test_config();
+        let trajectory_config = &config.trajectory;
+        let court_config = &config.court;
+
+        // ベースライン付近から相手ベースライン付近への打球
+        let start = Vec3::new(-7.0, 1.0, 0.0);
+        let target = Vec3::new(7.0, 0.0, 0.0);  // 非常に遠い
+        let base_speed = 15.0;
+        let effective_gravity = 9.8;
+
+        let (angle, speed, _landing) =
+            calculate_launch_angle(
+                start, target, base_speed, effective_gravity, trajectory_config,
+                court_config.net_x, court_config.net_height,
+            );
+
+        // 角度が有効範囲内
+        assert!(
+            angle >= -90.0 && angle <= trajectory_config.max_launch_angle,
+            "Angle {} should be in valid range",
+            angle
+        );
+
+        // 速度が正
+        assert!(speed > 0.0, "Speed should be positive: {}", speed);
+
+        // ネット通過時の高さを検証
+        let dist_to_net = (court_config.net_x - start.x).abs();
+        let angle_rad = angle.to_radians();
+        let cos_a = angle_rad.cos();
+        let sin_a = angle_rad.sin();
+
+        if cos_a.abs() > 0.001 {
+            let t_net = dist_to_net / (speed * cos_a);
+            let height_at_net = start.y + speed * sin_a * t_net
+                - 0.5 * effective_gravity * t_net * t_net;
+
+            assert!(
+                height_at_net > court_config.net_height,
+                "Ball should clear net even for far target: height={:.3}",
+                height_at_net
+            );
+        }
     }
 }
