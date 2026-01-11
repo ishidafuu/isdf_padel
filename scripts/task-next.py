@@ -177,13 +177,23 @@ def main() -> None:
         if task and task["status"] == "done":
             done_ids.add(task["id"])
 
-    # 進行中タスク
+    # 進行中タスク（2_in-progress）
     in_progress_tasks: list[TaskInfo] = []
-    for f in in_progress_files + in_review_files:
+    for f in in_progress_files:
         task = parse_frontmatter(f)
         if task:
             in_progress_tasks.append(task)
-    in_progress_ids = {t["id"] for t in in_progress_tasks}
+
+    # レビュー待ちタスク（3_in-review）
+    in_review_tasks: list[TaskInfo] = []
+    for f in in_review_files:
+        task = parse_frontmatter(f)
+        if task:
+            in_review_tasks.append(task)
+
+    # 並列判定用に両方を合わせる
+    active_tasks = in_progress_tasks + in_review_tasks
+    in_progress_ids = {t["id"] for t in active_tasks}
 
     # Todo タスクを解析
     todo_tasks: list[TaskInfo] = []
@@ -207,7 +217,7 @@ def main() -> None:
     # 並列可能判定（進行中タスクと相互依存がないか）
     def is_parallel_ok(task: TaskInfo) -> tuple[bool, str]:
         task_id = task["id"]
-        for ip_task in in_progress_tasks:
+        for ip_task in active_tasks:
             # 進行中タスクが自分を blocks していたら不可
             if task_id in ip_task["blocks"]:
                 return False, f"{ip_task['id']} と相互依存"
@@ -226,15 +236,35 @@ def main() -> None:
     )
 
     # 出力
+
+    # レビュー待ちセクション
+    if in_review_tasks:
+        print(f"🔍 レビュー待ち ({len(in_review_tasks)}件):")
+        print()
+        for task in in_review_tasks:
+            icon = get_priority_icon(task["priority"])
+            print(f"{icon} 🔍 [{task['id']}] {task['title']}")
+        print()
+
+    # 進行中セクション
+    if in_progress_tasks:
+        print(f"🔄 進行中 ({len(in_progress_tasks)}件):")
+        print()
+        for task in in_progress_tasks:
+            icon = get_priority_icon(task["priority"])
+            print(f"{icon} 🔄 [{task['id']}] {task['title']}")
+        print()
+
+    # セパレータ（レビュー待ちまたは進行中があった場合）
+    if in_review_tasks or in_progress_tasks:
+        print("---")
+        print()
+
     if not ready_tasks:
         print("着手可能なタスクはありません。")
         print()
-        print("現在の状況:")
-        if in_progress_tasks:
-            ids = ", ".join(t["id"] for t in in_progress_tasks)
-            print(f"- 進行中: {len(in_progress_tasks)}件（{ids}）")
         if blocked_tasks:
-            print(f"- 待機中: {len(blocked_tasks)}件（依存関係で blocked）")
+            print(f"待機中: {len(blocked_tasks)}件（依存関係で blocked）")
         sys.exit(0)
 
     # 表示件数制限
