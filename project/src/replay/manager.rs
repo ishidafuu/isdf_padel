@@ -3,13 +3,22 @@
 //! @spec 77103_replay_spec.md
 //!
 //! リプレイファイルの保存、読み込み、管理を行う。
+//! バイナリ形式（.replay）で保存。
 
 use bevy::prelude::*;
-use std::fs;
+use std::fs::{self, File};
+use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 
-use super::data::{load_replay_config, ReplayConfig, ReplayData};
+use super::data::{load_replay_config, BinaryFrameInput, ReplayConfig, ReplayData, ReplayMetadata};
 use super::loader;
+
+/// リプレイファイルのマジックナンバー
+const REPLAY_MAGIC: &[u8; 4] = b"RPLY";
+/// リプレイファイルのバージョン
+const REPLAY_VERSION: u16 = 1;
+/// リプレイファイルの拡張子
+const REPLAY_EXTENSION: &str = "replay";
 
 /// リプレイ設定ファイルのデフォルトパス
 const REPLAY_CONFIG_PATH: &str = "assets/config/replay_config.ron";
@@ -54,7 +63,7 @@ impl ReplayManager {
         Path::new(&self.config.file_management.save_directory)
     }
 
-    /// リプレイを保存
+    /// リプレイを保存（バイナリ形式）
     /// @spec REQ-77103-003
     pub fn save_replay(&self, data: &ReplayData) -> Result<PathBuf, String> {
         // ディレクトリが存在しなければ作成
@@ -67,21 +76,68 @@ impl ReplayManager {
         // ファイル名を生成（timestamp ベース）
         let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
         let filename = format!(
-            "{}{}.ron",
-            self.config.file_management.file_prefix, timestamp
+            "{}{}.{}",
+            self.config.file_management.file_prefix, timestamp, REPLAY_EXTENSION
         );
         let filepath = save_dir.join(&filename);
 
-        // RON形式でシリアライズ
-        let content = ron::ser::to_string_pretty(data, ron::ser::PrettyConfig::default())
-            .map_err(|e| format!("Failed to serialize replay: {}", e))?;
+        // バイナリ形式で書き込み
+        self.write_binary_replay(&filepath, data)?;
 
-        // ファイルに書き込み
-        fs::write(&filepath, content)
-            .map_err(|e| format!("Failed to write replay file: {}", e))?;
-
-        info!("Replay saved: {:?}", filepath);
+        info!("Replay saved: {:?} ({} frames, {} bytes)",
+            filepath,
+            data.frames.len(),
+            fs::metadata(&filepath).map(|m| m.len()).unwrap_or(0)
+        );
         Ok(filepath)
+    }
+
+    /// バイナリ形式でリプレイを書き込み
+    fn write_binary_replay(&self, path: &Path, data: &ReplayData) -> Result<(), String> {
+        let file = File::create(path)
+            .map_err(|e| format!("Failed to create file: {}", e))?;
+        let mut writer = BufWriter::new(file);
+
+        // メタデータをbincodeでシリアライズ
+        let metadata_bytes = bincode::serialize(&data.metadata)
+            .map_err(|e| format!("Failed to serialize metadata: {}", e))?;
+
+        // ヘッダー書き込み（16バイト）
+        // Magic (4 bytes)
+        writer.write_all(REPLAY_MAGIC)
+            .map_err(|e| format!("Failed to write magic: {}", e))?;
+        // Version (2 bytes, little endian)
+        writer.write_all(&REPLAY_VERSION.to_le_bytes())
+            .map_err(|e| format!("Failed to write version: {}", e))?;
+        // Reserved (2 bytes)
+        writer.write_all(&[0u8; 2])
+            .map_err(|e| format!("Failed to write reserved: {}", e))?;
+        // Frame count (4 bytes, little endian)
+        let frame_count = data.frames.len() as u32;
+        writer.write_all(&frame_count.to_le_bytes())
+            .map_err(|e| format!("Failed to write frame count: {}", e))?;
+        // Metadata size (4 bytes, little endian)
+        let metadata_size = metadata_bytes.len() as u32;
+        writer.write_all(&metadata_size.to_le_bytes())
+            .map_err(|e| format!("Failed to write metadata size: {}", e))?;
+
+        // メタデータ書き込み
+        writer.write_all(&metadata_bytes)
+            .map_err(|e| format!("Failed to write metadata: {}", e))?;
+
+        // フレームデータ書き込み（各6バイト）
+        let mut frame_buf = [0u8; 6];
+        for frame in &data.frames {
+            let binary_frame = BinaryFrameInput::from_frame_input(frame);
+            binary_frame.write_to(&mut frame_buf);
+            writer.write_all(&frame_buf)
+                .map_err(|e| format!("Failed to write frame: {}", e))?;
+        }
+
+        writer.flush()
+            .map_err(|e| format!("Failed to flush: {}", e))?;
+
+        Ok(())
     }
 
     /// リプレイを読み込み
@@ -108,8 +164,9 @@ impl ReplayManager {
             let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
             let path = entry.path();
 
-            // .ron ファイルのみ
-            if path.extension().is_some_and(|ext| ext == "ron") {
+            // .replay または .ron ファイル
+            let ext = path.extension().and_then(|e| e.to_str());
+            if ext == Some(REPLAY_EXTENSION) || ext == Some("ron") {
                 if let Some(info) = self.get_replay_info(&path) {
                     replays.push(info);
                 }
@@ -124,6 +181,53 @@ impl ReplayManager {
 
     /// リプレイファイルの情報を取得
     fn get_replay_info(&self, path: &Path) -> Option<ReplayFileInfo> {
+        let ext = path.extension().and_then(|e| e.to_str())?;
+
+        if ext == REPLAY_EXTENSION {
+            // バイナリ形式
+            self.get_binary_replay_info(path)
+        } else if ext == "ron" {
+            // 旧RON形式（互換性のため）
+            self.get_ron_replay_info(path)
+        } else {
+            None
+        }
+    }
+
+    /// バイナリ形式のリプレイ情報を取得
+    fn get_binary_replay_info(&self, path: &Path) -> Option<ReplayFileInfo> {
+        let file = File::open(path).ok()?;
+        let mut reader = BufReader::new(file);
+
+        // ヘッダー読み込み
+        let mut header = [0u8; 16];
+        reader.read_exact(&mut header).ok()?;
+
+        // マジックナンバー確認
+        if &header[0..4] != REPLAY_MAGIC {
+            return None;
+        }
+
+        // フレーム数
+        let frame_count = u32::from_le_bytes([header[8], header[9], header[10], header[11]]) as usize;
+        // メタデータサイズ
+        let metadata_size = u32::from_le_bytes([header[12], header[13], header[14], header[15]]) as usize;
+
+        // メタデータ読み込み
+        let mut metadata_bytes = vec![0u8; metadata_size];
+        reader.read_exact(&mut metadata_bytes).ok()?;
+        let metadata: ReplayMetadata = bincode::deserialize(&metadata_bytes).ok()?;
+
+        Some(ReplayFileInfo {
+            path: path.to_path_buf(),
+            game_version: metadata.game_version,
+            recorded_at: metadata.recorded_at,
+            frame_count,
+        })
+    }
+
+    /// RON形式のリプレイ情報を取得（旧形式互換）
+    fn get_ron_replay_info(&self, path: &Path) -> Option<ReplayFileInfo> {
         let content = fs::read_to_string(path).ok()?;
         let data: ReplayData = ron::from_str(&content).ok()?;
 

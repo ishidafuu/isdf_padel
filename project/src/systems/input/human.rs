@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{HumanControlled, InputState};
+use crate::components::{quantize_movement, HumanControlled, InputState};
 use crate::resource::config::GameConfig;
 
 /// 人間入力読み取りシステム
@@ -44,8 +44,8 @@ pub fn human_input_system(
             movement.x += 1.0;
         }
 
-        // 入力感度を適用（アナログ入力対応用）
-        input_state.movement = movement * config.input.input_sensitivity;
+        // 入力感度を適用し、量子化（リプレイ互換のため）
+        input_state.movement = quantize_movement(movement * config.input.input_sensitivity);
 
         // ジャンプ入力
         input_state.jump_pressed = keyboard.just_pressed(keys.jump);

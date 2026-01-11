@@ -97,19 +97,140 @@ pub struct InputSnapshot {
     pub shot_pressed: bool,
     /// ショットボタンを保持中か
     pub holding: bool,
-    /// ホールド継続時間（秒）
-    pub hold_time: f32,
 }
 
 impl InputSnapshot {
-    /// InputState から変換
+    /// InputState から変換（hold_timeは再生時に再計算するため保存しない）
     pub fn from_input_state(input: &crate::components::InputState) -> Self {
         Self {
             movement: input.movement,
             jump_pressed: input.jump_pressed,
             shot_pressed: input.shot_pressed,
             holding: input.holding,
-            hold_time: input.hold_time,
+        }
+    }
+}
+
+// ============================================================================
+// バイナリシリアライズ用構造体
+// ============================================================================
+
+/// バイナリ形式のフレーム入力（6バイト）
+/// @spec REQ-77103-001
+#[derive(Debug, Clone, Copy)]
+pub struct BinaryFrameInput {
+    /// Player 1 の入力（3バイト）
+    pub p1: BinaryInputSnapshot,
+    /// Player 2 の入力（3バイト）
+    pub p2: BinaryInputSnapshot,
+}
+
+/// バイナリ形式の入力スナップショット（3バイト）
+/// @spec REQ-77103-001
+#[derive(Debug, Clone, Copy)]
+pub struct BinaryInputSnapshot {
+    /// 移動X（-127〜127 → -1.0〜1.0）
+    pub movement_x: i8,
+    /// 移動Y（-127〜127 → -1.0〜1.0）
+    pub movement_y: i8,
+    /// フラグ（bit0: jump, bit1: shot, bit2: holding）
+    pub flags: u8,
+}
+
+impl BinaryInputSnapshot {
+    /// フラグビット定義
+    const FLAG_JUMP: u8 = 0b001;
+    const FLAG_SHOT: u8 = 0b010;
+    const FLAG_HOLDING: u8 = 0b100;
+
+    /// InputSnapshot からバイナリ形式に変換
+    pub fn from_snapshot(snapshot: &InputSnapshot) -> Self {
+        let movement_x = (snapshot.movement.x * 127.0).round() as i8;
+        let movement_y = (snapshot.movement.y * 127.0).round() as i8;
+
+        let mut flags = 0u8;
+        if snapshot.jump_pressed {
+            flags |= Self::FLAG_JUMP;
+        }
+        if snapshot.shot_pressed {
+            flags |= Self::FLAG_SHOT;
+        }
+        if snapshot.holding {
+            flags |= Self::FLAG_HOLDING;
+        }
+
+        Self {
+            movement_x,
+            movement_y,
+            flags,
+        }
+    }
+
+    /// バイナリ形式から InputSnapshot に変換
+    pub fn to_snapshot(&self) -> InputSnapshot {
+        InputSnapshot {
+            movement: Vec2::new(
+                self.movement_x as f32 / 127.0,
+                self.movement_y as f32 / 127.0,
+            ),
+            jump_pressed: (self.flags & Self::FLAG_JUMP) != 0,
+            shot_pressed: (self.flags & Self::FLAG_SHOT) != 0,
+            holding: (self.flags & Self::FLAG_HOLDING) != 0,
+        }
+    }
+
+    /// バイト配列に書き込み
+    pub fn write_to(&self, buf: &mut [u8; 3]) {
+        buf[0] = self.movement_x as u8;
+        buf[1] = self.movement_y as u8;
+        buf[2] = self.flags;
+    }
+
+    /// バイト配列から読み込み
+    pub fn read_from(buf: &[u8; 3]) -> Self {
+        Self {
+            movement_x: buf[0] as i8,
+            movement_y: buf[1] as i8,
+            flags: buf[2],
+        }
+    }
+}
+
+impl BinaryFrameInput {
+    /// FrameInput からバイナリ形式に変換
+    pub fn from_frame_input(frame: &FrameInput) -> Self {
+        Self {
+            p1: BinaryInputSnapshot::from_snapshot(&frame.p1),
+            p2: BinaryInputSnapshot::from_snapshot(&frame.p2),
+        }
+    }
+
+    /// バイナリ形式から FrameInput に変換
+    pub fn to_frame_input(&self, frame_number: u32) -> FrameInput {
+        FrameInput {
+            frame: frame_number,
+            p1: self.p1.to_snapshot(),
+            p2: self.p2.to_snapshot(),
+        }
+    }
+
+    /// バイト配列に書き込み（6バイト）
+    pub fn write_to(&self, buf: &mut [u8; 6]) {
+        let mut p1_buf = [0u8; 3];
+        let mut p2_buf = [0u8; 3];
+        self.p1.write_to(&mut p1_buf);
+        self.p2.write_to(&mut p2_buf);
+        buf[0..3].copy_from_slice(&p1_buf);
+        buf[3..6].copy_from_slice(&p2_buf);
+    }
+
+    /// バイト配列から読み込み（6バイト）
+    pub fn read_from(buf: &[u8; 6]) -> Self {
+        let p1_buf: [u8; 3] = [buf[0], buf[1], buf[2]];
+        let p2_buf: [u8; 3] = [buf[3], buf[4], buf[5]];
+        Self {
+            p1: BinaryInputSnapshot::read_from(&p1_buf),
+            p2: BinaryInputSnapshot::read_from(&p2_buf),
         }
     }
 }

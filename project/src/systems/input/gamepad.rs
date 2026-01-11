@@ -7,7 +7,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{HumanControlled, InputState};
+use crate::components::{quantize_movement, HumanControlled, InputState};
 use crate::resource::config::GameConfig;
 
 /// ゲームパッド入力読み取りシステム
@@ -44,6 +44,7 @@ pub fn gamepad_input_system(
             gamepad_movement = Vec2::ZERO;
         }
         gamepad_movement *= config.input.input_sensitivity;
+        gamepad_movement = quantize_movement(gamepad_movement);
 
         // device_id=0: キーボードとゲームパッドの論理和（ゲームパッド入力があれば優先）
         // device_id=1: ゲームパッド入力のみ

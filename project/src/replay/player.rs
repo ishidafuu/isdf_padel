@@ -9,6 +9,7 @@ use bevy::prelude::*;
 
 use crate::components::{InputState, Player};
 use crate::core::CourtSide;
+use crate::resource::FixedDeltaTime;
 
 use super::data::{InputSnapshot, ReplayData};
 
@@ -24,6 +25,10 @@ pub struct ReplayPlayer {
     is_playing: bool,
     /// 再生完了かどうか
     is_finished: bool,
+    /// Left側プレイヤーのhold_time累積
+    left_hold_time: f32,
+    /// Right側プレイヤーのhold_time累積
+    right_hold_time: f32,
 }
 
 impl ReplayPlayer {
@@ -42,6 +47,8 @@ impl ReplayPlayer {
         self.current_frame = 0;
         self.is_playing = true;
         self.is_finished = false;
+        self.left_hold_time = 0.0;
+        self.right_hold_time = 0.0;
     }
 
     /// 再生を停止
@@ -106,6 +113,7 @@ impl ReplayPlayer {
 /// @spec REQ-77103-008
 /// ECS設計原則: court_sideベースでプレイヤーを識別（固定IDを排除）
 pub fn replay_input_system(
+    fixed_dt: Res<FixedDeltaTime>,
     mut replay_player: ResMut<ReplayPlayer>,
     mut players: Query<(&Player, &mut InputState)>,
 ) {
@@ -119,18 +127,38 @@ pub fn replay_input_system(
         return;
     };
 
+    // hold_time の計算（フレーム時間を累積）
+    let delta_secs = fixed_dt.delta_secs();
+
+    // Left側のhold_time更新
+    if left_snapshot.holding {
+        replay_player.left_hold_time += delta_secs * 1000.0; // ミリ秒として累積
+    } else {
+        replay_player.left_hold_time = 0.0;
+    }
+
+    // Right側のhold_time更新
+    if right_snapshot.holding {
+        replay_player.right_hold_time += delta_secs * 1000.0;
+    } else {
+        replay_player.right_hold_time = 0.0;
+    }
+
+    let left_hold_time = replay_player.left_hold_time;
+    let right_hold_time = replay_player.right_hold_time;
+
     // 各プレイヤーに入力を注入
     for (player, mut input) in players.iter_mut() {
-        let snapshot = match player.court_side {
-            CourtSide::Left => &left_snapshot,
-            CourtSide::Right => &right_snapshot,
+        let (snapshot, hold_time) = match player.court_side {
+            CourtSide::Left => (&left_snapshot, left_hold_time),
+            CourtSide::Right => (&right_snapshot, right_hold_time),
         };
 
         input.movement = snapshot.movement;
         input.jump_pressed = snapshot.jump_pressed;
         input.shot_pressed = snapshot.shot_pressed;
         input.holding = snapshot.holding;
-        input.hold_time = snapshot.hold_time;
+        input.hold_time = hold_time;
     }
 }
 

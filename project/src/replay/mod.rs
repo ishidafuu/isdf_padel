@@ -12,7 +12,7 @@ pub mod manager;
 pub mod player;
 pub mod recorder;
 
-use bevy::prelude::*;
+use bevy::{app::Last, ecs::message::MessageReader, prelude::*};
 
 use crate::resource::{GameRng, MatchFlowState};
 
@@ -40,7 +40,9 @@ impl Plugin for ReplayRecordPlugin {
                     recorder::stop_recording_system,
                     auto_save_on_match_end_system,
                 ),
-            );
+            )
+            // アプリ終了時にリプレイ保存（途中終了対応）
+            .add_systems(Last, save_replay_on_exit);
     }
 }
 
@@ -97,6 +99,25 @@ fn auto_save_on_match_end_system(
                 }
                 Err(e) => {
                     error!("Failed to save replay: {}", e);
+                }
+            }
+        }
+    }
+}
+
+/// ゲーム終了時に記録中のリプレイを保存
+fn save_replay_on_exit(
+    mut exit_reader: MessageReader<AppExit>,
+    mut recorder: ResMut<ReplayRecorder>,
+    manager: Res<ReplayManager>,
+) {
+    for _ in exit_reader.read() {
+        if recorder.is_recording() {
+            recorder.stop_recording();
+            if let Some(data) = recorder.take_data() {
+                match manager.save_replay(&data) {
+                    Ok(path) => info!("Replay saved on exit: {:?}", path),
+                    Err(e) => error!("Failed to save replay on exit: {}", e),
                 }
             }
         }
