@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Padel Game - MVP v0.1"
 license = "MIT"
+build = "build.rs"
 
 # ライブラリとして公開（別バイナリから利用可能）
 [lib]
