@@ -279,8 +279,9 @@ pub fn ai_movement_system(
                 // 状態変化時のみ目標を再計算
                 let is_short = is_short_ball(ai_pos.x, ball_pos, ball_vel, gravity);
 
-                // 着地地点を計算（短いボール時に使用）
+                // 着地地点を計算
                 let landing_pos = calculate_landing_position(ball_pos, ball_vel, gravity);
+
 
                 let (target_x, target_z) = if state_changed || ai.locked_target_z.is_none() {
                     // 軌道ライン追跡
@@ -346,8 +347,17 @@ pub fn ai_movement_system(
             }
         }
 
-        // 到達判定（Z座標のみで判定）
-        let distance_z = (target_pos.z - ai_pos.z).abs();
+        // 到達判定（短いボール時はXZ距離、それ以外はZ座標のみ）
+        let is_short = is_short_ball(ai_pos.x, ball_pos, ball_vel, gravity);
+        let distance = if is_short {
+            // 短いボール: XZ平面の距離で判定
+            let dx = target_pos.x - ai_pos.x;
+            let dz = target_pos.z - ai_pos.z;
+            (dx * dx + dz * dz).sqrt()
+        } else {
+            // 通常: Z座標のみで判定
+            (target_pos.z - ai_pos.z).abs()
+        };
 
         let stop_distance = if matches!(new_state, AiMovementState::Tracking) {
             config.shot.max_distance
@@ -355,7 +365,7 @@ pub fn ai_movement_system(
             config.ai.home_return_stop_distance
         };
 
-        if distance_z <= stop_distance {
+        if distance <= stop_distance {
             // 目標に到達 → 停止
             velocity.value.x = 0.0;
             velocity.value.z = 0.0;
