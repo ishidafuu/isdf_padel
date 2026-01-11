@@ -2,7 +2,7 @@
 id: "R30000-029"
 title: "EventTracer + TraceConfig 実装"
 type: "refactor"
-status: "in-review"
+status: "done"
 priority: "medium"
 related_task: null
 spec_ids: []
@@ -15,7 +15,7 @@ tags: ["trace", "debug", "simulation"]
 parent_task_id: null
 created_at: "2026-01-11"
 updated_at: "2026-01-11"
-completed_at: null
+completed_at: "2026-01-11"
 ---
 
 # Task R30000-029: EventTracer + TraceConfig 実装
@@ -59,7 +59,7 @@ TraceConfig（既存の設定構造）を活用し、位置・速度・イベン
 - [x] テスト全PASS（`cargo test`）
 - [x] trace.enabled: true で EventTracer にデータが記録されることを確認（frames=120, events=132）
 - [x] in-review に移動済み
-- [ ] レビュー完了
+- [x] レビュー完了（イベントのみ記録時の問題を修正）
 
 ## メモ
 
