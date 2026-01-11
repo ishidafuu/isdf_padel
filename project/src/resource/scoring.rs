@@ -323,6 +323,15 @@ impl ServeState {
     }
 }
 
+/// ポイント終了時のディレイタイマー
+#[derive(Resource, Default)]
+pub struct PointEndTimer {
+    /// 残り待機時間（秒）
+    pub remaining: f32,
+    /// フォルト用ディレイの場合 true（fault_count をリセットしない）
+    pub is_fault_delay: bool,
+}
+
 /// ラリーフェーズ
 /// @spec 30901_point_judgment_spec.md#req-30901-003
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

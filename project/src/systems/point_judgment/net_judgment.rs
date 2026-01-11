@@ -4,7 +4,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, LastShooter, LogicalPosition};
+use crate::components::{Ball, LastShooter, LogicalPosition, PointEnded};
 use crate::core::events::{NetHitEvent, RallyEndEvent, RallyEndReason};
 use crate::core::CourtSide;
 use crate::resource::config::GameConfig;
@@ -15,11 +15,12 @@ use crate::simulation::DebugLogger;
 /// @spec 30901_point_judgment_spec.md#req-30901-003
 /// サーブ時にネットに触れて相手コートに入った場合はレット（再サーブ）
 pub fn let_judgment_system(
+    mut commands: Commands,
     mut net_events: MessageReader<NetHitEvent>,
     rally_state: Res<RallyState>,
     config: Res<GameConfig>,
     mut debug_logger: Option<ResMut<DebugLogger>>,
-    query: Query<&LogicalPosition, With<Ball>>,
+    query: Query<(Entity, &LogicalPosition), (With<Ball>, Without<PointEnded>)>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
     // サーブ中でなければスキップ
@@ -32,7 +33,7 @@ pub fn let_judgment_system(
 
     for event in net_events.read() {
         // ネットに触れた後のボール位置を確認
-        if let Ok(logical_pos) = query.get(event.ball) {
+        if let Ok((entity, logical_pos)) = query.get(event.ball) {
             let ball_x = logical_pos.value.x;
 
             // @spec 30901_point_judgment_spec.md#req-30901-003
@@ -63,6 +64,9 @@ pub fn let_judgment_system(
                     winner: server_side, // レットなので失点なし、サーバーは次のサーブへ
                     reason: RallyEndReason::NetFault,
                 });
+
+                // 他のポイント判定システムからの重複発行を防止
+                commands.entity(entity).insert(PointEnded);
             }
         }
     }
@@ -72,12 +76,13 @@ pub fn let_judgment_system(
 /// @spec 30103_point_end_spec.md#req-30103-002
 /// ラリー中にネットに当たった後、自コートに落ちた場合は失点
 pub fn net_fault_judgment_system(
+    mut commands: Commands,
     mut net_events: MessageReader<NetHitEvent>,
     rally_state: Res<RallyState>,
     config: Res<GameConfig>,
     match_score: Res<MatchScore>,
     mut debug_logger: Option<ResMut<DebugLogger>>,
-    query: Query<(&LogicalPosition, &LastShooter), With<Ball>>,
+    query: Query<(Entity, &LogicalPosition, &LastShooter), (With<Ball>, Without<PointEnded>)>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
     // ラリー中でなければスキップ（サーブ中はlet_judgment_systemで処理）
@@ -94,7 +99,7 @@ pub fn net_fault_judgment_system(
     let net_x = config.court.net_x;
 
     for event in net_events.read() {
-        if let Ok((logical_pos, last_shooter)) = query.get(event.ball) {
+        if let Ok((entity, logical_pos, last_shooter)) = query.get(event.ball) {
             if let Some(shooter) = last_shooter.side {
                 let ball_x = logical_pos.value.x;
 
@@ -126,6 +131,9 @@ pub fn net_fault_judgment_system(
                         winner,
                         reason: RallyEndReason::NetFault,
                     });
+
+                    // 他のポイント判定システムからの重複発行を防止
+                    commands.entity(entity).insert(PointEnded);
                 }
             }
         }

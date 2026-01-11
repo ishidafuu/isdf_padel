@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, LastShooter};
+use crate::components::{Ball, LastShooter, PointEnded};
 use crate::core::events::{BallOutOfBoundsEvent, RallyEndEvent, RallyEndReason, WallReflectionEvent};
 use crate::core::CourtSide;
 use crate::resource::{GameState, MatchScore};
@@ -16,10 +16,11 @@ use crate::simulation::DebugLogger;
 /// ボールがコート境界外に着地した場合、最後に打った側（LastShooter）の失点。
 /// 壁を超えてコート外に着地した場合のフォールバックとして機能。
 pub fn out_of_bounds_judgment_system(
+    mut commands: Commands,
     mut out_events: MessageReader<BallOutOfBoundsEvent>,
     match_score: Res<MatchScore>,
     mut debug_logger: Option<ResMut<DebugLogger>>,
-    query: Query<&LastShooter, With<Ball>>,
+    query: Query<(Entity, &LastShooter), (With<Ball>, Without<PointEnded>)>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
     // ゲーム進行中でなければスキップ
@@ -30,7 +31,7 @@ pub fn out_of_bounds_judgment_system(
     for event in out_events.read() {
         // @spec 30901_point_judgment_spec.md#req-30901-001
         // LastShooter（最後に打った側）から失点側を決定
-        if let Ok(last_shooter) = query.get(event.ball) {
+        if let Ok((entity, last_shooter)) = query.get(event.ball) {
             if let Some(shooter) = last_shooter.side {
                 // 打った側の失点 = 相手の得点
                 let winner = shooter.opponent();
@@ -52,6 +53,9 @@ pub fn out_of_bounds_judgment_system(
                     winner,
                     reason: RallyEndReason::Out,
                 });
+
+                // 他のポイント判定システムからの重複発行を防止
+                commands.entity(entity).insert(PointEnded);
             } else {
                 // LastShooter が未設定の場合（サーブ前など）
                 // ボール位置から判定（フォールバック）
@@ -71,6 +75,9 @@ pub fn out_of_bounds_judgment_system(
                     winner,
                     reason: RallyEndReason::Out,
                 });
+
+                // 他のポイント判定システムからの重複発行を防止
+                commands.entity(entity).insert(PointEnded);
             }
         }
     }
@@ -83,10 +90,11 @@ pub fn out_of_bounds_judgment_system(
 /// テニスでは壁に当たった時点でインプレーではなくなる。
 /// 最後に打った側（LastShooter）の失点となる。
 pub fn wall_hit_judgment_system(
+    mut commands: Commands,
     mut wall_events: MessageReader<WallReflectionEvent>,
     match_score: Res<MatchScore>,
     mut debug_logger: Option<ResMut<DebugLogger>>,
-    query: Query<&LastShooter, With<Ball>>,
+    query: Query<(Entity, &LastShooter), (With<Ball>, Without<PointEnded>)>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
     // ゲーム進行中でなければスキップ
@@ -96,7 +104,7 @@ pub fn wall_hit_judgment_system(
 
     for event in wall_events.read() {
         // 壁に当たったボールの LastShooter を取得
-        if let Ok(last_shooter) = query.get(event.ball) {
+        if let Ok((entity, last_shooter)) = query.get(event.ball) {
             if let Some(shooter) = last_shooter.side {
                 // 壁に当てた側の失点 = 相手の得点
                 let winner = shooter.opponent();
@@ -118,6 +126,9 @@ pub fn wall_hit_judgment_system(
                     winner,
                     reason: RallyEndReason::Out,
                 });
+
+                // 他のポイント判定システムからの重複発行を防止
+                commands.entity(entity).insert(PointEnded);
             } else {
                 // LastShooter が未設定の場合（サーブ前など）
                 // 壁に当たった位置から判定
@@ -137,6 +148,9 @@ pub fn wall_hit_judgment_system(
                     winner,
                     reason: RallyEndReason::Out,
                 });
+
+                // 他のポイント判定システムからの重複発行を防止
+                commands.entity(entity).insert(PointEnded);
             }
         }
     }

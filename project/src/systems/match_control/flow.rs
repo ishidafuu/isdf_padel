@@ -9,8 +9,8 @@ use bevy::prelude::*;
 
 use crate::components::{Ball, LogicalPosition, Player, TossBall};
 use crate::core::{CourtSide, MatchStartEvent, MatchWonEvent, RallyEndEvent, ShotEvent};
-use crate::resource::scoring::ServeState;
-use crate::resource::{GameConfig, GameState, MatchFlowState, MatchScore, RallyState};
+use crate::resource::scoring::{PointEndTimer, ServeState};
+use crate::resource::{FixedDeltaTime, GameConfig, GameState, MatchFlowState, MatchScore, RallyState};
 use super::{
     serve_double_fault_system, serve_hit_input_system, serve_init_system,
     serve_position_system, serve_toss_input_system, serve_toss_physics_system,
@@ -26,6 +26,7 @@ impl Plugin for MatchFlowPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<MatchFlowState>()
             .init_resource::<ServeState>()
+            .init_resource::<PointEndTimer>()
             .add_message::<MatchStartEvent>()
             .add_systems(OnEnter(MatchFlowState::MatchStart), match_start_system)
             .add_systems(OnEnter(MatchFlowState::Serve), (serve_init_system, serve_position_system))
@@ -146,14 +147,47 @@ fn rally_to_point_end_system(
 /// ポイント終了状態に入ったときの処理
 /// @spec 30101_flow_spec.md#req-30101-003
 fn point_end_enter_system(
-    mut commands: Commands,
     mut serve_state: ResMut<ServeState>,
+    mut point_end_timer: ResMut<PointEndTimer>,
+    config: Res<GameConfig>,
+) {
+    // フォルトディレイの場合は fault_processing_system で既にタイマー設定済み
+    if !point_end_timer.is_fault_delay {
+        point_end_timer.remaining = config.scoring.point_end_delay;
+    }
+
+    // ServeStateをリセット（次のポイント用）
+    serve_state.reset_for_new_point();
+
+    info!(
+        "Point ended. Waiting {:.1} secs before next serve...",
+        point_end_timer.remaining
+    );
+}
+
+/// ポイント終了から次の状態への遷移システム
+/// @spec 30101_flow_spec.md#req-30101-004
+/// @spec 30101_flow_spec.md#req-30101-005
+fn point_end_to_next_system(
+    fixed_dt: Res<FixedDeltaTime>,
+    mut point_end_timer: ResMut<PointEndTimer>,
+    mut commands: Commands,
     ball_query: Query<Entity, With<Ball>>,
     toss_ball_query: Query<Entity, With<TossBall>>,
+    mut next_state: ResMut<NextState<MatchFlowState>>,
+    match_score: Res<MatchScore>,
+    mut rally_state: ResMut<RallyState>,
+    mut query: Query<(&Player, &mut LogicalPosition)>,
+    config: Res<GameConfig>,
 ) {
-    // @spec 30101_flow_spec.md#req-30101-003: PointEndEvent を発行する
-    // NOTE: 現在は RallyEndEvent が PointEnd の役割を果たしている
-    info!("Point ended. Preparing for next serve...");
+    // タイマー減算（FixedDeltaTime を使用してヘッドレスモードでも正しく動作）
+    let delta = fixed_dt.delta_secs();
+    point_end_timer.remaining -= delta;
+
+    // タイマー終了まで待機
+    if point_end_timer.remaining > 0.0 {
+        return;
+    }
 
     // ボールを削除（次のサーブで新しいボールを生成するため）
     for ball_entity in ball_query.iter() {
@@ -167,20 +201,15 @@ fn point_end_enter_system(
         info!("Toss ball despawned for next serve");
     }
 
-    // ServeStateをリセット（次のポイント用）
-    serve_state.reset_for_new_point();
-}
+    // フォルトディレイの場合（セカンドサーブへ）
+    if point_end_timer.is_fault_delay {
+        point_end_timer.is_fault_delay = false;
+        rally_state.next_serve();
+        next_state.set(MatchFlowState::Serve);
+        info!("Fault delay ended. Returning to serve.");
+        return;
+    }
 
-/// ポイント終了から次の状態への遷移システム
-/// @spec 30101_flow_spec.md#req-30101-004
-/// @spec 30101_flow_spec.md#req-30101-005
-fn point_end_to_next_system(
-    mut next_state: ResMut<NextState<MatchFlowState>>,
-    match_score: Res<MatchScore>,
-    mut rally_state: ResMut<RallyState>,
-    mut query: Query<(&Player, &mut LogicalPosition)>,
-    config: Res<GameConfig>,
-) {
     // @spec 30101_flow_spec.md#req-30101-005: 勝利条件を満たす
     if let GameState::MatchWon(_winner) = match_score.game_state {
         // @spec 30101_flow_spec.md#req-30101-005: MatchState を MatchEnd に遷移する

@@ -5,13 +5,12 @@
 
 use bevy::prelude::*;
 
-use crate::components::Ball;
 use crate::core::events::{
     DoubleFaultEvent, FaultEvent, FaultReason, GroundBounceEvent, RallyEndEvent, RallyEndReason,
 };
 use crate::core::CourtSide;
 use crate::resource::config::{GameConfig, ServeSide};
-use crate::resource::{MatchFlowState, RallyPhase, RallyState};
+use crate::resource::{MatchFlowState, PointEndTimer, RallyPhase, RallyState};
 
 /// フォールト判定プラグイン
 /// @spec 30902_fault_spec.md
@@ -162,14 +161,14 @@ pub fn serve_landing_judgment_system(
 ///
 /// FaultEventを受信してfault_countを更新し、
 /// ダブルフォルトの場合はDoubleFaultEventを発行する。
-/// 1回目のフォールトの場合は次のサーブに戻る。
+/// 1回目のフォールトの場合はPointEnd経由でディレイ後に次のサーブに戻る。
 pub fn fault_processing_system(
-    mut commands: Commands,
     mut fault_events: MessageReader<FaultEvent>,
     mut rally_state: ResMut<RallyState>,
     mut double_fault_events: MessageWriter<DoubleFaultEvent>,
     mut next_state: ResMut<NextState<MatchFlowState>>,
-    ball_query: Query<Entity, With<Ball>>,
+    mut point_end_timer: ResMut<PointEndTimer>,
+    config: Res<GameConfig>,
 ) {
     for event in fault_events.read() {
         // @spec 30902_fault_spec.md#req-30902-003: Faultカウンタを更新
@@ -180,11 +179,7 @@ pub fn fault_processing_system(
             event.server, rally_state.fault_count
         );
 
-        // ボールを削除（次のサーブで新しいボールを生成するため）
-        for ball_entity in ball_query.iter() {
-            commands.entity(ball_entity).despawn();
-            info!("Ball despawned after fault");
-        }
+        // ボール削除は PointEnd で行う
 
         // @spec 30902_fault_spec.md#req-30902-002: ダブルフォルト判定
         if rally_state.is_double_fault() {
@@ -194,12 +189,12 @@ pub fn fault_processing_system(
                 server: event.server,
             });
         } else {
-            // 1回目のフォールト → 次のサーブに戻る（セカンドサーブ）
-            rally_state.next_serve();
-            // MatchFlowState を Serve に戻す
-            next_state.set(MatchFlowState::Serve);
+            // 1回目のフォールト → PointEnd 経由でディレイ後に次のサーブへ
+            point_end_timer.remaining = config.scoring.point_end_delay;
+            point_end_timer.is_fault_delay = true;
+            next_state.set(MatchFlowState::PointEnd);
             info!(
-                "First fault. Returning to serve. Server: {:?}, Fault count: {}",
+                "First fault. Entering PointEnd for delay. Server: {:?}, Fault count: {}",
                 event.server, rally_state.fault_count
             );
         }

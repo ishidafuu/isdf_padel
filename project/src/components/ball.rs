@@ -20,6 +20,12 @@ pub struct Ball;
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct TossBall;
 
+/// ポイント終了済みマーカーコンポーネント
+/// ボールに対して RallyEndEvent が発行済みであることを示す
+/// 複数のポイント判定システムによる重複発行を防止
+#[derive(Component, Debug, Clone, Copy, Default)]
+pub struct PointEnded;
+
 /// バウンス回数追跡コンポーネント（ツーバウンド判定用）
 /// @spec 30503_boundary_behavior.md#beh-30503-006
 #[derive(Component, Debug, Clone, Copy, Default)]
@@ -28,6 +34,8 @@ pub struct BounceCount {
     pub count: u32,
     /// 最後にバウンドしたコート側
     pub last_court_side: Option<CourtSide>,
+    /// RallyEndEvent 発行済みフラグ（重複発行防止）
+    pub event_sent: bool,
 }
 
 impl BounceCount {
@@ -36,8 +44,10 @@ impl BounceCount {
         if self.last_court_side == Some(court_side) {
             self.count += 1;
         } else {
+            // コート側が変わったらカウントとフラグをリセット
             self.last_court_side = Some(court_side);
             self.count = 1;
+            self.event_sent = false;
         }
     }
 
@@ -45,6 +55,7 @@ impl BounceCount {
     pub fn reset(&mut self) {
         self.count = 0;
         self.last_court_side = None;
+        self.event_sent = false;
     }
 }
 

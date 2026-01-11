@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, BounceCount, LastShooter};
+use crate::components::{Ball, BounceCount, LastShooter, PointEnded};
 use crate::core::events::{GroundBounceEvent, RallyEndEvent, RallyEndReason};
 use crate::resource::{GameState, MatchScore, RallyPhase, RallyState};
 use crate::simulation::DebugLogger;
@@ -43,7 +43,8 @@ pub fn bounce_count_update_system(
 /// @spec 30901_point_judgment_spec.md#req-30901-002
 /// BounceCount >= 2 でラリー終了（該当プレイヤーが失点）
 pub fn double_bounce_judgment_system(
-    query: Query<(Entity, &BounceCount), With<Ball>>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut BounceCount), (With<Ball>, Without<PointEnded>)>,
     match_score: Res<MatchScore>,
     mut debug_logger: Option<ResMut<DebugLogger>>,
     mut rally_events: MessageWriter<RallyEndEvent>,
@@ -53,10 +54,11 @@ pub fn double_bounce_judgment_system(
         return;
     }
 
-    for (_entity, bounce_count) in query.iter() {
+    for (entity, mut bounce_count) in query.iter_mut() {
         // @spec 30901_point_judgment_spec.md#req-30901-002
         // ツーバウンド判定: 同じコート側で2回以上バウンド
-        if bounce_count.count >= 2 {
+        // event_sent フラグで重複発行を防止
+        if bounce_count.count >= 2 && !bounce_count.event_sent {
             if let Some(court_side) = bounce_count.last_court_side {
                 // バウンドしたコート側のプレイヤーが失点
                 // つまり、相手側が得点
@@ -79,6 +81,12 @@ pub fn double_bounce_judgment_system(
                     winner,
                     reason: RallyEndReason::DoubleBounce,
                 });
+
+                // 重複発行防止フラグを設定
+                bounce_count.event_sent = true;
+                
+                // 他のポイント判定システムからの重複発行を防止
+                commands.entity(entity).insert(PointEnded);
             }
         }
     }
@@ -88,11 +96,12 @@ pub fn double_bounce_judgment_system(
 /// @spec 30103_point_end_spec.md#req-30103-003
 /// 打った打球が自コートに落ちた場合は失点
 pub fn own_court_hit_judgment_system(
+    mut commands: Commands,
     mut bounce_events: MessageReader<GroundBounceEvent>,
     rally_state: Res<RallyState>,
     match_score: Res<MatchScore>,
     mut debug_logger: Option<ResMut<DebugLogger>>,
-    query: Query<(&BounceCount, &LastShooter), With<Ball>>,
+    query: Query<(Entity, &BounceCount, &LastShooter), (With<Ball>, Without<PointEnded>)>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
     // ラリー中でなければスキップ
@@ -106,7 +115,7 @@ pub fn own_court_hit_judgment_system(
     }
 
     for event in bounce_events.read() {
-        if let Ok((bounce_count, last_shooter)) = query.get(event.ball) {
+        if let Ok((entity, bounce_count, last_shooter)) = query.get(event.ball) {
             if let Some(shooter) = last_shooter.side {
                 // @spec 30103_point_end_spec.md#req-30103-003
                 // 最初のバウンドで、バウンドしたコート側が打った側と同じ場合
@@ -131,6 +140,9 @@ pub fn own_court_hit_judgment_system(
                         winner,
                         reason: RallyEndReason::OwnCourtHit,
                     });
+
+                    // 他のポイント判定システムからの重複発行を防止
+                    commands.entity(entity).insert(PointEnded);
                 }
             }
         }
