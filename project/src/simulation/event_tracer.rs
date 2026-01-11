@@ -156,12 +156,6 @@ impl EventTracer {
         self.current_frame >= self.last_position_frame + interval
     }
 
-    /// 位置を記録すべきフレームかどうか（後方互換性のため残存）
-    #[deprecated(note = "Use should_record_frame() instead")]
-    pub fn should_record_positions(&self) -> bool {
-        self.should_record_frame()
-    }
-
     /// 位置・速度データを記録
     pub fn record_positions(&mut self, timestamp: f32, entities: Vec<EntityTrace>) {
         if !self.enabled {

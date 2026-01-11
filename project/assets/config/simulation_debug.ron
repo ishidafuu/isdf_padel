@@ -29,4 +29,13 @@
         infinite_rally_secs: 120.0,
         max_velocity: 1000.0,
     ),
+    // === デバッグログ設定（デバッグ用: 全有効）===
+    debug: (
+        log_ai: true,
+        log_physics: true,
+        log_scoring: true,
+        log_state: true,
+        log_interval_secs: 5.0,
+        log_file: Some("debug_log.txt"),
+    ),
 )

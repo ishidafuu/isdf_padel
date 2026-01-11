@@ -65,4 +65,20 @@
         // 速度がこの値を超えると異常とみなす
         max_velocity: 1000.0,
     ),
+
+    // === デバッグログ設定 ===
+    debug: (
+        // AI行動ログ
+        log_ai: false,
+        // 物理イベントログ
+        log_physics: false,
+        // 得点イベントログ
+        log_scoring: false,
+        // 状態遷移ログ
+        log_state: false,
+        // 定期ログ間隔（秒）（0で無効）
+        log_interval_secs: 0.0,
+        // ログファイル出力パス
+        log_file: None,
+    ),
 )

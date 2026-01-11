@@ -6,6 +6,7 @@
 
 mod anomaly_detector;
 mod config;
+mod debug_logger;
 mod event_tracer;
 mod headless_plugins;
 mod result_reporter;
@@ -14,9 +15,10 @@ mod trace_system;
 
 pub use anomaly_detector::{AnomalyDetector, AnomalyDetectorPlugin, AnomalyDetectorResource, AnomalyReport, AnomalyThresholdsResource, AnomalyType};
 pub use config::{
-    load_simulation_config, AnomalyThresholds, ExecutionConfig, OutputConfig,
+    load_simulation_config, AnomalyThresholds, DebugConfig, ExecutionConfig, OutputConfig,
     SimulationFileConfig, TraceConfig,
 };
+pub use debug_logger::DebugLogger;
 pub use event_tracer::{EntityTrace, EntityType, EventTracer, FrameTrace, GameEvent};
 pub use headless_plugins::HeadlessPlugins;
 pub use result_reporter::{MatchResult, SimulationReport, SimulationReporter};

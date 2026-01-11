@@ -17,8 +17,8 @@ use crate::resource::{FixedDeltaTime, GameRng};
 use crate::resource::MatchFlowState;
 
 use super::{
-    AnomalyDetectorResource, AnomalyThresholdsResource, EventTracer, HeadlessPlugins, MatchResult,
-    SimulationFileConfig, SimulationReport, SimulationReporter, TraceSystemPlugin,
+    AnomalyDetectorResource, AnomalyThresholdsResource, DebugLogger, EventTracer, HeadlessPlugins,
+    MatchResult, SimulationFileConfig, SimulationReport, SimulationReporter, TraceSystemPlugin,
 };
 
 /// シミュレーション設定
@@ -191,6 +191,14 @@ impl SimulationRunner {
         } else {
             app.insert_resource(EventTracer::default());
         }
+
+        // DebugLogger を設定
+        let debug_config = self
+            .file_config
+            .as_ref()
+            .map(|c| c.debug.clone())
+            .unwrap_or_default();
+        app.insert_resource(DebugLogger::new(debug_config));
 
         // セットアップシステム（プレイヤーのスポーン）
         app.add_systems(Startup, simulation_setup_system);

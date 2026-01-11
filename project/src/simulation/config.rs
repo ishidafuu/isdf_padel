@@ -98,6 +98,36 @@ impl Default for AnomalyThresholds {
     }
 }
 
+/// カテゴリ別デバッグログ設定
+#[derive(Clone, Debug, Deserialize)]
+pub struct DebugConfig {
+    /// AI行動ログ
+    pub log_ai: bool,
+    /// 物理イベントログ
+    pub log_physics: bool,
+    /// 得点イベントログ
+    pub log_scoring: bool,
+    /// 状態遷移ログ
+    pub log_state: bool,
+    /// 定期ログ間隔（秒）（0で無効）
+    pub log_interval_secs: f32,
+    /// ログファイル出力パス
+    pub log_file: Option<String>,
+}
+
+impl Default for DebugConfig {
+    fn default() -> Self {
+        Self {
+            log_ai: false,
+            log_physics: false,
+            log_scoring: false,
+            log_state: false,
+            log_interval_secs: 0.0,
+            log_file: None,
+        }
+    }
+}
+
 /// シミュレーター設定ファイル構造
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct SimulationFileConfig {
@@ -113,6 +143,9 @@ pub struct SimulationFileConfig {
     /// 異常検出の閾値
     #[serde(default)]
     pub anomaly_thresholds: AnomalyThresholds,
+    /// デバッグログ設定
+    #[serde(default)]
+    pub debug: DebugConfig,
 }
 
 /// シミュレーター設定をファイルから読み込む

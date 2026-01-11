@@ -2,7 +2,7 @@
 id: "R30000-031"
 title: "DebugConfig・ログカテゴリ制御"
 type: "refactor"
-status: "todo"
+status: "in-review"
 priority: "medium"
 related_task: null
 spec_ids: []
@@ -33,15 +33,17 @@ completed_at: null
 
 ### Completed
 
-(なし)
+1. `simulation/config.rs` に DebugConfig 構造体追加
+2. SimulationFileConfig に debug フィールド追加
+3. `simulation/debug_logger.rs` 新規作成（DebugLogger リソース）
+4. `simulation/mod.rs` を更新（エクスポート追加）
+5. `simulation_debug.ron` に debug セクション追加
+6. `simulation_runner.rs` で DebugLogger リソース挿入
+7. ビルド成功・テスト全PASS
 
 ## Next Actions
 
-1. `simulation/config.rs` に DebugConfig 構造体追加
-2. SimulationFileConfig に debug フィールド追加
-3. `simulation/debug_logger.rs` 新規作成
-4. `simulation_debug.ron` に debug セクション追加
-5. `simulation_runner.rs` のデバッグシステム更新
+（レビュー待ち）
 
 ## Dependencies
 
@@ -52,10 +54,10 @@ completed_at: null
 
 > このタスクは in-review 経由必須
 
-- [ ] ビルド成功（`cargo build`）
-- [ ] テスト全PASS（`cargo test`）
-- [ ] log_ai: true 時に AI ログのみ出力されることを確認
-- [ ] in-review に移動済み
+- [x] ビルド成功（`cargo build`）
+- [x] テスト全PASS（`cargo test`）
+- [ ] log_ai: true 時に AI ログのみ出力されることを確認（→ R30000-032 でAIログシステム実装後）
+- [x] in-review に移動済み
 - [ ] レビュー完了
 
 ## メモ
