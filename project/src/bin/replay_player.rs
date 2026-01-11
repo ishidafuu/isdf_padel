@@ -25,7 +25,7 @@ use padel_game::replay::loader::load_replay;
 use padel_game::replay::player::{replay_input_system, ReplayPlayer};
 use padel_game::resource::config::load_game_config;
 use padel_game::resource::debug::LastShotDebugInfo;
-use padel_game::resource::MatchFlowState;
+use padel_game::resource::{GameRng, MatchFlowState};
 use padel_game::simulation::AnomalyDetectorPlugin;
 use padel_game::systems::{
     ceiling_collision_system, gravity_system, jump_system, knockback_movement_system,
@@ -97,12 +97,8 @@ fn main() {
     let mut replay_player = ReplayPlayer::new();
     replay_player.start_playback(replay_data.clone());
 
-    // TODO: シード値による乱数初期化
-    // 現在のゲームは rand::rng() を直接使用しており、シード可能な乱数リソースになっていない。
-    // 完全な再現のためには、ゲーム全体の乱数システムをシード可能なリソースにリファクタリングする必要がある。
-    // 現時点では入力の再現のみ対応。AIの乱数動作の再現は将来の拡張として保留。
-    println!("Note: Seed {} is recorded but not used for RNG initialization.", replay_data.metadata.seed);
-    println!("      AI behavior may differ from original recording.\n");
+    // リプレイのシード値でGameRngを初期化（AI動作の再現性確保）
+    let game_rng = GameRng::from_seed(replay_data.metadata.seed);
 
     // Bevy アプリを構築して実行
     let mut app = App::new();
@@ -110,6 +106,7 @@ fn main() {
     app.add_plugins(MinimalPlugins)
         .add_plugins(ReplayPlaybackPlugins)
         .insert_resource(game_config)
+        .insert_resource(game_rng)
         .insert_resource(replay_player)
         .insert_resource(ReplayConfig { verbose: args.verbose });
 
