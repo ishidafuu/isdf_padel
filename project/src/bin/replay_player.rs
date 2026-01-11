@@ -49,6 +49,11 @@ struct Args {
     /// Skip version check
     #[arg(long)]
     skip_version_check: bool,
+
+    /// Verification mode: validate replay determinism
+    /// @spec REQ-77103-007
+    #[arg(long)]
+    verify: bool,
 }
 
 fn main() {
@@ -108,7 +113,10 @@ fn main() {
         .insert_resource(game_config)
         .insert_resource(game_rng)
         .insert_resource(replay_player)
-        .insert_resource(ReplayConfig { verbose: args.verbose });
+        .insert_resource(ReplayPlaybackConfig {
+            verbose: args.verbose,
+            verify: args.verify,
+        });
 
     // 完了検出用の状態
     app.add_systems(Update, check_replay_finished);
@@ -121,8 +129,10 @@ fn main() {
 
 /// リプレイ再生設定
 #[derive(Resource)]
-struct ReplayConfig {
+struct ReplayPlaybackConfig {
     verbose: bool,
+    /// 検証モード: RNGの決定性を検証
+    verify: bool,
 }
 
 /// リプレイ再生用プラグインセット
@@ -188,7 +198,8 @@ impl Plugin for ReplayPlaybackPlugins {
 fn check_replay_finished(
     replay_player: Res<ReplayPlayer>,
     match_state: Res<State<MatchFlowState>>,
-    config: Res<ReplayConfig>,
+    match_score: Res<padel_game::resource::MatchScore>,
+    config: Res<ReplayPlaybackConfig>,
     mut app_exit: MessageWriter<AppExit>,
     mut frame_count: Local<u32>,
 ) {
@@ -211,6 +222,31 @@ fn check_replay_finished(
         println!("Final MatchState: {:?}", match_state.get());
         println!("Frames played: {}", replay_player.current_frame());
         println!("Total app frames: {}", *frame_count);
+
+        // 検証モード: スコアと最終状態を出力
+        // @spec REQ-77103-007
+        if config.verify {
+            println!("\n=== Verification Results ===");
+            println!(
+                "Points: P1[{}] vs P2[{}]",
+                match_score.points[0].index, match_score.points[1].index
+            );
+            println!(
+                "Games: P1 {} : {} P2",
+                match_score.scores[0].games, match_score.scores[1].games
+            );
+            println!(
+                "Sets: P1 {} : {} P2",
+                match_score.scores[0].sets, match_score.scores[1].sets
+            );
+            println!("Server: {:?}", match_score.server);
+            println!("Game State: {:?}", match_score.game_state);
+            println!(
+                "Determinism check: Run this replay multiple times to verify identical results."
+            );
+            println!("(Future: EventTracer will enable frame-by-frame comparison)");
+        }
+
         app_exit.write(AppExit::Success);
     }
 }

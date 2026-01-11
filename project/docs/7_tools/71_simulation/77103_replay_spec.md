@@ -217,6 +217,9 @@ cargo run --bin replay_player -- assets/replays/replay_20260110_123456.ron
 
 # 詳細出力付き
 cargo run --bin replay_player -- -v assets/replays/replay_20260110_123456.ron
+
+# 検証モード（決定性確認用）
+cargo run --bin replay_player -- --verify assets/replays/replay_20260110_123456.ron
 ```
 
 ### 画面表示再生（v0.2+）
