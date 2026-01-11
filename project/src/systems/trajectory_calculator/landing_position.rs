@@ -38,9 +38,9 @@ pub fn calculate_landing_position(
         }
     };
 
-    // REQ-30605-010, REQ-30605-011: 前後入力による深さ調整
-    // input.y: -1.0=ネット際, 0.0=サービスライン付近, +1.0=ベースライン際
-    let target_x = if ctx.input.y.abs() < 0.01 {
+    // REQ-30605-010, REQ-30605-011: A/D入力による深さ調整
+    // input.x: -1.0(A)=ネット際, 0.0=サービスライン付近, +1.0(D)=ベースライン際
+    let target_x = if ctx.input.x.abs() < 0.01 {
         // ニュートラル: デフォルト着地深さを使用
         let depth = trajectory_config.default_landing_depth;
         match ctx.court_side {
@@ -49,16 +49,16 @@ pub fn calculate_landing_position(
         }
     } else {
         // 入力あり: 線形補間
-        // Left側の場合: input.y=-1 → ネット際, input.y=+1 → ベースライン際
+        // Left側の場合: input.x=-1(A) → ネット際, input.x=+1(D) → ベースライン際
         let near = net_x + margin * ctx.court_side.sign();
         let far = baseline_x - margin * ctx.court_side.sign();
-        let t = (ctx.input.y + 1.0) / 2.0; // -1..1 → 0..1
+        let t = (ctx.input.x + 1.0) / 2.0; // -1..1 → 0..1
         lerp(near, far, t)
     };
 
-    // REQ-30605-012: 左右入力によるコース調整
-    // input.x: -1.0=左サイド, 0.0=中央, +1.0=右サイド
-    let target_z = ctx.input.x * (half_width - margin);
+    // REQ-30605-012: W/S入力によるコース調整（画面上下）
+    // input.y: -1.0(S)=画面下側, 0.0=中央, +1.0(W)=画面上側
+    let target_z = ctx.input.y * (half_width - margin);
 
     Vec3::new(target_x, 0.0, target_z)
 }

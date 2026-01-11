@@ -111,12 +111,9 @@ pub fn shot_input_system(
         // REQ-30601-006: ショット条件を満たした場合、ShotEvent を発行
 
         // REQ-30602-001: ショット方向の決定
-        // X軸（左右）: 入力で調整可能
-        // Z軸（前後）: 常に相手コート方向に固定（shot_direction.rs で処理）
-        let raw_direction = input_state.movement;
-        // X軸入力のみを使用（上下入力は無視）
-        // Y成分は shot_direction.rs でプレイヤーIDに応じて決定される
-        let direction = Vec2::new(raw_direction.x, 0.0);
+        // input.x (A/D): 深さ調整（ネット側/ベースライン側）
+        // input.y (W/S): コース調整（画面上/下）
+        let direction = input_state.movement;
 
         // REQ-30601-004: クールダウン開始
         shot_state.start_cooldown(config.shot.cooldown_time);
