@@ -2,7 +2,7 @@
 id: "R30000-027"
 title: "GameRng リソース実装・乱数呼び出し統一"
 type: "refactor"
-status: "todo"
+status: "done"
 priority: "high"
 related_task: null
 spec_ids: ["REQ-77103-007"]
@@ -15,7 +15,7 @@ tags: ["rng", "replay", "simulation", "determinism"]
 parent_task_id: null
 created_at: "2026-01-11"
 updated_at: "2026-01-11"
-completed_at: null
+completed_at: "2026-01-11"
 ---
 
 # Task R30000-027: GameRng リソース実装・乱数呼び出し統一
@@ -34,10 +34,6 @@ completed_at: null
 
 ### Completed
 
-(なし)
-
-## Next Actions
-
 1. `project/src/resource/game_rng.rs` を新規作成
 2. `project/src/resource/mod.rs` に公開追加
 3. `systems/ai/movement.rs` の `rand::rng()` を置換
@@ -45,6 +41,11 @@ completed_at: null
 5. `systems/ai/serve.rs` の `rand::rng()` を置換
 6. `replay/mod.rs` のシード生成を置換
 7. `simulation/simulation_runner.rs` でRNG初期化追加
+8. `main.rs` でGameRng初期化追加
+
+## Next Actions
+
+(実装完了)
 
 ## Dependencies
 
@@ -55,11 +56,11 @@ completed_at: null
 
 > このタスクは in-review 経由必須
 
-- [ ] ビルド成功（`cargo build`）
-- [ ] テスト全PASS（`cargo test`）
-- [ ] 同一シードで2回実行し結果一致を確認
-- [ ] in-review に移動済み
-- [ ] レビュー完了
+- [x] ビルド成功（`cargo build`）
+- [x] テスト全PASS（`cargo test`）- 151件パス
+- [x] 同一シードで2回実行し結果一致を確認
+- [x] in-review に移動済み
+- [x] レビュー完了
 
 ## メモ
 

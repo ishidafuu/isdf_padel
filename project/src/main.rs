@@ -23,7 +23,7 @@ use presentation::{
 };
 use resource::config::{load_game_config, GameConfig, GameConfigHandle, GameConfigLoader};
 use resource::debug::LastShotDebugInfo;
-use resource::FixedDeltaTime;
+use resource::{FixedDeltaTime, GameRng};
 use resource::MatchFlowState;
 use systems::{
     ai_movement_system, ai_shot_system, ceiling_collision_system, debug_marker_system,
@@ -76,6 +76,7 @@ fn main() {
         .add_plugins(replay::ReplayRecordPlugin)
         .insert_resource(config)
         .init_resource::<FixedDeltaTime>()
+        .init_resource::<GameRng>()
         .init_resource::<LastShotDebugInfo>()
         .add_message::<PlayerMoveEvent>()
         .add_message::<PlayerJumpEvent>()

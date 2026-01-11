@@ -2,14 +2,13 @@
 //! @spec 30301_ai_movement_spec.md
 
 use bevy::prelude::*;
-use rand::Rng;
 
 use crate::components::{
     AiController, AiMovementState, Ball, KnockbackState, LogicalPosition, Player, Velocity,
 };
 use crate::core::court::CourtSide;
 use crate::resource::config::GameConfig;
-use crate::resource::FixedDeltaTime;
+use crate::resource::{FixedDeltaTime, GameRng};
 
 /// 着地時間を計算
 /// @spec 30301_ai_movement_spec.md#req-30301-v07-002
@@ -113,8 +112,7 @@ fn is_short_ball(
 /// @spec 30301_ai_movement_spec.md#req-30301-052
 ///
 /// 誤差範囲 = (1.0 - prediction_accuracy) * prediction_error
-fn apply_z_error(z: f32, config: &GameConfig) -> f32 {
-    let mut rng = rand::rng();
+fn apply_z_error(z: f32, config: &GameConfig, game_rng: &mut GameRng) -> f32 {
     let accuracy = config.ai.prediction_accuracy.clamp(0.0, 1.0);
     let max_error = config.ai.prediction_error;
 
@@ -126,7 +124,7 @@ fn apply_z_error(z: f32, config: &GameConfig) -> f32 {
     }
 
     // Z座標にのみランダムな誤差を追加
-    let error_z = rng.random_range(-error_range..=error_range);
+    let error_z = game_rng.random_range(-error_range..=error_range);
 
     z + error_z
 }
@@ -167,6 +165,7 @@ fn calculate_idle_position(
 pub fn ai_movement_system(
     fixed_dt: Res<FixedDeltaTime>,
     config: Res<GameConfig>,
+    mut game_rng: ResMut<GameRng>,
     ball_query: Query<(&LogicalPosition, &Velocity), (With<Ball>, Without<AiController>)>,
     mut ai_query: Query<
         (
@@ -274,7 +273,7 @@ pub fn ai_movement_system(
                     };
 
                     // 誤差を1回だけ適用してロック
-                    let with_error = apply_z_error(target_z, &config);
+                    let with_error = apply_z_error(target_z, &config, &mut game_rng);
                     ai.locked_target_z = Some(with_error);
                     ai.lock_ball_velocity_x_sign = Some(current_ball_vel_x_sign);
 

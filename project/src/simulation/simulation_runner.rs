@@ -13,7 +13,7 @@ use crate::components::AiController;
 use crate::core::CourtSide;
 use crate::resource::config::GameConfig;
 use crate::resource::scoring::{GameState, MatchScore};
-use crate::resource::FixedDeltaTime;
+use crate::resource::{FixedDeltaTime, GameRng};
 use crate::resource::MatchFlowState;
 
 use super::{
@@ -157,6 +157,14 @@ impl SimulationRunner {
 
         // FixedDeltaTime リソースを挿入（物理計算用）
         app.init_resource::<FixedDeltaTime>();
+
+        // GameRng リソースを挿入（シード制御）
+        let game_rng = if let Some(seed) = self.config.seed {
+            GameRng::from_seed(seed)
+        } else {
+            GameRng::from_entropy()
+        };
+        app.insert_resource(game_rng);
 
         // シミュレーション状態リソースを挿入
         app.insert_resource(SimulationStateResource::new(self.config.timeout_secs));

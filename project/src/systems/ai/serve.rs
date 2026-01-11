@@ -8,12 +8,11 @@
 //! 2. ボールが最適高さに達したらヒットを実行
 
 use bevy::prelude::*;
-use rand::Rng;
 
 use crate::components::{AiController, Ball, LogicalPosition, Player, TossBall, TossBallBundle};
 use crate::core::ShotEvent;
 use crate::resource::scoring::{ServeState, ServeSubPhase};
-use crate::resource::{FixedDeltaTime, GameConfig, MatchFlowState, MatchScore};
+use crate::resource::{FixedDeltaTime, GameConfig, GameRng, MatchFlowState, MatchScore};
 use crate::systems::GameSystemSet;
 
 /// AIサーブ待機タイマー（リソース）
@@ -37,6 +36,7 @@ pub struct AiServeTimer {
 /// Serve状態に入った時、AIがサーバーでWaiting状態ならタイマーを初期化する。
 pub fn ai_serve_timer_init_system(
     config: Res<GameConfig>,
+    mut game_rng: ResMut<GameRng>,
     match_score: Res<MatchScore>,
     serve_state: Res<ServeState>,
     ai_query: Query<&Player, With<AiController>>,
@@ -65,12 +65,11 @@ pub fn ai_serve_timer_init_system(
     }
 
     // @spec 30102_serve_spec.md#req-30102-087: ランダムな待機時間を決定
-    let mut rng = rand::rng();
-    let delay = rng.random_range(config.ai.serve_delay_min..=config.ai.serve_delay_max);
+    let delay = game_rng.random_range(config.ai.serve_delay_min..=config.ai.serve_delay_max);
 
     // @spec 30102_serve_spec.md#req-30102-071: サーブ方向のランダムバリエーションを事前決定
     let direction_z_offset =
-        rng.random_range(-config.ai.serve_direction_variance..=config.ai.serve_direction_variance);
+        game_rng.random_range(-config.ai.serve_direction_variance..=config.ai.serve_direction_variance);
 
     ai_serve_timer.toss_timer = Some(Timer::from_seconds(delay, TimerMode::Once));
     ai_serve_timer.direction_z_offset = direction_z_offset;
@@ -260,6 +259,7 @@ impl Plugin for AiServePlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::Rng;
 
     /// REQ-30102-087: AIサーブタイマーテスト
     #[test]

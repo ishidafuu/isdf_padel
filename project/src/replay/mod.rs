@@ -14,7 +14,7 @@ pub mod recorder;
 
 use bevy::prelude::*;
 
-use crate::resource::MatchFlowState;
+use crate::resource::{GameRng, MatchFlowState};
 
 pub use manager::ReplayManager;
 pub use recorder::{ReplayRecorder, StartReplayRecording, StopReplayRecording};
@@ -49,12 +49,10 @@ impl Plugin for ReplayRecordPlugin {
 fn start_replay_on_match_start(
     mut recorder: ResMut<ReplayRecorder>,
     match_score: Res<crate::resource::MatchScore>,
+    game_rng: Res<GameRng>,
 ) {
-    // シードを生成（現在時刻ベース）
-    let seed = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_nanos() as u64)
-        .unwrap_or(0);
+    // GameRng から現在のシードを取得
+    let seed = game_rng.seed();
 
     // ゲーム状態から初期サーブ側を取得
     let initial_serve_side = match_score.server;

@@ -2,27 +2,25 @@
 //! @spec 30302_ai_shot_spec.md
 
 use bevy::prelude::*;
-use rand::Rng;
 
 use crate::components::{
     AiController, Ball, BounceCount, KnockbackState, LastShooter, LogicalPosition, Player, ShotState,
 };
 use crate::core::events::ShotEvent;
 use crate::resource::config::GameConfig;
-use crate::resource::{MatchScore, RallyPhase, RallyState};
+use crate::resource::{GameRng, MatchScore, RallyPhase, RallyState};
 
 /// 打球方向にランダムブレを追加
 /// @spec 30302_ai_shot_spec.md#req-30302-055
 ///
 /// 2D回転行列で方向ベクトルを回転させる
-fn apply_direction_variance(base_direction: Vec2, variance_deg: f32) -> Vec2 {
+fn apply_direction_variance(base_direction: Vec2, variance_deg: f32, game_rng: &mut GameRng) -> Vec2 {
     if variance_deg <= 0.0 {
         return base_direction;
     }
 
-    let mut rng = rand::rng();
     let variance_rad = variance_deg.to_radians();
-    let offset = rng.random_range(-variance_rad..=variance_rad);
+    let offset = game_rng.random_range(-variance_rad..=variance_rad);
 
     // 2D回転行列を適用
     let cos = offset.cos();
@@ -42,6 +40,7 @@ fn apply_direction_variance(base_direction: Vec2, variance_deg: f32) -> Vec2 {
 /// @spec 30302_ai_shot_spec.md#req-30302-055
 pub fn ai_shot_system(
     config: Res<GameConfig>,
+    mut game_rng: ResMut<GameRng>,
     rally_state: Res<RallyState>,
     match_score: Res<MatchScore>,
     ball_query: Query<(&LogicalPosition, &LastShooter, &BounceCount), With<Ball>>,
@@ -109,7 +108,7 @@ pub fn ai_shot_system(
         // REQ-30302-055: 打球方向にランダムブレを適用
         // XZ平面上で方向ベクトルを回転させる
         let base_dir_xz = Vec2::new(direction_to_opponent.x, direction_to_opponent.z);
-        let varied_dir_xz = apply_direction_variance(base_dir_xz, config.ai.direction_variance);
+        let varied_dir_xz = apply_direction_variance(base_dir_xz, config.ai.direction_variance, &mut game_rng);
 
         // ShotEventのdirectionとして渡す（X成分とZ成分）
         let direction = varied_dir_xz;

@@ -4,8 +4,10 @@
 pub mod config;
 pub mod debug;
 pub mod fixed_delta;
+pub mod game_rng;
 pub mod scoring;
 
 pub use config::*;
 pub use fixed_delta::*;
+pub use game_rng::*;
 pub use scoring::*;
