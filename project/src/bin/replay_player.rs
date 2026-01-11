@@ -13,7 +13,7 @@
 //! cargo run --bin replay_player -- -v assets/replays/replay_20260110_123456.ron
 //! ```
 
-use bevy::prelude::*;
+use bevy::{app::ScheduleRunnerPlugin, asset::AssetPlugin, prelude::*, state::app::StatesPlugin};
 use clap::Parser;
 
 use padel_game::character::CharacterPlugin;
@@ -25,14 +25,14 @@ use padel_game::replay::loader::load_replay;
 use padel_game::replay::player::{replay_input_system, ReplayPlayer};
 use padel_game::resource::config::load_game_config;
 use padel_game::resource::debug::LastShotDebugInfo;
-use padel_game::resource::{GameRng, MatchFlowState};
+use padel_game::resource::{FixedDeltaTime, GameRng, MatchFlowState};
 use padel_game::simulation::AnomalyDetectorPlugin;
 use padel_game::systems::{
     ceiling_collision_system, gravity_system, jump_system, knockback_movement_system,
     knockback_start_system, knockback_timer_system, landing_system, movement_system,
     shot_cooldown_system, shot_direction_system, shot_input_system, vertical_movement_system,
-    BallCollisionPlugin, BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin, GameSystemSet,
-    MatchFlowPlugin, PointJudgmentPlugin, ScoringPlugin,
+    AiServePlugin, BallCollisionPlugin, BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin,
+    GameSystemSet, MatchFlowPlugin, PointJudgmentPlugin, ScoringPlugin,
 };
 
 /// Replay Player for Padel Game
@@ -108,11 +108,25 @@ fn main() {
     // Bevy アプリを構築して実行
     let mut app = App::new();
 
-    app.add_plugins(MinimalPlugins)
-        .add_plugins(ReplayPlaybackPlugins)
-        .insert_resource(game_config)
+    // MinimalPlugins（60FPS固定タイムステップ）
+    app.add_plugins(MinimalPlugins.set(ScheduleRunnerPlugin::run_loop(
+        std::time::Duration::from_secs_f64(1.0 / 60.0),
+    )));
+
+    // StatesPlugin（State管理用、MinimalPluginsに含まれない）
+    app.add_plugins(StatesPlugin);
+
+    // AssetPlugin（CharacterPluginがアセットローダーを使用）
+    app.add_plugins(AssetPlugin::default());
+
+    // ゲームロジックプラグイン
+    app.add_plugins(ReplayPlaybackPlugins);
+
+    // リソース挿入
+    app.insert_resource(game_config)
         .insert_resource(game_rng)
         .insert_resource(replay_player)
+        .init_resource::<FixedDeltaTime>() // 物理計算用
         .insert_resource(ReplayPlaybackConfig {
             verbose: args.verbose,
             verify: args.verify,
@@ -148,6 +162,7 @@ impl Plugin for ReplayPlaybackPlugins {
             .add_plugins(PointJudgmentPlugin)
             .add_plugins(FaultJudgmentPlugin)
             .add_plugins(MatchFlowPlugin)
+            .add_plugins(AiServePlugin) // AiServeTimerリソースを提供
             .add_plugins(CharacterPlugin)
             .add_plugins(AnomalyDetectorPlugin);
 
