@@ -225,7 +225,8 @@ pub fn ai_movement_system(
 
         // === 反応遅延の処理 ===
         // @spec 30301_ai_movement_spec.md#req-30301-053
-        if ball_coming_to_me && ai.movement_state == AiMovementState::Idle {
+        // 反応遅延はボールが初めて向かってきた時のみ設定（毎フレームリセットしない）
+        if ball_coming_to_me && ai.movement_state == AiMovementState::Idle && ai.reaction_timer <= 0.0 {
             ai.reaction_timer = config.ai.reaction_delay;
         }
 
@@ -263,9 +264,11 @@ pub fn ai_movement_system(
                 // @spec 30301_ai_movement_spec.md#req-30301-v07-002
 
                 // 状態変化時のみ目標を再計算
-                let target_z = if state_changed || ai.locked_target_z.is_none() {
+                let is_short = is_short_ball(ai_pos.x, ball_pos, ball_vel, gravity);
+
+                let (target_x, target_z) = if state_changed || ai.locked_target_z.is_none() {
                     // 短いボール判定
-                    let target_z = if is_short_ball(ai_pos.x, ball_pos, ball_vel, gravity) {
+                    let target_z = if is_short {
                         // 短いボール: ボールの現在Z座標を追跡
                         ball_pos.z
                     } else {
@@ -279,14 +282,17 @@ pub fn ai_movement_system(
                     ai.locked_target_z = Some(with_error);
                     ai.lock_ball_velocity_x_sign = Some(current_ball_vel_x_sign);
 
-                    with_error
+                    // 短いボール: X座標もボール位置を追跡
+                    // インターセプト: X座標は維持
+                    let x = if is_short { ball_pos.x } else { ai_pos.x };
+                    (x, with_error)
                 } else {
                     // ロック済みの目標を使用
-                    ai.locked_target_z.unwrap_or(ball_pos.z)
+                    let x = if is_short { ball_pos.x } else { ai_pos.x };
+                    (x, ai.locked_target_z.unwrap_or(ball_pos.z))
                 };
 
-                // X座標は維持、Z座標のみ移動
-                let target = Vec3::new(ai_pos.x, 0.0, target_z);
+                let target = Vec3::new(target_x, 0.0, target_z);
                 (AiMovementState::Tracking, target)
             }
         } else {
