@@ -22,7 +22,7 @@ pub fn trace_frame_advance_system(mut tracer: ResMut<EventTracer>) {
     }
 }
 
-/// 位置・速度を記録するシステム
+/// 位置・速度・イベントを記録するシステム
 /// interval_frames ごとに呼ばれる
 pub fn trace_positions_system(
     mut tracer: ResMut<EventTracer>,
@@ -30,7 +30,7 @@ pub fn trace_positions_system(
     players: Query<(&Player, &LogicalPosition, &Velocity)>,
     balls: Query<(&LogicalPosition, &Velocity), With<Ball>>,
 ) {
-    if !tracer.should_record_positions() {
+    if !tracer.should_record_frame() {
         return;
     }
 

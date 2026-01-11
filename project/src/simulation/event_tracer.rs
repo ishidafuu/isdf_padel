@@ -142,13 +142,24 @@ impl EventTracer {
         self.current_frame
     }
 
-    /// 位置を記録すべきフレームかどうか
-    pub fn should_record_positions(&self) -> bool {
-        if !self.enabled || !self.config.position {
+    /// フレームを記録すべきかどうか
+    /// position または events のどちらかが有効であれば interval_frames ごとに記録
+    pub fn should_record_frame(&self) -> bool {
+        if !self.enabled {
+            return false;
+        }
+        // position も events も無効なら記録不要
+        if !self.config.position && !self.config.events {
             return false;
         }
         let interval = self.config.interval_frames.max(1) as u64;
         self.current_frame >= self.last_position_frame + interval
+    }
+
+    /// 位置を記録すべきフレームかどうか（後方互換性のため残存）
+    #[deprecated(note = "Use should_record_frame() instead")]
+    pub fn should_record_positions(&self) -> bool {
+        self.should_record_frame()
     }
 
     /// 位置・速度データを記録
