@@ -52,32 +52,45 @@ fn calculate_time_to_landing(position: Vec3, velocity: Vec3, gravity: f32) -> Op
     }
 }
 
-/// インターセプト位置を計算
-/// @spec 30301_ai_movement_spec.md#req-30301-v07-001
+/// 着地地点を計算
+/// @spec 30301_ai_movement_spec.md#req-30301-v08-001
 ///
-/// AIのX座標にボールが到達する時のZ座標を予測
-fn calculate_intercept_z(
+/// 放物線軌道から着地時のX, Z座標を計算
+fn calculate_landing_position(ball_pos: Vec3, ball_vel: Vec3, gravity: f32) -> Option<Vec3> {
+    let time_to_land = calculate_time_to_landing(ball_pos, ball_vel, gravity)?;
+    Some(Vec3::new(
+        ball_pos.x + ball_vel.x * time_to_land,
+        0.0,
+        ball_pos.z + ball_vel.z * time_to_land,
+    ))
+}
+
+
+
+/// 軌道ライン上のZ座標を計算
+/// @spec 30301_ai_movement_spec.md#req-30301-v08-002
+///
+/// ボール現在位置と着地点を結ぶ線上で、AIのX座標におけるZ座標を計算
+fn calculate_trajectory_line_z(
     ai_x: f32,
     ball_pos: Vec3,
     ball_vel: Vec3,
+    gravity: f32,
 ) -> Option<f32> {
-    // ボールがAIの方向に向かっていない、または速度がほぼ0の場合
-    if ball_vel.x.abs() < 0.001 {
-        return None;
+    let landing_pos = calculate_landing_position(ball_pos, ball_vel, gravity)?;
+
+    // ボール位置と着地点を結ぶ線上のZ座標を計算
+    let dx = landing_pos.x - ball_pos.x;
+    if dx.abs() < 0.001 {
+        return Some(ball_pos.z);
     }
 
-    // ボールがAIのX座標に到達する時間
-    let time_to_intercept = (ai_x - ball_pos.x) / ball_vel.x;
+    // AIのX座標が軌道線上のどこにあるかを計算
+    let t = (ai_x - ball_pos.x) / dx;
 
-    // 負の時間 = すでに通り過ぎた
-    if time_to_intercept < 0.0 {
-        return None;
-    }
-
-    // その時点でのZ座標
-    let intercept_z = ball_pos.z + ball_vel.z * time_to_intercept;
-
-    Some(intercept_z)
+    // tが0-1の範囲外の場合でも線形補間を続ける（軌道延長線上）
+    let trajectory_z = ball_pos.z + (landing_pos.z - ball_pos.z) * t;
+    Some(trajectory_z)
 }
 
 /// 短いボール判定
@@ -266,15 +279,24 @@ pub fn ai_movement_system(
                 // 状態変化時のみ目標を再計算
                 let is_short = is_short_ball(ai_pos.x, ball_pos, ball_vel, gravity);
 
+                // 着地地点を計算（短いボール時に使用）
+                let landing_pos = calculate_landing_position(ball_pos, ball_vel, gravity);
+
                 let (target_x, target_z) = if state_changed || ai.locked_target_z.is_none() {
-                    // 短いボール判定
-                    let target_z = if is_short {
-                        // 短いボール: ボールの現在Z座標を追跡
-                        ball_pos.z
+                    // 軌道ライン追跡
+                    // @spec 30301_ai_movement_spec.md#req-30301-v08-001
+                    // @spec 30301_ai_movement_spec.md#req-30301-v08-002
+                    let (target_x, target_z) = if is_short {
+                        // 短いボール: 着地地点に向かって移動
+                        match landing_pos {
+                            Some(pos) => (pos.x, pos.z),
+                            None => (ball_pos.x, ball_pos.z),
+                        }
                     } else {
-                        // インターセプト: AIのX座標でのZ座標を予測
-                        calculate_intercept_z(ai_pos.x, ball_pos, ball_vel)
-                            .unwrap_or(ball_pos.z)
+                        // 軌道ライン: AIのX座標での軌道ライン上Z座標を予測
+                        let z = calculate_trajectory_line_z(ai_pos.x, ball_pos, ball_vel, gravity)
+                            .unwrap_or(ball_pos.z);
+                        (ai_pos.x, z)
                     };
 
                     // 誤差を1回だけ適用してロック
@@ -282,13 +304,14 @@ pub fn ai_movement_system(
                     ai.locked_target_z = Some(with_error);
                     ai.lock_ball_velocity_x_sign = Some(current_ball_vel_x_sign);
 
-                    // 短いボール: X座標もボール位置を追跡
-                    // インターセプト: X座標は維持
-                    let x = if is_short { ball_pos.x } else { ai_pos.x };
-                    (x, with_error)
+                    (target_x, with_error)
                 } else {
                     // ロック済みの目標を使用
-                    let x = if is_short { ball_pos.x } else { ai_pos.x };
+                    let x = if is_short {
+                        landing_pos.map(|pos| pos.x).unwrap_or(ball_pos.x)
+                    } else {
+                        ai_pos.x
+                    };
                     (x, ai.locked_target_z.unwrap_or(ball_pos.z))
                 };
 
@@ -394,22 +417,46 @@ mod tests {
         assert!((time - 1.0).abs() < 0.1);
     }
 
-    /// インターセプトZ座標計算テスト
-    /// @spec 30301_ai_movement_spec.md#req-30301-v07-001
+    /// 軌道ラインZ座標計算テスト
+    /// @spec 30301_ai_movement_spec.md#req-30301-v08-002
     #[test]
-    fn test_intercept_z_calculation() {
-        // AI位置X = 5.0, ボール位置 = (0, 2, 0), ボール速度 = (10, 0, 5)
+    fn test_trajectory_line_z_calculation() {
+        // AI位置X = 5.0, ボール位置 = (0, 5, 0), ボール速度 = (10, 0, 5), 重力 = -10
+        // 着地時間 = √(2*5/10) = 1.0秒
+        // 着地位置X = 0 + 10 * 1.0 = 10.0
+        // 着地位置Z = 0 + 5 * 1.0 = 5.0
+        // AIのX=5.0は軌道の中間点（t=0.5）
+        // trajectory_z = 0 + (5 - 0) * 0.5 = 2.5
         let ai_x = 5.0;
-        let ball_pos = Vec3::new(0.0, 2.0, 0.0);
+        let ball_pos = Vec3::new(0.0, 5.0, 0.0);
         let ball_vel = Vec3::new(10.0, 0.0, 5.0);
+        let gravity = -10.0;
 
-        let result = calculate_intercept_z(ai_x, ball_pos, ball_vel);
+        let result = calculate_trajectory_line_z(ai_x, ball_pos, ball_vel, gravity);
         assert!(result.is_some());
 
-        let intercept_z = result.unwrap();
-        // time_to_intercept = (5.0 - 0.0) / 10.0 = 0.5秒
-        // intercept_z = 0.0 + 5.0 * 0.5 = 2.5
-        assert!((intercept_z - 2.5).abs() < 0.1);
+        let trajectory_z = result.unwrap();
+        // 軌道ラインの中間点なので Z = 2.5
+        assert!((trajectory_z - 2.5).abs() < 0.1);
+    }
+
+    /// 着地地点計算テスト
+    /// @spec 30301_ai_movement_spec.md#req-30301-v08-001
+    #[test]
+    fn test_landing_position_calculation() {
+        // ボール位置 = (0, 5, 0), ボール速度 = (10, 0, 5), 重力 = -10
+        // 着地時間 = √(2*5/10) = 1.0秒
+        // 着地位置 = (10, 0, 5)
+        let ball_pos = Vec3::new(0.0, 5.0, 0.0);
+        let ball_vel = Vec3::new(10.0, 0.0, 5.0);
+        let gravity = -10.0;
+
+        let result = calculate_landing_position(ball_pos, ball_vel, gravity);
+        assert!(result.is_some());
+
+        let landing_pos = result.unwrap();
+        assert!((landing_pos.x - 10.0).abs() < 0.1);
+        assert!((landing_pos.z - 5.0).abs() < 0.1);
     }
 
     /// 短いボール判定テスト

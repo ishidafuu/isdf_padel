@@ -1,6 +1,6 @@
 # AI Movement Spec
 
-**Version**: 1.2.0
+**Version**: 1.2.1
 **Last Updated**: 2026-01-11
 **Status**: Active
 
@@ -174,20 +174,24 @@ AIキャラクターの移動とポジショニングを定義します。
 
 ## v0.7 Requirements
 
-### REQ-30301-v07-001: インターセプト方式移動
+### REQ-30301-v07-001: 軌道ライン追跡（長いボール）
 
 - WHEN ボールが自分のコート側に向かっている
-- THE SYSTEM SHALL AIは自身のX座標を維持し、ボールが通過するZ座標を予測してそこに移動する
+- AND ボールがAIのX座標に到達する前に着地しない（長いボール）
+- THE SYSTEM SHALL AIは自身のX座標を維持し、ボール軌道ライン上のZ座標に移動する
 - WITH
   - X座標: 現在のAI X座標を維持（固定）
-  - Z座標: ボールがAIのX座標を通過する時点でのZ座標を予測
-  - 予測式: `intercept_z = ball_z + ball_vel_z * (ai_x - ball_x) / ball_vel_x`
+  - Z座標: ボール現在位置と着地地点を結ぶ線上で、AIのX座標でのZ座標
+  - 予測式: `trajectory_z = ball_z + (landing_z - ball_z) * (ai_x - ball_x) / (landing_x - ball_x)`
 
-### REQ-30301-v07-002: 短いボール判定
+### REQ-30301-v07-002: 着地地点追跡（短いボール）
 
-- WHEN ボールがAIのX座標に到達する前に着地する
-- THE SYSTEM SHALL AIはボールの現在位置を追跡する
-- WITH 判定条件: `time_to_landing < time_to_intercept`
+- WHEN ボールがAIのX座標に到達する前に着地する（短いボール）
+- THE SYSTEM SHALL AIは着地地点に向かって移動する
+- WITH
+  - 判定条件: `time_to_landing < time_to_intercept`
+  - 着地地点計算: `landing_pos = ball_pos + ball_vel * time_to_landing`
+  - 移動先: 着地地点の(X, Z)座標
 
 ### REQ-30301-v07-003: 目標ロック機構（振動防止）
 
@@ -210,6 +214,11 @@ AIキャラクターの移動とポジショニングを定義します。
 ---
 
 ## Change Log
+
+### 2026-01-11 - v1.2.1
+
+- v0.7: 軌道ライン追跡に改善（REQ-30301-v07-001）
+- v0.7: 短いボール時は着地地点追跡に修正（REQ-30301-v07-002）
 
 ### 2026-01-11 - v1.2.0
 
