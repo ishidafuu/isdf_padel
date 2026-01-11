@@ -20,6 +20,7 @@ use super::{
     AnomalyDetectorResource, AnomalyThresholdsResource, DebugLogger, EventTracer, HeadlessPlugins,
     MatchResult, SimulationFileConfig, SimulationReport, SimulationReporter, TraceSystemPlugin,
 };
+use crate::replay::{ReplayManager, ReplayRecorder};
 
 /// シミュレーション設定
 #[derive(Clone, Debug, Resource)]
@@ -258,6 +259,23 @@ impl SimulationRunner {
                     } else {
                         println!("  [Trace] Written to: {}", trace_file);
                     }
+                }
+            }
+        }
+
+        // リプレイを保存（ループ終了後に手動保存）
+        // @spec 77103_replay_spec.md
+        {
+            let world = app.world_mut();
+            let mut recorder = world.resource_mut::<ReplayRecorder>();
+            if recorder.is_recording() {
+                recorder.stop_recording();
+            }
+            if let Some(data) = recorder.take_data() {
+                let manager = world.resource::<ReplayManager>();
+                match manager.save_replay(&data) {
+                    Ok(path) => println!("  [Replay] Saved to: {:?}", path),
+                    Err(e) => eprintln!("Failed to save replay: {}", e),
                 }
             }
         }

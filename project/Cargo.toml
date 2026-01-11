@@ -22,11 +22,17 @@ path = "src/main.rs"
 name = "headless_sim"
 path = "src/bin/headless_sim.rs"
 
-# リプレイ再生バイナリ
+# リプレイ再生バイナリ（ヘッドレス）
 # @spec 77103_replay_spec.md
 [[bin]]
 name = "replay_player"
 path = "src/bin/replay_player.rs"
+
+# リプレイビューアバイナリ（表示付き）
+# @spec 77103_replay_spec.md REQ-77103-050
+[[bin]]
+name = "replay_viewer"
+path = "src/bin/replay_viewer.rs"
 
 [dependencies]
 bevy = { version = "0.17", features = ["file_watcher", "serialize"] }

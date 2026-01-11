@@ -7,6 +7,7 @@
 use bevy::prelude::*;
 
 use crate::character::CharacterPlugin;
+use crate::replay::ReplayRecordPlugin;
 use crate::core::{
     BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent,
     ShotEvent, ShotExecutedEvent,
@@ -41,7 +42,9 @@ impl Plugin for HeadlessPlugins {
             .add_plugins(MatchFlowPlugin)
             .add_plugins(AiServePlugin)
             .add_plugins(CharacterPlugin)
-            .add_plugins(AnomalyDetectorPlugin);
+            .add_plugins(AnomalyDetectorPlugin)
+            // @spec 77103_replay_spec.md: リプレイ記録機能
+            .add_plugins(ReplayRecordPlugin);
 
         // リソース初期化
         app.init_resource::<LastShotDebugInfo>();
