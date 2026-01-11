@@ -102,18 +102,28 @@ pub fn ai_shot_system(
             continue;
         }
 
-        // REQ-30302-003: 打球方向（相手コート中央に向かう方向）
-        // 相手コート中央に向かう方向を計算
-        let opponent_court_center = Vec3::new(0.0, 0.0, 0.0);
-        let direction_to_opponent = (opponent_court_center - ai_position).normalize();
+        // REQ-30302-003: 打球方向を制御値として設定
+        // ShotEvent.direction は制御値（-1.0〜+1.0）として解釈される
+        // direction.x: 深さ制御 (-1.0=ネット際, 0.0=サービスライン付近, +1.0=ベースライン際)
+        // direction.y: 横方向制御 (-1.0〜+1.0)
+        //
+        // 注意: 両サイドのプレイヤーとも同じ制御値セマンティクスを使用
+        // landing_position.rs がコートサイドに応じて適切に変換する
 
-        // REQ-30302-055: 打球方向にランダムブレを適用
-        // XZ平面上で方向ベクトルを回転させる
-        let base_dir_xz = Vec2::new(direction_to_opponent.x, direction_to_opponent.z);
-        let varied_dir_xz = apply_direction_variance(base_dir_xz, config.ai.direction_variance, &mut game_rng);
+        // ネットフォルトを避けるため、サービスライン〜ベースライン中間を狙う
+        let base_depth = 0.3_f32; // やや浅め（安全マージン）
+        let base_lateral = 0.0_f32; // コート中央
 
-        // ShotEventのdirectionとして渡す（X成分とZ成分）
-        let direction = varied_dir_xz;
+        // REQ-30302-055: ランダムブレを適用（制御値として）
+        // direction_variance（度）を制御値範囲に変換
+        let variance_factor = (config.ai.direction_variance / 45.0).clamp(0.0, 1.0);
+        let depth_offset = game_rng.random_range(-variance_factor..=variance_factor) * 0.2;
+        let lateral_offset = game_rng.random_range(-variance_factor..=variance_factor) * 0.5;
+
+        let direction = Vec2::new(
+            (base_depth + depth_offset).clamp(-0.5, 1.0), // ネット際は避ける（-0.5以上）
+            (base_lateral + lateral_offset).clamp(-1.0, 1.0),
+        );
 
         // REQ-30302-004: クールダウン開始
         shot_state.start_cooldown(config.ai.shot_cooldown);
@@ -183,16 +193,19 @@ mod tests {
     }
 
     /// REQ-30302-003: 打球方向計算テスト
+    /// X軸が打ち合い方向、Z軸がサイド方向
     #[test]
     fn test_direction_to_opponent_court() {
-        let ai_position = Vec3::new(0.0, 0.0, 5.0);
-        let court_depth = 6.0;
-        let opponent_court_center = Vec3::new(0.0, 0.0, -court_depth / 2.0);
+        // Leftコート（X<0側）にいるAIは、Rightコート（X>0側）を狙う
+        let ai_position = Vec3::new(-5.0, 0.0, 0.0);
+        let court_depth = 16.0;
+        // 相手コート中央はX = +4.0（depth/4）
+        let opponent_court_center = Vec3::new(court_depth / 4.0, 0.0, 0.0);
         let direction = (opponent_court_center - ai_position).normalize();
 
-        // AIは +Z側にいるので、相手コートは -Z方向
-        assert!(direction.z < 0.0);
-        // 中央に打つのでX方向は0
-        assert!(direction.x.abs() < 0.001);
+        // AIは Left側にいるので、相手コートは +X方向
+        assert!(direction.x > 0.0, "Should aim towards +X (opponent's court)");
+        // 中央に打つのでZ方向は小さい
+        assert!(direction.z.abs() < 0.001, "Z should be near zero");
     }
 }
