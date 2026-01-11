@@ -30,6 +30,8 @@ impl Plugin for PointJudgmentPlugin {
         app.init_resource::<RallyState>().add_systems(
             Update,
             (
+                // 最初にフラグをリセット
+                reset_rally_end_event_flag_system,
                 update_last_shooter_system,
                 bounce_count_update_system,
                 double_bounce_judgment_system,
@@ -42,6 +44,12 @@ impl Plugin for PointJudgmentPlugin {
                 .chain(),
         );
     }
+}
+
+/// フレーム開始時に RallyEndEvent 発行フラグをリセット
+/// 同一フレーム内での重複イベント発行を防止するため
+fn reset_rally_end_event_flag_system(mut rally_state: ResMut<RallyState>) {
+    rally_state.rally_end_event_sent_this_frame = false;
 }
 
 /// 最後のショット元更新システム

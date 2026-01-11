@@ -17,7 +17,7 @@ use crate::simulation::DebugLogger;
 pub fn let_judgment_system(
     mut commands: Commands,
     mut net_events: MessageReader<NetHitEvent>,
-    rally_state: Res<RallyState>,
+    mut rally_state: ResMut<RallyState>,
     config: Res<GameConfig>,
     mut debug_logger: Option<ResMut<DebugLogger>>,
     query: Query<(Entity, &LogicalPosition), (With<Ball>, Without<PointEnded>)>,
@@ -25,6 +25,11 @@ pub fn let_judgment_system(
 ) {
     // サーブ中でなければスキップ
     if rally_state.phase != RallyPhase::Serving {
+        return;
+    }
+
+    // 同一フレームで既にイベント発行済みならスキップ
+    if rally_state.rally_end_event_sent_this_frame {
         return;
     }
 
@@ -65,6 +70,9 @@ pub fn let_judgment_system(
                     reason: RallyEndReason::NetFault,
                 });
 
+                // 重複発行防止フラグを設定
+                rally_state.rally_end_event_sent_this_frame = true;
+
                 // 他のポイント判定システムからの重複発行を防止
                 commands.entity(entity).insert(PointEnded);
             }
@@ -78,7 +86,7 @@ pub fn let_judgment_system(
 pub fn net_fault_judgment_system(
     mut commands: Commands,
     mut net_events: MessageReader<NetHitEvent>,
-    rally_state: Res<RallyState>,
+    mut rally_state: ResMut<RallyState>,
     config: Res<GameConfig>,
     match_score: Res<MatchScore>,
     mut debug_logger: Option<ResMut<DebugLogger>>,
@@ -92,6 +100,11 @@ pub fn net_fault_judgment_system(
 
     // ゲーム進行中でなければスキップ
     if match_score.game_state != GameState::Playing {
+        return;
+    }
+
+    // 同一フレームで既にイベント発行済みならスキップ
+    if rally_state.rally_end_event_sent_this_frame {
         return;
     }
 
@@ -131,6 +144,9 @@ pub fn net_fault_judgment_system(
                         winner,
                         reason: RallyEndReason::NetFault,
                     });
+
+                    // 重複発行防止フラグを設定
+                    rally_state.rally_end_event_sent_this_frame = true;
 
                     // 他のポイント判定システムからの重複発行を防止
                     commands.entity(entity).insert(PointEnded);

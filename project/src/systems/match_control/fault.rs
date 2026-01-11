@@ -212,6 +212,11 @@ pub fn double_fault_processing_system(
     mut next_state: ResMut<NextState<crate::resource::MatchFlowState>>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
+    // 同一フレームで既にイベント発行済みならスキップ
+    if rally_state.rally_end_event_sent_this_frame {
+        return;
+    }
+
     for event in double_fault_events.read() {
         // @spec 30902_fault_spec.md#req-30902-002: レシーバーがポイントを獲得
         let winner = event.server.opponent();
@@ -229,6 +234,9 @@ pub fn double_fault_processing_system(
             winner,
             reason: RallyEndReason::DoubleFault,
         });
+
+        // 重複発行防止フラグを設定
+        rally_state.rally_end_event_sent_this_frame = true;
 
         // MatchFlowState::PointEndに遷移
         next_state.set(crate::resource::MatchFlowState::PointEnd);
@@ -296,6 +304,7 @@ mod tests {
                 point_values: vec![0, 15, 30, 40],
                 games_to_win_set: 6,
                 sets_to_win_match: 1,
+                point_end_delay: 1.5,
             },
             input: crate::resource::config::InputConfig {
                 jump_buffer_time: 0.1,

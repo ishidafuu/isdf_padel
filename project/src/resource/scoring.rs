@@ -361,6 +361,9 @@ pub struct RallyState {
     pub serve_side: ServeSide,
     /// サーブのファウル回数（0 or 1）
     pub fault_count: u32,
+    /// このフレームで RallyEndEvent が発行済みかどうか
+    /// 同一フレーム内での重複イベント発行を防止する
+    pub rally_end_event_sent_this_frame: bool,
 }
 
 impl Default for RallyState {
@@ -370,6 +373,7 @@ impl Default for RallyState {
             server: CourtSide::Left,
             serve_side: ServeSide::Deuce,
             fault_count: 0,
+            rally_end_event_sent_this_frame: false,
         }
     }
 }
@@ -383,6 +387,7 @@ impl RallyState {
             server,
             serve_side: ServeSide::Deuce,
             fault_count: 0,
+            rally_end_event_sent_this_frame: false,
         }
     }
 

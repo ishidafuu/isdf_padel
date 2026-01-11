@@ -46,11 +46,17 @@ pub fn double_bounce_judgment_system(
     mut commands: Commands,
     mut query: Query<(Entity, &mut BounceCount), (With<Ball>, Without<PointEnded>)>,
     match_score: Res<MatchScore>,
+    mut rally_state: ResMut<RallyState>,
     mut debug_logger: Option<ResMut<DebugLogger>>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
     // ゲーム進行中でなければスキップ
     if match_score.game_state != GameState::Playing {
+        return;
+    }
+
+    // 同一フレームで既にイベント発行済みならスキップ
+    if rally_state.rally_end_event_sent_this_frame {
         return;
     }
 
@@ -84,7 +90,8 @@ pub fn double_bounce_judgment_system(
 
                 // 重複発行防止フラグを設定
                 bounce_count.event_sent = true;
-                
+                rally_state.rally_end_event_sent_this_frame = true;
+
                 // 他のポイント判定システムからの重複発行を防止
                 commands.entity(entity).insert(PointEnded);
             }
@@ -98,7 +105,7 @@ pub fn double_bounce_judgment_system(
 pub fn own_court_hit_judgment_system(
     mut commands: Commands,
     mut bounce_events: MessageReader<GroundBounceEvent>,
-    rally_state: Res<RallyState>,
+    mut rally_state: ResMut<RallyState>,
     match_score: Res<MatchScore>,
     mut debug_logger: Option<ResMut<DebugLogger>>,
     query: Query<(Entity, &BounceCount, &LastShooter), (With<Ball>, Without<PointEnded>)>,
@@ -111,6 +118,11 @@ pub fn own_court_hit_judgment_system(
 
     // ゲーム進行中でなければスキップ
     if match_score.game_state != GameState::Playing {
+        return;
+    }
+
+    // 同一フレームで既にイベント発行済みならスキップ
+    if rally_state.rally_end_event_sent_this_frame {
         return;
     }
 
@@ -140,6 +152,9 @@ pub fn own_court_hit_judgment_system(
                         winner,
                         reason: RallyEndReason::OwnCourtHit,
                     });
+
+                    // 重複発行防止フラグを設定
+                    rally_state.rally_end_event_sent_this_frame = true;
 
                     // 他のポイント判定システムからの重複発行を防止
                     commands.entity(entity).insert(PointEnded);

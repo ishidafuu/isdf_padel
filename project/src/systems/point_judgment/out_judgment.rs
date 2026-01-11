@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use crate::components::{Ball, LastShooter, PointEnded};
 use crate::core::events::{BallOutOfBoundsEvent, RallyEndEvent, RallyEndReason, WallReflectionEvent};
 use crate::core::CourtSide;
-use crate::resource::{GameState, MatchScore};
+use crate::resource::{GameState, MatchScore, RallyState};
 use crate::simulation::DebugLogger;
 
 /// アウト判定システム（主要失点条件）
@@ -19,12 +19,18 @@ pub fn out_of_bounds_judgment_system(
     mut commands: Commands,
     mut out_events: MessageReader<BallOutOfBoundsEvent>,
     match_score: Res<MatchScore>,
+    mut rally_state: ResMut<RallyState>,
     mut debug_logger: Option<ResMut<DebugLogger>>,
     query: Query<(Entity, &LastShooter), (With<Ball>, Without<PointEnded>)>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
     // ゲーム進行中でなければスキップ
     if match_score.game_state != GameState::Playing {
+        return;
+    }
+
+    // 同一フレームで既にイベント発行済みならスキップ
+    if rally_state.rally_end_event_sent_this_frame {
         return;
     }
 
@@ -54,6 +60,9 @@ pub fn out_of_bounds_judgment_system(
                     reason: RallyEndReason::Out,
                 });
 
+                // 重複発行防止フラグを設定
+                rally_state.rally_end_event_sent_this_frame = true;
+
                 // 他のポイント判定システムからの重複発行を防止
                 commands.entity(entity).insert(PointEnded);
             } else {
@@ -76,6 +85,9 @@ pub fn out_of_bounds_judgment_system(
                     reason: RallyEndReason::Out,
                 });
 
+                // 重複発行防止フラグを設定
+                rally_state.rally_end_event_sent_this_frame = true;
+
                 // 他のポイント判定システムからの重複発行を防止
                 commands.entity(entity).insert(PointEnded);
             }
@@ -93,12 +105,18 @@ pub fn wall_hit_judgment_system(
     mut commands: Commands,
     mut wall_events: MessageReader<WallReflectionEvent>,
     match_score: Res<MatchScore>,
+    mut rally_state: ResMut<RallyState>,
     mut debug_logger: Option<ResMut<DebugLogger>>,
     query: Query<(Entity, &LastShooter), (With<Ball>, Without<PointEnded>)>,
     mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
     // ゲーム進行中でなければスキップ
     if match_score.game_state != GameState::Playing {
+        return;
+    }
+
+    // 同一フレームで既にイベント発行済みならスキップ
+    if rally_state.rally_end_event_sent_this_frame {
         return;
     }
 
@@ -127,6 +145,9 @@ pub fn wall_hit_judgment_system(
                     reason: RallyEndReason::Out,
                 });
 
+                // 重複発行防止フラグを設定
+                rally_state.rally_end_event_sent_this_frame = true;
+
                 // 他のポイント判定システムからの重複発行を防止
                 commands.entity(entity).insert(PointEnded);
             } else {
@@ -148,6 +169,9 @@ pub fn wall_hit_judgment_system(
                     winner,
                     reason: RallyEndReason::Out,
                 });
+
+                // 重複発行防止フラグを設定
+                rally_state.rally_end_event_sent_this_frame = true;
 
                 // 他のポイント判定システムからの重複発行を防止
                 commands.entity(entity).insert(PointEnded);
