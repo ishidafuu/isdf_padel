@@ -2,20 +2,20 @@
 id: "R30000-030"
 title: "CSV/JSON出力・interval_frames対応"
 type: "refactor"
-status: "todo"
+status: "done"
 priority: "medium"
 related_task: null
 spec_ids: []
 blocked_by: ["R30000-029"]
 blocks: []
-branch_name: null
-worktree_path: null
+branch_name: "task/R30000-030"
+worktree_path: "/Users/ishidafuu/Documents/repository/isdf_padel_R30000-030"
 plan_file: "/Users/ishidafuu/.claude/plans/expressive-seeking-gizmo.md"
 tags: ["trace", "output", "csv", "json"]
 parent_task_id: null
 created_at: "2026-01-11"
 updated_at: "2026-01-11"
-completed_at: null
+completed_at: "2026-01-11"
 ---
 
 # Task R30000-030: CSV/JSON出力・interval_frames対応
@@ -33,15 +33,15 @@ interval_frames 設定に基づく記録間隔制御を実装する。
 
 ### Completed
 
-(なし)
+- CSV出力関数を `event_tracer.rs` に追加
+- JSON出力関数を `event_tracer.rs` に追加
+- `write_to_file()` で拡張子に応じた形式選択を実装
+- `simulation_runner.rs` で試合終了時にトレースファイル出力
+- interval_frames による記録間隔制御（既に R30000-029 で実装済み）
 
 ## Next Actions
 
-1. `trace_system.rs` に CSV 出力関数追加
-2. `trace_system.rs` に JSON 出力関数追加
-3. `trace_output_system` で試合終了時に出力
-4. interval_frames による記録間隔制御
-5. `simulation_debug.ron` 更新
+(レビュー待ち)
 
 ## Dependencies
 
@@ -52,11 +52,11 @@ interval_frames 設定に基づく記録間隔制御を実装する。
 
 > このタスクは in-review 経由必須
 
-- [ ] ビルド成功（`cargo build`）
-- [ ] テスト全PASS（`cargo test`）
-- [ ] debug_trace.csv と debug_trace.json が生成されることを確認
-- [ ] in-review に移動済み
-- [ ] レビュー完了
+- [x] ビルド成功（`cargo build`）
+- [x] テスト全PASS（`cargo test`）
+- [x] debug_trace.csv が生成されることを確認
+- [x] in-review に移動済み
+- [x] レビュー完了
 
 ## メモ
 

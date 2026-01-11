@@ -5,6 +5,9 @@
 //! TraceConfig の設定に基づいて記録内容を制御する。
 
 use bevy::prelude::*;
+use std::fs::File;
+use std::io::{BufWriter, Write};
+use std::path::Path;
 
 use crate::core::CourtSide;
 
@@ -199,5 +202,190 @@ impl EventTracer {
     /// 記録されたイベント総数を取得
     pub fn event_count(&self) -> usize {
         self.frames.iter().map(|f| f.events.len()).sum()
+    }
+
+    /// CSV形式でファイルに出力
+    pub fn write_csv<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
+        let file = File::create(path)?;
+        let mut writer = BufWriter::new(file);
+
+        // ヘッダー行
+        writeln!(
+            writer,
+            "frame,timestamp,entity,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,event_type,event_detail"
+        )?;
+
+        for frame in &self.frames {
+            // エンティティ行
+            for entity in &frame.entities {
+                let entity_name = match entity.entity_type {
+                    EntityType::Player1 => "Player1",
+                    EntityType::Player2 => "Player2",
+                    EntityType::Ball => "Ball",
+                };
+                writeln!(
+                    writer,
+                    "{},{:.3},{},{:.2},{:.2},{:.2},{:.2},{:.2},{:.2},,",
+                    frame.frame,
+                    frame.timestamp,
+                    entity_name,
+                    entity.position.x,
+                    entity.position.y,
+                    entity.position.z,
+                    entity.velocity.x,
+                    entity.velocity.y,
+                    entity.velocity.z,
+                )?;
+            }
+
+            // イベント行
+            for event in &frame.events {
+                let (event_type, event_detail) = match event {
+                    GameEvent::BallHit { player, shot_type } => {
+                        ("BallHit".to_string(), format!("player={},type={}", player, shot_type))
+                    }
+                    GameEvent::Bounce { position, court_side } => (
+                        "Bounce".to_string(),
+                        format!(
+                            "pos=({:.2},{:.2},{:.2}),side={:?}",
+                            position.x, position.y, position.z, court_side
+                        ),
+                    ),
+                    GameEvent::WallReflect { position, wall_type } => (
+                        "WallReflect".to_string(),
+                        format!(
+                            "pos=({:.2},{:.2},{:.2}),type={}",
+                            position.x, position.y, position.z, wall_type
+                        ),
+                    ),
+                    GameEvent::Point { winner, reason } => {
+                        ("Point".to_string(), format!("winner={},reason={}", winner, reason))
+                    }
+                    GameEvent::Fault { fault_type } => {
+                        ("Fault".to_string(), format!("type={}", fault_type))
+                    }
+                    GameEvent::StateChange { from, to } => {
+                        ("StateChange".to_string(), format!("from={},to={}", from, to))
+                    }
+                };
+                writeln!(
+                    writer,
+                    "{},{:.3},,,,,,,,{},{}",
+                    frame.frame, frame.timestamp, event_type, event_detail
+                )?;
+            }
+        }
+
+        writer.flush()?;
+        Ok(())
+    }
+
+    /// JSON形式でファイルに出力
+    pub fn write_json<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
+        let file = File::create(path)?;
+        let mut writer = BufWriter::new(file);
+
+        writeln!(writer, "{{")?;
+        writeln!(writer, "  \"frames\": [")?;
+
+        for (i, frame) in self.frames.iter().enumerate() {
+            writeln!(writer, "    {{")?;
+            writeln!(writer, "      \"frame\": {},", frame.frame)?;
+            writeln!(writer, "      \"timestamp\": {:.3},", frame.timestamp)?;
+
+            // entities
+            writeln!(writer, "      \"entities\": [")?;
+            for (j, entity) in frame.entities.iter().enumerate() {
+                let entity_name = match entity.entity_type {
+                    EntityType::Player1 => "Player1",
+                    EntityType::Player2 => "Player2",
+                    EntityType::Ball => "Ball",
+                };
+                let comma = if j < frame.entities.len() - 1 { "," } else { "" };
+                writeln!(
+                    writer,
+                    "        {{\"type\": \"{}\", \"position\": [{:.2}, {:.2}, {:.2}], \"velocity\": [{:.2}, {:.2}, {:.2}]}}{}",
+                    entity_name,
+                    entity.position.x, entity.position.y, entity.position.z,
+                    entity.velocity.x, entity.velocity.y, entity.velocity.z,
+                    comma
+                )?;
+            }
+            writeln!(writer, "      ],")?;
+
+            // events
+            writeln!(writer, "      \"events\": [")?;
+            for (j, event) in frame.events.iter().enumerate() {
+                let event_json = match event {
+                    GameEvent::BallHit { player, shot_type } => {
+                        format!(
+                            "{{\"type\": \"BallHit\", \"player\": {}, \"shot_type\": \"{}\"}}",
+                            player, shot_type
+                        )
+                    }
+                    GameEvent::Bounce { position, court_side } => {
+                        format!(
+                            "{{\"type\": \"Bounce\", \"position\": [{:.2}, {:.2}, {:.2}], \"court_side\": \"{:?}\"}}",
+                            position.x, position.y, position.z, court_side
+                        )
+                    }
+                    GameEvent::WallReflect { position, wall_type } => {
+                        format!(
+                            "{{\"type\": \"WallReflect\", \"position\": [{:.2}, {:.2}, {:.2}], \"wall_type\": \"{}\"}}",
+                            position.x, position.y, position.z, wall_type
+                        )
+                    }
+                    GameEvent::Point { winner, reason } => {
+                        format!(
+                            "{{\"type\": \"Point\", \"winner\": {}, \"reason\": \"{}\"}}",
+                            winner, reason
+                        )
+                    }
+                    GameEvent::Fault { fault_type } => {
+                        format!("{{\"type\": \"Fault\", \"fault_type\": \"{}\"}}", fault_type)
+                    }
+                    GameEvent::StateChange { from, to } => {
+                        format!(
+                            "{{\"type\": \"StateChange\", \"from\": \"{}\", \"to\": \"{}\"}}",
+                            from, to
+                        )
+                    }
+                };
+                let comma = if j < frame.events.len() - 1 { "," } else { "" };
+                writeln!(writer, "        {}{}", event_json, comma)?;
+            }
+            writeln!(writer, "      ]")?;
+
+            let comma = if i < self.frames.len() - 1 { "," } else { "" };
+            writeln!(writer, "    }}{}", comma)?;
+        }
+
+        writeln!(writer, "  ]")?;
+        writeln!(writer, "}}")?;
+
+        writer.flush()?;
+        Ok(())
+    }
+
+    /// 指定されたパスに基づいて適切な形式で出力
+    /// - .csv 拡張子: CSV形式のみ
+    /// - .json 拡張子: JSON形式のみ
+    /// - それ以外: 両方出力（.csv と .json を付加）
+    pub fn write_to_file<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
+        let path = path.as_ref();
+        let extension = path.extension().and_then(|e| e.to_str());
+
+        match extension {
+            Some("csv") => self.write_csv(path),
+            Some("json") => self.write_json(path),
+            _ => {
+                // 拡張子なし: 両方出力
+                let csv_path = path.with_extension("csv");
+                let json_path = path.with_extension("json");
+                self.write_csv(&csv_path)?;
+                self.write_json(&json_path)?;
+                Ok(())
+            }
+        }
     }
 }

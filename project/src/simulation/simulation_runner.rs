@@ -249,6 +249,17 @@ impl SimulationRunner {
                 event_tracer.frame_count(),
                 event_tracer.event_count()
             );
+
+            // トレースをファイルに出力
+            if let Some(ref file_config) = self.file_config {
+                if let Some(ref trace_file) = file_config.output.trace_file {
+                    if let Err(e) = event_tracer.write_to_file(trace_file) {
+                        eprintln!("Failed to write trace file: {}", e);
+                    } else {
+                        println!("  [Trace] Written to: {}", trace_file);
+                    }
+                }
+            }
         }
 
         if self.config.verbose {
