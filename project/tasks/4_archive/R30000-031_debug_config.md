@@ -2,7 +2,7 @@
 id: "R30000-031"
 title: "DebugConfig・ログカテゴリ制御"
 type: "refactor"
-status: "in-review"
+status: "done"
 priority: "medium"
 related_task: null
 spec_ids: []
@@ -15,7 +15,7 @@ tags: ["debug", "logging", "config"]
 parent_task_id: null
 created_at: "2026-01-11"
 updated_at: "2026-01-11"
-completed_at: null
+completed_at: "2026-01-11"
 ---
 
 # Task R30000-031: DebugConfig・ログカテゴリ制御
@@ -58,7 +58,7 @@ completed_at: null
 - [x] テスト全PASS（`cargo test`）
 - [ ] log_ai: true 時に AI ログのみ出力されることを確認（→ R30000-032 でAIログシステム実装後）
 - [x] in-review に移動済み
-- [ ] レビュー完了
+- [x] レビュー完了
 
 ## メモ
 
