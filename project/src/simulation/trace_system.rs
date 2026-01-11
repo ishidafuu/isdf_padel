@@ -36,8 +36,11 @@ pub fn trace_positions_system(
 
     let mut entities = Vec::new();
 
-    // プレイヤーの位置・速度を記録
+    // 位置記録が有効な場合のみエンティティを収集
     if tracer.config.position {
+        let record_velocity = tracer.config.velocity;
+
+        // プレイヤーの位置・速度を記録
         for (player, pos, vel) in players.iter() {
             let entity_type = if player.id == 1 {
                 EntityType::Player1
@@ -47,33 +50,21 @@ pub fn trace_positions_system(
             entities.push(EntityTrace {
                 entity_type,
                 position: pos.value,
-                velocity: if tracer.config.velocity {
-                    vel.value
-                } else {
-                    Vec3::ZERO
-                },
+                velocity: if record_velocity { vel.value } else { Vec3::ZERO },
             });
         }
-    }
 
-    // ボールの位置・速度を記録
-    if tracer.config.position {
+        // ボールの位置・速度を記録
         for (pos, vel) in balls.iter() {
             entities.push(EntityTrace {
                 entity_type: EntityType::Ball,
                 position: pos.value,
-                velocity: if tracer.config.velocity {
-                    vel.value
-                } else {
-                    Vec3::ZERO
-                },
+                velocity: if record_velocity { vel.value } else { Vec3::ZERO },
             });
         }
     }
 
-    // 経過時間を計算（フレーム数 * delta）
     let timestamp = tracer.current_frame() as f32 * fixed_dt.delta_secs();
-
     tracer.record_positions(timestamp, entities);
 }
 
@@ -139,11 +130,13 @@ pub fn trace_point_events_system(
     mut rally_events: MessageReader<RallyEndEvent>,
     mut point_events: MessageReader<PointScoredEvent>,
 ) {
+    // PointScoredEvent は RallyEndEvent で記録するため消費のみ
+    point_events.read().count();
+
     if !tracer.enabled || !tracer.config.events {
         return;
     }
 
-    // RallyEndEvent から終了理由を取得
     for event in rally_events.read() {
         let winner = match event.winner {
             crate::core::CourtSide::Left => 1,
@@ -153,11 +146,6 @@ pub fn trace_point_events_system(
             winner,
             reason: format!("{:?}", event.reason),
         });
-    }
-
-    // PointScoredEvent も記録（重複防止のためコメントアウト可能）
-    for _event in point_events.read() {
-        // RallyEndEvent で記録するため、ここでは消費のみ
     }
 }
 
