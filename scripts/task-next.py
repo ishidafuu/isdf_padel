@@ -7,7 +7,6 @@ Usage:
 """
 
 import argparse
-import glob
 import re
 import sys
 from pathlib import Path
@@ -32,90 +31,64 @@ class BugInfo(TypedDict):
     status: str
 
 
-def parse_frontmatter(file_path: Path) -> TaskInfo | None:
-    """YAML Frontmatter を抽出してパース"""
+def extract_frontmatter(file_path: Path) -> dict[str, str | list[str]] | None:
+    """YAML Frontmatter を抽出して辞書として返す"""
     try:
         content = file_path.read_text(encoding="utf-8")
     except Exception:
         return None
 
-    # Frontmatter を抽出（--- で囲まれた部分）
     match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
     if not match:
         return None
 
-    frontmatter = match.group(1)
-
-    # 簡易 YAML パース（PyYAML 不要）
     def parse_value(val: str) -> str | list[str]:
         val = val.strip()
-        # リスト形式 ["a", "b"]
         if val.startswith("[") and val.endswith("]"):
             inner = val[1:-1]
             if not inner.strip():
                 return []
-            items = re.findall(r'"([^"]*)"', inner)
-            return items
-        # 文字列
+            return re.findall(r'"([^"]*)"', inner)
         if val.startswith('"') and val.endswith('"'):
             return val[1:-1]
         return val
 
     data: dict[str, str | list[str]] = {}
-    for line in frontmatter.split("\n"):
+    for line in match.group(1).split("\n"):
         if ":" in line:
             key, val = line.split(":", 1)
             data[key.strip()] = parse_value(val)
+    return data
 
-    # 必須フィールドチェック
-    if "id" not in data or "status" not in data:
+
+def parse_frontmatter(file_path: Path) -> TaskInfo | None:
+    """タスクファイルの Frontmatter をパース"""
+    data = extract_frontmatter(file_path)
+    if not data or "id" not in data or "status" not in data:
         return None
+
+    blocked_by = data.get("blocked_by", [])
+    blocks = data.get("blocks", [])
 
     return TaskInfo(
         id=str(data.get("id", "")),
         title=str(data.get("title", "")),
         priority=str(data.get("priority", "medium")),
         status=str(data.get("status", "")),
-        blocked_by=data.get("blocked_by", []) if isinstance(data.get("blocked_by"), list) else [],
-        blocks=data.get("blocks", []) if isinstance(data.get("blocks"), list) else [],
+        blocked_by=blocked_by if isinstance(blocked_by, list) else [],
+        blocks=blocks if isinstance(blocks, list) else [],
     )
 
 
 def parse_bug_frontmatter(file_path: Path) -> BugInfo | None:
-    """バグファイルの YAML Frontmatter を抽出してパース"""
-    try:
-        content = file_path.read_text(encoding="utf-8")
-    except Exception:
+    """バグファイルの Frontmatter をパース"""
+    data = extract_frontmatter(file_path)
+    if not data or "status" not in data:
         return None
 
-    # Frontmatter を抽出（--- で囲まれた部分）
-    match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
-    if not match:
-        return None
-
-    frontmatter = match.group(1)
-
-    # 簡易 YAML パース
-    def parse_value(val: str) -> str:
-        val = val.strip()
-        if val.startswith('"') and val.endswith('"'):
-            return val[1:-1]
-        return val
-
-    data: dict[str, str] = {}
-    for line in frontmatter.split("\n"):
-        if ":" in line:
-            key, val = line.split(":", 1)
-            data[key.strip()] = parse_value(val)
-
-    # 必須フィールドチェック
-    if "status" not in data:
-        return None
-
-    # ID をファイル名から抽出（BUG-001-xxx.md → BUG-001）
-    filename = file_path.stem
-    id_match = re.match(r"^(BUG-\d+)", filename)
-    bug_id = id_match.group(1) if id_match else filename
+    # ID をファイル名から抽出（BUG-001-xxx.md -> BUG-001）
+    id_match = re.match(r"^(BUG-\d+)", file_path.stem)
+    bug_id = id_match.group(1) if id_match else file_path.stem
 
     return BugInfo(
         id=bug_id,
@@ -142,6 +115,27 @@ def get_severity_icon(severity: str) -> str:
     return {"critical": "🔴", "major": "🟠", "minor": "🟡"}.get(severity, "🟡")
 
 
+def collect_tasks(files: list[Path]) -> list[TaskInfo]:
+    """ファイルリストからタスク情報を収集"""
+    tasks: list[TaskInfo] = []
+    for f in files:
+        task = parse_frontmatter(f)
+        if task:
+            tasks.append(task)
+    return tasks
+
+
+def is_parallel_ok(task: TaskInfo, active_tasks: list[TaskInfo]) -> tuple[bool, str]:
+    """タスクが並列実行可能かを判定"""
+    task_id = task["id"]
+    for active in active_tasks:
+        if task_id in active["blocks"]:
+            return False, f"{active['id']} と相互依存"
+        if active["id"] in task["blocks"]:
+            return False, f"{active['id']} と相互依存"
+    return True, ""
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="次に着手可能なタスクを提案")
     parser.add_argument("--limit", type=int, default=0, help="表示件数を制限（0=全件）")
@@ -152,79 +146,36 @@ def main() -> None:
     project_root = script_dir.parent
     tasks_dir = project_root / "project" / "tasks"
 
-    # タスクファイルを収集
-    todo_files = list(tasks_dir.glob("1_todo/*.md"))
-    archive_files = list(tasks_dir.glob("4_archive/*.md"))
-    in_progress_files = list(tasks_dir.glob("2_in-progress/*.md"))
-    in_review_files = list(tasks_dir.glob("3_in-review/*.md"))
+    # タスクファイルを収集・パース
+    todo_tasks = collect_tasks(list(tasks_dir.glob("1_todo/*.md")))
+    archive_tasks = collect_tasks(list(tasks_dir.glob("4_archive/*.md")))
+    in_progress_tasks = collect_tasks(list(tasks_dir.glob("2_in-progress/*.md")))
+    in_review_tasks = collect_tasks(list(tasks_dir.glob("3_in-review/*.md")))
 
-    # バックログファイルを収集（テンプレートを除外）
+    # バックログから reviewed バグを抽出（テンプレートを除外）
     backlog_files = [
         f for f in tasks_dir.glob("0_backlog/*.md") if not f.name.startswith("_")
     ]
+    reviewed_bugs = [
+        bug
+        for f in backlog_files
+        if (bug := parse_bug_frontmatter(f)) and bug["status"] == "reviewed"
+    ]
 
-    # reviewed バグを抽出
-    reviewed_bugs: list[BugInfo] = []
-    for f in backlog_files:
-        bug = parse_bug_frontmatter(f)
-        if bug and bug["status"] == "reviewed":
-            reviewed_bugs.append(bug)
+    # 完了済みタスクID
+    done_ids = {t["id"] for t in archive_tasks if t["status"] == "done"}
 
-    # 完了済みタスクID（status: "done" のみ）
-    done_ids: set[str] = set()
-    for f in archive_files:
-        task = parse_frontmatter(f)
-        if task and task["status"] == "done":
-            done_ids.add(task["id"])
-
-    # 進行中タスク（2_in-progress）
-    in_progress_tasks: list[TaskInfo] = []
-    for f in in_progress_files:
-        task = parse_frontmatter(f)
-        if task:
-            in_progress_tasks.append(task)
-
-    # レビュー待ちタスク（3_in-review）
-    in_review_tasks: list[TaskInfo] = []
-    for f in in_review_files:
-        task = parse_frontmatter(f)
-        if task:
-            in_review_tasks.append(task)
-
-    # 並列判定用に両方を合わせる
+    # 並列判定用に進行中とレビュー待ちを結合
     active_tasks = in_progress_tasks + in_review_tasks
-    in_progress_ids = {t["id"] for t in active_tasks}
 
-    # Todo タスクを解析
-    todo_tasks: list[TaskInfo] = []
-    for f in todo_files:
-        task = parse_frontmatter(f)
-        if task:
-            todo_tasks.append(task)
-
-    # READY 判定
+    # READY 判定: blocked_by の全IDが完了済みなら READY
     ready_tasks: list[TaskInfo] = []
     blocked_tasks: list[TaskInfo] = []
-
     for task in todo_tasks:
-        blocked_by = task["blocked_by"]
-        # blocked_by の全IDが完了済み(done)なら READY
-        if all(dep in done_ids for dep in blocked_by):
+        if all(dep in done_ids for dep in task["blocked_by"]):
             ready_tasks.append(task)
         else:
             blocked_tasks.append(task)
-
-    # 並列可能判定（進行中タスクと相互依存がないか）
-    def is_parallel_ok(task: TaskInfo) -> tuple[bool, str]:
-        task_id = task["id"]
-        for ip_task in active_tasks:
-            # 進行中タスクが自分を blocks していたら不可
-            if task_id in ip_task["blocks"]:
-                return False, f"{ip_task['id']} と相互依存"
-            # 自分が進行中タスクを blocks していたら不可
-            if ip_task["id"] in task["blocks"]:
-                return False, f"{ip_task['id']} と相互依存"
-        return True, ""
 
     # ソート: priority > blocks.length > id
     ready_tasks.sort(
@@ -302,7 +253,7 @@ def main() -> None:
             print("   └─ Blocks: なし")
 
         # 並列可能判定
-        parallel_ok, reason = is_parallel_ok(task)
+        parallel_ok, reason = is_parallel_ok(task, active_tasks)
         if parallel_ok:
             print("   └─ 並列: ✅ 可能")
         else:
