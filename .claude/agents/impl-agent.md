@@ -260,6 +260,8 @@ impl-agent（実装完了）
   ↓
 /impl-validate（仕様書との対応確認）
   ↓（PASS なら）
+code-simplifier（コード簡素化）※変更10行超の場合
+  ↓
 review-agent（整合性検証）
   ↓（問題なければ）
 実装完了
@@ -535,7 +537,38 @@ Task: project/tasks/2_in-progress/P001-*.md
 - [ ] コンパイル成功
 - [ ] @spec/@data コメント付与済み
 
-#### 2. タスク状態を `in-review` に遷移（MANDATORY）
+#### 2. 簡素化ステップ（code-simplifier）
+
+> **NOTE**: in-review 遷移前に code-simplifier でコード簡素化を実行
+
+**実行条件**:
+- 変更行数が **10行を超える** 場合に実行
+- `skip_simplify: true` がタスクに設定されていない場合
+
+**確認コマンド**:
+```bash
+# 変更行数を確認
+git diff --stat
+```
+
+**スキップ条件**:
+| 条件 | 理由 |
+|-----|------|
+| 変更 10 行以下 | 簡素化の効果が限定的 |
+| `skip_simplify: true` 設定 | 明示的なスキップ指定 |
+
+**実行方法**:
+```
+Task ツールで code-simplifier エージェントを呼び出す
+→ 最近変更されたコードに対して簡素化を実行
+```
+
+**簡素化が不要な場合**:
+```
+ℹ️ 簡素化スキップ: 変更 10 行以下のためスキップします
+```
+
+#### 3. タスク状態を `in-review` に遷移（MANDATORY）
 
 ```bash
 # 1. タスクファイルを移動
@@ -545,11 +578,11 @@ mv project/tasks/2_in-progress/30XXX-*.md project/tasks/3_in-review/
 Edit(status: "in-progress" -> "in-review")
 ```
 
-#### 3. review-agent でレビューを実施
+#### 4. review-agent でレビューを実施
 
 review-agent ガイドラインを参照してレビューを実行。
 
-#### 4. レビュー完了後
+#### 5. レビュー完了後
 
 - **問題なし**: task-manager-agent でタスク完了処理を実行
 - **問題あり**: impl-agent に差し戻し（`3_in-review/` → `2_in-progress/`）
