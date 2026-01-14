@@ -67,8 +67,8 @@ impl Default for ServeConfig {
             hit_height_max: 2.7,
             hit_height_optimal: 2.2,
             ai_hit_tolerance: 0.1,
-            serve_baseline_x_p1: -7.0,
-            serve_baseline_x_p2: 7.0,
+            serve_baseline_x_p1: -8.5,
+            serve_baseline_x_p2: 8.5,
         }
     }
 }

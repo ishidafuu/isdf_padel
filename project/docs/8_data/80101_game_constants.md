@@ -350,8 +350,8 @@ let angle = if is_jump_shot {
 | hit_height_max | f32 | 2.7 | ヒット可能最高高さ（m） |
 | hit_height_optimal | f32 | 2.2 | AI用ヒット最適高さ（m） |
 | ai_hit_tolerance | f32 | 0.1 | AI用ヒット許容範囲（m） |
-| serve_baseline_x_p1 | f32 | -7.0 | Player1のベースライン位置 |
-| serve_baseline_x_p2 | f32 | 7.0 | Player2のベースライン位置 |
+| serve_baseline_x_p1 | f32 | -8.5 | Player1のベースライン位置（ベースライン外側） |
+| serve_baseline_x_p2 | f32 | 8.5 | Player2のベースライン位置（ベースライン外側） |
 
 ```rust
 /// サーブ設定
@@ -415,8 +415,8 @@ fn default_hit_height_min() -> f32 { 1.8 }
 fn default_hit_height_max() -> f32 { 2.7 }
 fn default_hit_height_optimal() -> f32 { 2.2 }
 fn default_ai_hit_tolerance() -> f32 { 0.1 }
-fn default_serve_baseline_x_p1() -> f32 { -7.0 }
-fn default_serve_baseline_x_p2() -> f32 { 7.0 }
+fn default_serve_baseline_x_p1() -> f32 { -8.5 }
+fn default_serve_baseline_x_p2() -> f32 { 8.5 }
 ```
 
 **使用例**:
@@ -766,8 +766,8 @@ GameConfig(
         hit_height_max: 2.7,
         hit_height_optimal: 2.2,
         ai_hit_tolerance: 0.1,
-        serve_baseline_x_p1: -7.0,
-        serve_baseline_x_p2: 7.0,
+        serve_baseline_x_p1: -8.5,
+        serve_baseline_x_p2: 8.5,
     ),
     ai: AiConfig(
         move_speed: 4.5,

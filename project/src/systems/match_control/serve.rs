@@ -73,13 +73,21 @@ pub fn serve_position_system(
     for (player, mut pos, ai_controller) in player_query.iter_mut() {
         let is_server = player.court_side == match_score.server;
 
-        // X位置はそのまま維持、Z位置をサーブサイドに合わせる
         // サーバーとレシーバーは対角線上（クロス）に配置
         let target_z = if is_server {
             serve_z  // サーバーはサーブサイドに
         } else {
             -serve_z  // レシーバーは対角線上（逆サイド）に
         };
+
+        // X位置: サーバーはベースライン外に配置
+        // @spec 30102_serve_spec.md#req-30102-086
+        if is_server {
+            pos.value.x = match player.court_side {
+                CourtSide::Left => config.serve.serve_baseline_x_p1,
+                CourtSide::Right => config.serve.serve_baseline_x_p2,
+            };
+        }
 
         pos.value.z = target_z;
 

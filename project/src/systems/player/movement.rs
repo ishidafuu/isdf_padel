@@ -8,7 +8,8 @@ use bevy::prelude::*;
 use crate::components::{AiController, InputState, KnockbackState, LogicalPosition, Player, Velocity};
 use crate::core::events::PlayerMoveEvent;
 use crate::resource::config::GameConfig;
-use crate::resource::scoring::{MatchFlowState, ServeState, ServeSubPhase};
+use crate::resource::config::ServeSide;
+use crate::resource::scoring::{MatchFlowState, RallyState, ServeState, ServeSubPhase};
 use crate::resource::FixedDeltaTime;
 use crate::resource::MatchScore;
 
@@ -28,6 +29,7 @@ pub fn movement_system(
     match_state: Res<State<MatchFlowState>>,
     match_score: Res<MatchScore>,
     serve_state: Res<ServeState>,
+    rally_state: Res<RallyState>,
     mut query: Query<
         (&Player, &mut LogicalPosition, &mut Velocity, &KnockbackState, &InputState),
         Without<AiController>,
@@ -102,13 +104,25 @@ pub fn movement_system(
         let old_position = logical_pos.value;
         let mut new_position = old_position + final_velocity * delta;
 
-        // @spec 30102_serve_spec.md#req-30102-086: サーブ待機中のサーバーはX座標をベースラインに固定
+        // @spec 30102_serve_spec.md#req-30102-086: サーブ待機中のサーバーは移動を制限
         if is_serve_state && is_server && serve_state.phase == ServeSubPhase::Waiting {
+            // X座標をベースラインに固定
             let baseline_x = match player.court_side {
                 crate::core::CourtSide::Left => config.serve.serve_baseline_x_p1,
                 crate::core::CourtSide::Right => config.serve.serve_baseline_x_p2,
             };
             new_position.x = baseline_x;
+
+            // Z座標をセンターライン（Z=0）を越えないように制限
+            // サイド方向はサイドウォール（width / 2.0）まで移動可能
+            let side_wall_z = config.court.width / 2.0; // 6.0
+            let (z_min, z_max) = match (player.court_side, rally_state.serve_side) {
+                (crate::core::CourtSide::Left, ServeSide::Deuce) => (0.0, side_wall_z),
+                (crate::core::CourtSide::Left, ServeSide::Ad) => (-side_wall_z, 0.0),
+                (crate::core::CourtSide::Right, ServeSide::Deuce) => (-side_wall_z, 0.0),
+                (crate::core::CourtSide::Right, ServeSide::Ad) => (0.0, side_wall_z),
+            };
+            new_position.z = new_position.z.clamp(z_min, z_max);
         }
 
         logical_pos.value = new_position;

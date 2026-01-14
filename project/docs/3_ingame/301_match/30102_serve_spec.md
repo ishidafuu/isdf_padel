@@ -126,10 +126,15 @@
 ### REQ-30102-086: ベースライン制限
 **WHILE** MatchFlowState == Serve
 **AND** ServeSubPhase == Waiting
-**THE SYSTEM SHALL** サーバーの X 方向移動を制限する
-- Player1: X座標を `config.serve.serve_baseline_x_p1` に固定
-- Player2: X座標を `config.serve.serve_baseline_x_p2` に固定
-- Z 方向のみ移動可能
+**THE SYSTEM SHALL** サーバーの移動を制限する
+- X座標をベースラインに固定
+  - Player1: `config.serve.serve_baseline_x_p1`
+  - Player2: `config.serve.serve_baseline_x_p2`
+- Z座標をセンターライン（Z=0）を越えないように制限（サイド方向はサイドウォールまで）
+  - Left側 + デュースサイド: 0 ≤ Z ≤ `config.court.width / 2.0`
+  - Left側 + アドサイド: `-config.court.width / 2.0` ≤ Z ≤ 0
+  - Right側 + デュースサイド: `-config.court.width / 2.0` ≤ Z ≤ 0
+  - Right側 + アドサイド: 0 ≤ Z ≤ `config.court.width / 2.0`
 **テスト**: TST-30104-086
 
 ### REQ-30102-087: AIトス実行
@@ -208,8 +213,8 @@
 | ヒット可能最高高さ | `config.serve.hit_height_max` | 2.7 | ヒット可能な最高高さ（m） |
 | ヒット最適高さ | `config.serve.hit_height_optimal` | 2.2 | AI用ヒット最適高さ（m） |
 | AIヒット許容範囲 | `config.serve.ai_hit_tolerance` | 0.1 | AI用ヒット許容範囲（m） |
-| P1ベースラインX | `config.serve.serve_baseline_x_p1` | -7.0 | Player1のベースライン位置 |
-| P2ベースラインX | `config.serve.serve_baseline_x_p2` | 7.0 | Player2のベースライン位置 |
+| P1ベースラインX | `config.serve.serve_baseline_x_p1` | -8.5 | Player1のベースライン位置（ベースライン外側） |
+| P2ベースラインX | `config.serve.serve_baseline_x_p2` | 8.5 | Player2のベースライン位置（ベースライン外側） |
 
 ### AIサーブパラメータ
 
