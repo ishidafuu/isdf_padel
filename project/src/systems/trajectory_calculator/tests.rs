@@ -129,7 +129,7 @@ mod tests {
     fn test_forward_landing_position() {
         let config = make_test_config();
         let ctx = TrajectoryContext {
-            input: Vec2::new(0.0, -1.0), // ネット際
+            input: Vec2::new(-1.0, 0.0), // ネット際（X軸で深さ調整）
             court_side: CourtSide::Left,
             ball_position: Vec3::new(-5.0, 1.0, 0.0),
             spin: 0.0,
@@ -153,7 +153,7 @@ mod tests {
     fn test_backward_landing_position() {
         let config = make_test_config();
         let ctx = TrajectoryContext {
-            input: Vec2::new(0.0, 1.0), // ベースライン際
+            input: Vec2::new(1.0, 0.0), // ベースライン際（X軸で深さ調整）
             court_side: CourtSide::Left,
             ball_position: Vec3::new(-5.0, 1.0, 0.0),
             spin: 0.0,
@@ -177,9 +177,9 @@ mod tests {
     fn test_side_landing_position() {
         let config = make_test_config();
 
-        // 右入力
+        // 右入力（Y軸で幅調整）
         let ctx_right = TrajectoryContext {
-            input: Vec2::new(1.0, 0.0),
+            input: Vec2::new(0.0, 1.0),
             court_side: CourtSide::Left,
             ball_position: Vec3::new(-5.0, 1.0, 0.0),
             spin: 0.0,
@@ -195,9 +195,9 @@ mod tests {
             landing_right.z
         );
 
-        // 左入力
+        // 左入力（Y軸で幅調整）
         let ctx_left = TrajectoryContext {
-            input: Vec2::new(-1.0, 0.0),
+            input: Vec2::new(0.0, -1.0),
             court_side: CourtSide::Left,
             ball_position: Vec3::new(-5.0, 1.0, 0.0),
             spin: 0.0,
