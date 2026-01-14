@@ -1,8 +1,8 @@
 ---
-description: リプレイファイルをクリア
+description: リプレイファイルを削除
 ---
 
-# /clear-replays コマンド
+# /delete-replays コマンド
 
 リプレイフォルダ内のファイルを削除します。
 
@@ -13,7 +13,7 @@ description: リプレイファイルをクリア
 ## 使用方法
 
 ```
-/clear-replays
+/delete-replays
 ```
 
 ## 指示
