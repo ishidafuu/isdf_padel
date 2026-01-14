@@ -26,7 +26,7 @@ use padel_game::core::{
 use padel_game::presentation::{
     ball_spin_color_system, despawn_ball_shadow_system, player_hold_visual_system,
     save_player_original_color_system, spawn_ball_shadow_system, spawn_player_shadow_system,
-    sync_shadow_system, sync_transform_system, WORLD_SCALE,
+    sync_shadow_system, sync_transform_system, DebugUiPlugin, WORLD_SCALE,
 };
 use padel_game::replay::loader::load_replay;
 // Note: ReplayPlayer は再シミュレーション方式では不要（シード値取得のみリプレイファイルを使用）
@@ -165,7 +165,8 @@ impl Plugin for ReplayViewerPlugins {
             .add_plugins(MatchFlowPlugin)
             .add_plugins(AiServePlugin)
             .add_plugins(CharacterPlugin)
-            .add_plugins(AnomalyDetectorPlugin);
+            .add_plugins(AnomalyDetectorPlugin)
+            .add_plugins(DebugUiPlugin);
 
         // リソース初期化
         app.init_resource::<LastShotDebugInfo>();
