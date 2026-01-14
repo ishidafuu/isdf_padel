@@ -5,6 +5,8 @@
 //! リプレイの再生システム。
 //! 記録された入力データをInputStateに注入する。
 
+use std::sync::Arc;
+
 use bevy::prelude::*;
 
 use crate::components::{AiController, InputState, Player};
@@ -17,8 +19,8 @@ use super::data::{InputSnapshot, ReplayData};
 /// @spec REQ-77103-008
 #[derive(Resource, Default)]
 pub struct ReplayPlayer {
-    /// 再生中のリプレイデータ
-    data: Option<ReplayData>,
+    /// 再生中のリプレイデータ（Arc で共有してcloneコストを削減）
+    data: Option<Arc<ReplayData>>,
     /// 現在のフレームインデックス
     current_frame: usize,
     /// 再生中かどうか
@@ -38,7 +40,8 @@ impl ReplayPlayer {
     }
 
     /// リプレイデータを設定して再生開始
-    pub fn start_playback(&mut self, data: ReplayData) {
+    /// Arc<ReplayData> を受け取ることで、clone コストを削減
+    pub fn start_playback(&mut self, data: Arc<ReplayData>) {
         info!(
             "Starting replay playback: {} frames",
             data.frames.len()

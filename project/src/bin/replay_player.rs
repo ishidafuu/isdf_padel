@@ -13,6 +13,8 @@
 //! cargo run --bin replay_player -- -v assets/replays/replay_20260110_123456.ron
 //! ```
 
+use std::sync::Arc;
+
 use bevy::{app::ScheduleRunnerPlugin, asset::AssetPlugin, prelude::*, state::app::StatesPlugin};
 use clap::Parser;
 
@@ -98,9 +100,10 @@ fn main() {
         }
     };
 
-    // ReplayPlayer リソースを初期化
+    // ReplayPlayer リソースを初期化（Arc で共有してcloneコストを削減）
+    let replay_data = Arc::new(replay_data);
     let mut replay_player = ReplayPlayer::new();
-    replay_player.start_playback(replay_data.clone());
+    replay_player.start_playback(Arc::clone(&replay_data));
 
     // リプレイのシード値でGameRngを初期化（AI動作の再現性確保）
     let game_rng = GameRng::from_seed(replay_data.metadata.seed);
