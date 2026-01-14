@@ -47,7 +47,7 @@ GameConfig(
         invincibility_time: 1.0,
     ),
     shot: ShotConfig(
-        max_distance: 0.9,
+        max_distance: 1.5,  // 球体判定（3D距離）でのリーチ
         max_height_diff: 2.0,
         cooldown_time: 0.5,
         normal_shot_angle: 30.0,

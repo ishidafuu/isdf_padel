@@ -90,15 +90,9 @@ pub fn ai_shot_system(
 
         let ai_position = ai_pos.value;
 
-        // REQ-30302-001: ショット可能判定（距離）
-        let distance_2d = distance_xz(ai_position, ball_pos);
-        if distance_2d > config.shot.max_distance {
-            continue;
-        }
-
-        // REQ-30302-001: ショット可能判定（高さ）
-        let height_diff = (ai_position.y - ball_pos.y).abs();
-        if height_diff > config.shot.max_height_diff {
+        // REQ-30302-001: 球体判定（3D距離）
+        let distance_3d = (ai_position - ball_pos).length();
+        if distance_3d > config.shot.max_distance {
             continue;
         }
 
@@ -145,14 +139,14 @@ pub fn ai_shot_system(
         // AIショットログ出力
         if let Some(ref mut logger) = debug_logger {
             logger.log_ai(&format!(
-                "P{} SHOT distance={:.2} height_diff={:.2} dir=({:.2},{:.2}) cooldown={:.2}",
-                player.id, distance_2d, height_diff, direction.x, direction.y, config.ai.shot_cooldown
+                "P{} SHOT distance_3d={:.2} dir=({:.2},{:.2}) cooldown={:.2}",
+                player.id, distance_3d, direction.x, direction.y, config.ai.shot_cooldown
             ));
         }
 
         info!(
-            "AI Player {} shot! direction: {:?}, distance: {:.2}",
-            player.id, direction, distance_2d
+            "AI Player {} shot! direction: {:?}, distance_3d: {:.2}",
+            player.id, direction, distance_3d
         );
     }
 }

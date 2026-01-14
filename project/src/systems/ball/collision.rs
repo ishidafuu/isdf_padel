@@ -70,17 +70,14 @@ pub fn ball_player_collision_system(
 
 /// 衝突判定に必要なパラメータ
 struct CollisionParams {
+    /// 衝突距離（ボール半径 + キャラクター半径）
     collision_distance: f32,
-    z_tolerance: f32,
-    max_height_diff: f32,
 }
 
 impl CollisionParams {
     fn from_config(config: &GameConfig) -> Self {
         Self {
             collision_distance: config.ball.radius + config.collision.character_radius,
-            z_tolerance: config.collision.z_tolerance,
-            max_height_diff: config.shot.max_height_diff,
         }
     }
 }
@@ -114,38 +111,18 @@ fn find_closest_collision(
 
         let player_pos = player_logical_pos.value;
 
-        // 衝突条件をチェック
-        if !is_collision_candidate(ball_pos, player_pos, params) {
-            continue;
-        }
-
-        // XZ平面での距離計算
-        let distance_2d = distance_xz(ball_pos, player_pos);
+        // 3D距離で衝突判定（球体判定）
+        let distance_3d = (ball_pos - player_pos).length();
 
         // 衝突判定 & 最も近いプレイヤーを記録
-        if distance_2d <= params.collision_distance
-            && closest.as_ref().is_none_or(|(_, _, d)| distance_2d < *d)
+        if distance_3d <= params.collision_distance
+            && closest.as_ref().is_none_or(|(_, _, d)| distance_3d < *d)
         {
-            closest = Some((player_entity, player_pos, distance_2d));
+            closest = Some((player_entity, player_pos, distance_3d));
         }
     }
 
     closest.map(|(entity, pos, _)| (entity, pos))
-}
-
-/// 衝突候補かどうかをチェック（Z軸・高さ方向）
-/// @spec 30403_collision_spec.md#req-30403-001
-#[inline]
-fn is_collision_candidate(ball_pos: Vec3, player_pos: Vec3, params: &CollisionParams) -> bool {
-    // Z軸許容範囲チェック
-    let z_diff = (ball_pos.z - player_pos.z).abs();
-    if z_diff > params.z_tolerance {
-        return false;
-    }
-
-    // 高さ方向の打球可能範囲チェック
-    let height_diff = ball_pos.y - player_pos.y;
-    height_diff >= 0.0 && height_diff <= params.max_height_diff
 }
 
 /// 衝突処理（イベント発行・ボール反射）
@@ -185,6 +162,8 @@ fn process_collision(
 }
 
 /// XZ平面での2点間距離を計算（水平距離、高さは無視）
+/// Note: 球体判定への移行により未使用となったが、テスト互換性のため残存
+#[allow(dead_code)]
 #[inline]
 fn distance_xz(a: Vec3, b: Vec3) -> f32 {
     let dx = a.x - b.x;

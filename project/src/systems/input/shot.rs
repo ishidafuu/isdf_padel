@@ -88,22 +88,12 @@ pub fn shot_input_system(
 
         let player_pos = player_logical_pos.value;
 
-        // REQ-30601-002: 距離判定
-        let distance_2d = distance_2d(player_pos, ball_pos);
-        if distance_2d > config.shot.max_distance {
+        // REQ-30601-002: 球体判定（3D距離）
+        let distance_3d = (player_pos - ball_pos).length();
+        if distance_3d > config.shot.max_distance {
             info!(
-                "Player {} shot ignored: too far (distance: {:.2}, max: {:.2})",
-                player.id, distance_2d, config.shot.max_distance
-            );
-            continue;
-        }
-
-        // REQ-30601-003: 高さ差判定
-        let height_diff = (player_pos.y - ball_pos.y).abs();
-        if height_diff > config.shot.max_height_diff {
-            info!(
-                "Player {} shot ignored: height diff too large ({:.2}, max: {:.2})",
-                player.id, height_diff, config.shot.max_height_diff
+                "Player {} shot ignored: too far (distance_3d: {:.2}, max: {:.2})",
+                player.id, distance_3d, config.shot.max_distance
             );
             continue;
         }

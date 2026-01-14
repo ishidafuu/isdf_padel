@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use crate::components::{Ball, BounceCount, KnockbackState, Player, ShotState};
 use crate::core::CourtSide;
+use crate::presentation::WORLD_SCALE;
 use crate::resource::{GameConfig, MatchScore, RallyPhase, RallyState};
 
 /// デバッグUIプラグイン
@@ -13,7 +14,7 @@ pub struct DebugUiPlugin;
 impl Plugin for DebugUiPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup_debug_ui)
-            .add_systems(Update, update_debug_ui);
+            .add_systems(Update, (update_debug_ui, draw_hit_range_gizmos));
     }
 }
 
@@ -125,4 +126,42 @@ fn update_debug_ui(
     let player_states = format_player_states(&player_query);
 
     **text = format!("{}\n{}\n{}\n{}", score_text, phase_info, bounce_info, player_states);
+}
+
+/// 当たり判定（球体）をGizmosで描画
+/// 論理座標系: X=打ち合い方向, Y=高さ, Z=コート幅
+/// 画面座標系: X=打ち合い方向, Y=コート幅
+fn draw_hit_range_gizmos(
+    mut gizmos: Gizmos,
+    config: Res<GameConfig>,
+    player_query: Query<(&Player, &Transform)>,
+    ball_query: Query<&Transform, With<Ball>>,
+) {
+    let hit_radius = config.shot.max_distance * WORLD_SCALE;
+
+    // 各プレイヤーの当たり判定範囲を描画
+    for (player, transform) in player_query.iter() {
+        let color = if player.id == 1 {
+            Color::srgba(0.0, 1.0, 1.0, 0.5) // シアン（半透明）
+        } else {
+            Color::srgba(1.0, 0.5, 0.0, 0.5) // オレンジ（半透明）
+        };
+
+        // 2D画面上での円を描画（キャラクターの足元位置を中心に）
+        gizmos.circle_2d(
+            Isometry2d::from_translation(transform.translation.truncate()),
+            hit_radius,
+            color,
+        );
+    }
+
+    // ボールの位置にも小さいマーカーを描画
+    for ball_transform in ball_query.iter() {
+        let ball_pos = ball_transform.translation.truncate();
+        gizmos.circle_2d(
+            Isometry2d::from_translation(ball_pos),
+            config.ball.radius * WORLD_SCALE,
+            Color::srgba(1.0, 1.0, 0.0, 0.8), // 黄色
+        );
+    }
 }
