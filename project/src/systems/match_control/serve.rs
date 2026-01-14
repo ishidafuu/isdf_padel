@@ -294,37 +294,6 @@ pub fn serve_toss_timeout_system(
     info!("Serve let: {} (retry without fault)", reason);
 }
 
-/// ダブルフォルト処理システム
-/// @spec 30102_serve_spec.md#req-30102-089
-/// fault_countが2に達したら相手にポイントを与える
-pub fn serve_double_fault_system(
-    mut serve_state: ResMut<ServeState>,
-    mut match_score: ResMut<MatchScore>,
-    mut next_state: ResMut<NextState<MatchFlowState>>,
-) {
-    // @spec 30102_serve_spec.md#req-30102-089: ダブルフォルト判定
-    if !serve_state.is_double_fault() {
-        return;
-    }
-
-    // 相手にポイント
-    let receiver = match_score.server.opponent();
-    match_score.add_point(receiver);
-
-    info!(
-        "Double fault! Point to {:?}. Score: P1={}, P2={}",
-        receiver,
-        match_score.get_point_index(CourtSide::Left),
-        match_score.get_point_index(CourtSide::Right)
-    );
-
-    // ServeStateリセット
-    serve_state.reset_for_new_point();
-
-    // PointEnd状態に遷移
-    next_state.set(MatchFlowState::PointEnd);
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

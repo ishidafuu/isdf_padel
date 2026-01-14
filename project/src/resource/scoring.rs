@@ -364,6 +364,9 @@ pub struct RallyState {
     /// このフレームで RallyEndEvent が発行済みかどうか
     /// 同一フレーム内での重複イベント発行を防止する
     pub rally_end_event_sent_this_frame: bool,
+    /// このポイントでスコアが既に加算済みかどうか
+    /// フレームをまたいだ重複加算を防止する
+    pub point_scored_this_rally: bool,
 }
 
 impl Default for RallyState {
@@ -374,6 +377,7 @@ impl Default for RallyState {
             serve_side: ServeSide::Deuce,
             fault_count: 0,
             rally_end_event_sent_this_frame: false,
+            point_scored_this_rally: false,
         }
     }
 }
@@ -388,6 +392,7 @@ impl RallyState {
             serve_side: ServeSide::Deuce,
             fault_count: 0,
             rally_end_event_sent_this_frame: false,
+            point_scored_this_rally: false,
         }
     }
 
@@ -401,6 +406,8 @@ impl RallyState {
     /// サーブ開始
     pub fn start_serve(&mut self) {
         self.phase = RallyPhase::Serving;
+        // 新しいサーブ開始時にスコア加算フラグをリセット
+        self.point_scored_this_rally = false;
     }
 
     /// ラリー開始（サーブが有効に入った）
@@ -417,6 +424,8 @@ impl RallyState {
     /// 次のサーブへ（サーバー変更なし）
     pub fn next_serve(&mut self) {
         self.phase = RallyPhase::WaitingServe;
+        // 次のポイントに向けてスコア加算フラグをリセット
+        self.point_scored_this_rally = false;
     }
 
     /// ファウル記録

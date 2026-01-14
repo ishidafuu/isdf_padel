@@ -12,7 +12,7 @@ use crate::core::{CourtSide, MatchStartEvent, MatchWonEvent, RallyEndEvent, Shot
 use crate::resource::scoring::{PointEndTimer, ServeState};
 use crate::resource::{FixedDeltaTime, GameConfig, GameState, MatchFlowState, MatchScore, RallyState};
 use super::{
-    serve_double_fault_system, serve_hit_input_system, serve_init_system,
+    serve_hit_input_system, serve_init_system,
     serve_position_system, serve_toss_input_system, serve_toss_physics_system,
     serve_toss_timeout_system,
 };
@@ -39,7 +39,6 @@ impl Plugin for MatchFlowPlugin {
                     serve_toss_physics_system,
                     serve_hit_input_system,
                     serve_toss_timeout_system,
-                    serve_double_fault_system,
                     serve_to_rally_system,
                 )
                     .chain()

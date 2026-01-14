@@ -13,6 +13,10 @@ use super::game_set::{handle_game_win, handle_point_scored};
 /// @spec 30701_point_spec.md#req-30701-002
 /// @spec 30903_serve_authority_spec.md#req-30903-002
 /// @spec 30903_serve_authority_spec.md#req-30903-003
+///
+/// 重複防止:
+/// - 同一ポイント内で既にスコア加算済みならスキップ（フレームをまたいだ重複防止）
+/// - 1フレームにつき最初のイベントのみ処理
 #[allow(clippy::too_many_arguments)]
 pub fn rally_end_system(
     mut rally_events: MessageReader<RallyEndEvent>,
@@ -25,6 +29,12 @@ pub fn rally_end_system(
     config: Res<GameConfig>,
 ) {
     for event in rally_events.read() {
+        // このポイントで既にスコア加算済みならスキップ（フレームをまたいだ重複防止）
+        if rally_state.point_scored_this_rally {
+            warn!("Skipping duplicate RallyEndEvent (already scored this rally): {:?}", event.reason);
+            continue;
+        }
+
         // ゲーム進行中でなければスキップ
         if match_score.game_state != GameState::Playing {
             continue;
@@ -37,6 +47,9 @@ pub fn rally_end_system(
         // ポイント加算
         // @spec 30701_point_spec.md#req-30701-002
         match_score.add_point(scorer);
+
+        // 重複加算防止フラグを設定
+        rally_state.point_scored_this_rally = true;
 
         let new_index = match_score.get_point_index(scorer);
 
