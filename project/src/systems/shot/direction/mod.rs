@@ -78,11 +78,13 @@ pub fn shot_direction_system(
     player_query: Query<(&Player, &LogicalPosition, &Velocity, &InputState), Without<Ball>>,
     mut shot_executed_writer: MessageWriter<ShotExecutedEvent>,
     mut debug_info: ResMut<LastShotDebugInfo>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     for event in shot_events.read() {
         // サーブ処理分岐
         if event.is_serve {
-            handle_serve_shot(&mut commands, &config, &match_score, event, &mut shot_executed_writer);
+            handle_serve_shot(&mut commands, &config, &match_score, event, &mut shot_executed_writer, &mut meshes, &mut materials);
             continue;
         }
 

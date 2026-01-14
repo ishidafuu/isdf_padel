@@ -107,6 +107,8 @@ pub fn ai_serve_toss_system(
     ai_query: Query<(&Player, &LogicalPosition), With<AiController>>,
     toss_ball_query: Query<Entity, With<TossBall>>,
     ball_query: Query<Entity, With<Ball>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     // タイマーがなければスキップ
     let Some(ref mut timer) = ai_serve_timer.toss_timer else {
@@ -146,7 +148,7 @@ pub fn ai_serve_toss_system(
     let toss_pos = logical_pos.value + Vec3::new(0.0, config.serve.toss_start_offset_y, 0.0);
     let toss_vel = Vec3::new(0.0, config.serve.toss_velocity_y, 0.0);
 
-    commands.spawn(TossBallBundle::new(toss_pos, toss_vel));
+    commands.spawn(TossBallBundle::new(toss_pos, toss_vel, &mut meshes, &mut materials));
 
     // ServeState更新
     serve_state.start_toss(logical_pos.value);

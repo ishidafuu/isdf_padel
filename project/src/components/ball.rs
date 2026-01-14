@@ -8,6 +8,9 @@ use crate::core::CourtSide;
 
 use super::physics::{LogicalPosition, Velocity};
 
+/// ボールの表示サイズ（ピクセル）
+pub const BALL_DISPLAY_RADIUS: f32 = 10.0;
+
 /// ボールマーカーコンポーネント
 /// @spec 30400_overview.md
 #[derive(Component, Debug, Clone, Copy, Default)]
@@ -124,7 +127,8 @@ pub struct BallBundle {
     pub bounce_state: BounceState,
     pub last_shooter: LastShooter,
     pub ball_spin: BallSpin,
-    pub sprite: Sprite,
+    pub mesh: Mesh2d,
+    pub material: MeshMaterial2d<ColorMaterial>,
     pub transform: Transform,
 }
 
@@ -132,7 +136,12 @@ impl BallBundle {
     /// 通常ショット用ボールを生成
     /// @spec 30401_trajectory_spec.md#req-30401-002
     #[allow(dead_code)]
-    pub fn new(position: Vec3, velocity: Vec3) -> Self {
+    pub fn new(
+        position: Vec3,
+        velocity: Vec3,
+        meshes: &mut Assets<Mesh>,
+        materials: &mut Assets<ColorMaterial>,
+    ) -> Self {
         Self {
             ball: Ball,
             logical_position: LogicalPosition { value: position },
@@ -141,18 +150,21 @@ impl BallBundle {
             bounce_state: BounceState::default(),
             last_shooter: LastShooter::default(),
             ball_spin: BallSpin::default(),
-            sprite: Sprite {
-                color: Color::srgb(0.9, 0.9, 0.2), // 黄色
-                custom_size: Some(Vec2::new(20.0, 20.0)),
-                ..default()
-            },
+            mesh: Mesh2d(meshes.add(Circle::new(BALL_DISPLAY_RADIUS))),
+            material: MeshMaterial2d(materials.add(ColorMaterial::from_color(Color::srgb(0.9, 0.9, 0.2)))),
             transform: Transform::default(),
         }
     }
 
     /// ショット元を指定してボールを生成
     /// @spec 30103_point_end_spec.md#req-30103-003
-    pub fn with_shooter(position: Vec3, velocity: Vec3, shooter: CourtSide) -> Self {
+    pub fn with_shooter(
+        position: Vec3,
+        velocity: Vec3,
+        shooter: CourtSide,
+        meshes: &mut Assets<Mesh>,
+        materials: &mut Assets<ColorMaterial>,
+    ) -> Self {
         Self {
             ball: Ball,
             logical_position: LogicalPosition { value: position },
@@ -161,11 +173,8 @@ impl BallBundle {
             bounce_state: BounceState::default(),
             last_shooter: LastShooter { side: Some(shooter) },
             ball_spin: BallSpin::default(),
-            sprite: Sprite {
-                color: Color::srgb(0.9, 0.9, 0.2), // 黄色
-                custom_size: Some(Vec2::new(20.0, 20.0)),
-                ..default()
-            },
+            mesh: Mesh2d(meshes.add(Circle::new(BALL_DISPLAY_RADIUS))),
+            material: MeshMaterial2d(materials.add(ColorMaterial::from_color(Color::srgb(0.9, 0.9, 0.2)))),
             transform: Transform::default(),
         }
     }
@@ -178,23 +187,26 @@ pub struct TossBallBundle {
     pub toss_ball: TossBall,
     pub logical_position: LogicalPosition,
     pub velocity: Velocity,
-    pub sprite: Sprite,
+    pub mesh: Mesh2d,
+    pub material: MeshMaterial2d<ColorMaterial>,
     pub transform: Transform,
 }
 
 impl TossBallBundle {
     /// トスボールを生成
     /// @spec 30102_serve_spec.md#req-30102-080
-    pub fn new(position: Vec3, velocity: Vec3) -> Self {
+    pub fn new(
+        position: Vec3,
+        velocity: Vec3,
+        meshes: &mut Assets<Mesh>,
+        materials: &mut Assets<ColorMaterial>,
+    ) -> Self {
         Self {
             toss_ball: TossBall,
             logical_position: LogicalPosition { value: position },
             velocity: Velocity { value: velocity },
-            sprite: Sprite {
-                color: Color::srgb(0.9, 0.9, 0.2), // 黄色
-                custom_size: Some(Vec2::new(20.0, 20.0)),
-                ..default()
-            },
+            mesh: Mesh2d(meshes.add(Circle::new(BALL_DISPLAY_RADIUS))),
+            material: MeshMaterial2d(materials.add(ColorMaterial::from_color(Color::srgb(0.9, 0.9, 0.2)))),
             transform: Transform::default(),
         }
     }
