@@ -29,66 +29,66 @@ pub fn default_part_configs(base_color: Color) -> Vec<PartConfig> {
         // 頭部（ボディより手前に表示: z=2）
         PartConfig {
             kind: PartKind::Head,
-            base_offset: Vec3::new(0.0, 24.0, 2.0),
-            size: Vec2::new(16.0, 16.0),
+            base_offset: Vec3::new(0.0, 36.0, 2.0),
+            size: Vec2::new(24.0, 24.0),
             color: base_color,
         },
         // 胴体（少し暗めの色で区別: z=1）
         PartConfig {
             kind: PartKind::Torso,
-            base_offset: Vec3::new(0.0, 12.0, 1.0),
-            size: Vec2::new(12.0, 16.0),
+            base_offset: Vec3::new(0.0, 18.0, 1.0),
+            size: Vec2::new(18.0, 24.0),
             color: Color::srgb(0.55, 0.15, 0.55),
         },
         // 左手（向きによってZ優先度が動的に調整される: z=2）
         // @spec 31001_parts_spec.md#req-31001-007
         PartConfig {
             kind: PartKind::LeftHand,
-            base_offset: Vec3::new(-12.0, 16.0, 2.0),
-            size: Vec2::new(8.0, 8.0),
+            base_offset: Vec3::new(-18.0, 24.0, 2.0),
+            size: Vec2::new(12.0, 12.0),
             color: base_color,
         },
         // 右手
         PartConfig {
             kind: PartKind::RightHand,
-            base_offset: Vec3::new(12.0, 16.0, 2.0),
-            size: Vec2::new(8.0, 8.0),
+            base_offset: Vec3::new(18.0, 24.0, 2.0),
+            size: Vec2::new(12.0, 12.0),
             color: base_color,
         },
         // 左膝
         PartConfig {
             kind: PartKind::LeftKnee,
-            base_offset: Vec3::new(-4.0, 4.0, 2.0),
-            size: Vec2::new(6.0, 6.0),
+            base_offset: Vec3::new(-6.0, 6.0, 2.0),
+            size: Vec2::new(9.0, 9.0),
             color: base_color,
         },
         // 右膝
         PartConfig {
             kind: PartKind::RightKnee,
-            base_offset: Vec3::new(4.0, 4.0, 2.0),
-            size: Vec2::new(6.0, 6.0),
+            base_offset: Vec3::new(6.0, 6.0, 2.0),
+            size: Vec2::new(9.0, 9.0),
             color: base_color,
         },
         // 左足
         PartConfig {
             kind: PartKind::LeftFoot,
-            base_offset: Vec3::new(-6.0, -4.0, 2.0),
-            size: Vec2::new(8.0, 8.0),
+            base_offset: Vec3::new(-9.0, -6.0, 2.0),
+            size: Vec2::new(12.0, 12.0),
             color: base_color,
         },
         // 右足
         PartConfig {
             kind: PartKind::RightFoot,
-            base_offset: Vec3::new(6.0, -4.0, 2.0),
-            size: Vec2::new(8.0, 8.0),
+            base_offset: Vec3::new(9.0, -6.0, 2.0),
+            size: Vec2::new(12.0, 12.0),
             color: base_color,
         },
-        // ラケット（右手に追従: z=3で最前面）
+        // ラケット（右手に追従: z=3で最前面、円形）
         // @spec 31001_parts_spec.md#req-31001-008
         PartConfig {
             kind: PartKind::Racket,
-            base_offset: Vec3::new(12.0, 24.0, 3.0),
-            size: Vec2::new(6.0, 16.0),
+            base_offset: Vec3::new(18.0, 36.0, 3.0),
+            size: Vec2::new(24.0, 24.0),
             color: Color::srgb(0.9, 0.9, 0.3),
         },
     ]
