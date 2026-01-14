@@ -18,14 +18,16 @@ use std::sync::Arc;
 use bevy::{app::ScheduleRunnerPlugin, asset::AssetPlugin, prelude::*, state::app::StatesPlugin};
 use clap::Parser;
 
-use padel_game::character::CharacterPlugin;
+use padel_game::character::{spawn_articulated_player, CharacterPlugin};
+use padel_game::components::AiController;
 use padel_game::core::{
     BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent,
     PlayerMoveEvent, ShotEvent, ShotExecutedEvent,
 };
 use padel_game::replay::loader::load_replay;
 use padel_game::replay::player::{replay_input_system, ReplayPlayer};
-use padel_game::resource::config::load_game_config;
+use padel_game::replay::ControlType;
+use padel_game::resource::config::{load_game_config, GameConfig};
 use padel_game::resource::debug::LastShotDebugInfo;
 use padel_game::resource::{FixedDeltaTime, GameRng, MatchFlowState};
 use padel_game::simulation::AnomalyDetectorPlugin;
@@ -130,10 +132,17 @@ fn main() {
         .insert_resource(game_rng)
         .insert_resource(replay_player)
         .init_resource::<FixedDeltaTime>() // 物理計算用
+        // ヘッドレス環境用のアセットリソース
+        // サーブシステム（serve_toss_input_system）がMeshとColorMaterialを必要とする
+        .init_resource::<Assets<Mesh>>()
+        .init_resource::<Assets<ColorMaterial>>()
         .insert_resource(ReplayPlaybackConfig {
             verbose: args.verbose,
             verify: args.verify,
         });
+
+    // セットアップシステム（プレイヤーのスポーン）
+    app.add_systems(Startup, replay_setup_system);
 
     // 完了検出用の状態
     app.add_systems(Update, check_replay_finished);
@@ -267,4 +276,59 @@ fn check_replay_finished(
 
         app_exit.write(AppExit::Success);
     }
+}
+
+/// リプレイ再生用セットアップシステム
+/// プレイヤーをスポーンし、リプレイメタデータに基づいてAI/Humanを設定
+fn replay_setup_system(
+    mut commands: Commands,
+    config: Res<GameConfig>,
+    replay_player: Res<ReplayPlayer>,
+) {
+    let metadata = replay_player.metadata().expect("Replay not loaded");
+
+    info!(
+        "Setting up replay: Left={:?}, Right={:?}",
+        metadata.left_control, metadata.right_control
+    );
+
+    // Player 1 (Left側)
+    let player1_pos = Vec3::new(config.player.x_min + 1.0, 0.0, 0.0);
+    let (r, g, b) = config.player_visual.player1_color;
+    let player1_color = Color::srgb(r, g, b);
+    let player1_entity =
+        spawn_articulated_player(&mut commands, 1, player1_pos, player1_color);
+
+    // ControlType::Ai の場合のみ AiController を追加
+    // ControlType::Human の場合は replay_input_system が入力を注入
+    if metadata.left_control == ControlType::Ai {
+        commands.entity(player1_entity).insert(AiController {
+            home_position: player1_pos,
+            target_position: player1_pos,
+            ..Default::default()
+        });
+        info!("Player 1 (Left): AI controller added");
+    } else {
+        info!("Player 1 (Left): Human (replay input injection)");
+    }
+
+    // Player 2 (Right側)
+    let player2_pos = Vec3::new(config.player.x_max - 1.0, 0.0, 0.0);
+    let (r, g, b) = config.player_visual.player2_color;
+    let player2_color = Color::srgb(r, g, b);
+    let player2_entity =
+        spawn_articulated_player(&mut commands, 2, player2_pos, player2_color);
+
+    if metadata.right_control == ControlType::Ai {
+        commands.entity(player2_entity).insert(AiController {
+            home_position: player2_pos,
+            target_position: player2_pos,
+            ..Default::default()
+        });
+        info!("Player 2 (Right): AI controller added");
+    } else {
+        info!("Player 2 (Right): Human (replay input injection)");
+    }
+
+    info!("Replay setup complete: 2 players spawned");
 }
