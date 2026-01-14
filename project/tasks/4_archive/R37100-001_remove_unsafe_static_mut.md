@@ -100,11 +100,15 @@ cargo run --bin headless_sim -- -c debug
 
 ## 完了チェックリスト
 
-- [ ] `debug_simulation_state` の修正
-- [ ] `debug_state_transitions` の修正
-- [ ] `unsafe` ブロックの完全削除
-- [ ] ビルド成功
-- [ ] verbose モードでの動作確認
+- [x] `debug_simulation_state` の修正
+- [x] `debug_state_transitions` の修正
+- [x] `unsafe` ブロックの完全削除
+- [x] ビルド成功
+- [x] verbose モードでの動作確認
+
+## ステータス
+
+**done** - 確認の結果、既に修正済みであった（2026-01-14）
 
 ## 優先度
 
