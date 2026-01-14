@@ -11,7 +11,7 @@ use crate::components::{InputState, Player};
 use crate::core::CourtSide;
 use crate::resource::MatchFlowState;
 
-use super::data::{FrameInput, InputSnapshot, ReplayData, ReplayMetadata};
+use super::data::{ControlType, FrameInput, InputSnapshot, ReplayData, ReplayMetadata};
 
 /// リプレイ記録リソース
 /// @spec REQ-77103-001, REQ-77103-002
@@ -33,8 +33,14 @@ impl ReplayRecorder {
 
     /// 記録を開始
     /// @spec REQ-77103-002
-    pub fn start_recording(&mut self, seed: u64, initial_serve_side: CourtSide) {
-        let metadata = ReplayMetadata::new(seed, initial_serve_side);
+    pub fn start_recording(
+        &mut self,
+        seed: u64,
+        initial_serve_side: CourtSide,
+        left_control: ControlType,
+        right_control: ControlType,
+    ) {
+        let metadata = ReplayMetadata::new(seed, initial_serve_side, left_control, right_control);
         self.data = Some(ReplayData::new(metadata));
         self.frame_count = 0;
         self.is_recording = true;
@@ -96,6 +102,8 @@ impl ReplayRecorder {
 pub struct StartReplayRecording {
     pub seed: u64,
     pub initial_serve_side: CourtSide,
+    pub left_control: ControlType,
+    pub right_control: ControlType,
 }
 
 /// 記録停止イベント
@@ -109,7 +117,12 @@ pub fn start_recording_system(
     mut events: MessageReader<StartReplayRecording>,
 ) {
     for event in events.read() {
-        recorder.start_recording(event.seed, event.initial_serve_side);
+        recorder.start_recording(
+            event.seed,
+            event.initial_serve_side,
+            event.left_control,
+            event.right_control,
+        );
     }
 }
 

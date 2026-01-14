@@ -9,9 +9,26 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::CourtSide;
 
+
+/// プレイヤーのコントロールタイプ
+/// @spec REQ-77103-002
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ControlType {
+    /// 人間操作
+    Human,
+    /// AI操作
+    Ai,
+}
+
+impl Default for ControlType {
+    fn default() -> Self {
+        ControlType::Ai // 後方互換性：デフォルトはAI
+    }
+}
+
 /// リプレイデータ全体
 /// @spec REQ-77103-001, REQ-77103-002
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Resource)]
 pub struct ReplayData {
     /// メタデータ
     pub metadata: ReplayMetadata,
@@ -46,16 +63,29 @@ pub struct ReplayMetadata {
     pub seed: u64,
     /// 最初のサーブ側
     pub initial_serve_side: CourtSide,
+    /// Left側プレイヤーのコントロールタイプ
+    #[serde(default)]
+    pub left_control: ControlType,
+    /// Right側プレイヤーのコントロールタイプ
+    #[serde(default)]
+    pub right_control: ControlType,
 }
 
 impl ReplayMetadata {
     /// 現在のバージョンで新しいメタデータを作成
-    pub fn new(seed: u64, initial_serve_side: CourtSide) -> Self {
+    pub fn new(
+        seed: u64,
+        initial_serve_side: CourtSide,
+        left_control: ControlType,
+        right_control: ControlType,
+    ) -> Self {
         Self {
             game_version: env!("CARGO_PKG_VERSION").to_string(),
             recorded_at: chrono::Utc::now().to_rfc3339(),
             seed,
             initial_serve_side,
+            left_control,
+            right_control,
         }
     }
 

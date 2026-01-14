@@ -19,6 +19,7 @@ use clap::Parser;
 
 use padel_game::character::{self, CharacterPlugin};
 use padel_game::components::AiController;
+use padel_game::replay::data::{ControlType, ReplayData};
 use padel_game::core::{
     BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent,
     ShotEvent, ShotExecutedEvent,
@@ -29,7 +30,7 @@ use padel_game::presentation::{
     sync_shadow_system, sync_transform_system, DebugUiPlugin, WORLD_SCALE,
 };
 use padel_game::replay::loader::load_replay;
-// Note: ReplayPlayer は再シミュレーション方式では不要（シード値取得のみリプレイファイルを使用）
+use padel_game::replay::player::{replay_input_system, ReplayPlayer};
 use padel_game::resource::config::{load_game_config, GameConfig};
 use padel_game::resource::debug::LastShotDebugInfo;
 use padel_game::resource::{FixedDeltaTime, GameRng, MatchFlowState};
@@ -132,7 +133,9 @@ fn main() {
         .init_resource::<FixedDeltaTime>()
         .insert_resource(ReplayViewerConfig {
             verbose: args.verbose,
-        });
+        })
+        .insert_resource(replay_data)
+        .init_resource::<ReplayPlayer>();
 
     // 完了検出用の状態とエスケープキー
     app.add_systems(Update, (check_replay_finished, escape_to_exit));
@@ -186,6 +189,12 @@ impl Plugin for ReplayViewerPlugins {
         // セットアップシステム
         app.add_systems(Startup, setup_replay_viewer);
 
+        // 入力システム（Human プレイヤーの入力注入）
+        app.add_systems(
+            Update,
+            replay_input_system.in_set(GameSystemSet::Input),
+        );
+
         // ゲームロジックシステム（AI による再シミュレーション）
         app.add_systems(
             Update,
@@ -231,17 +240,38 @@ impl Plugin for ReplayViewerPlugins {
 }
 
 /// リプレイビューア初期セットアップ
-/// ヘッドレスシミュレータと同様、両プレイヤーをAIとしてスポーン
-fn setup_replay_viewer(mut commands: Commands, config: Res<GameConfig>) {
+/// コントロールタイプに応じてプレイヤーをスポーン
+/// - Human: AiController を付与しない → replay_input_system で入力注入
+/// - AI: AiController を付与 → AIによる再シミュレーション
+fn setup_replay_viewer(
+    mut commands: Commands,
+    config: Res<GameConfig>,
+    replay_data: Res<ReplayData>,
+    mut replay_player: ResMut<ReplayPlayer>,
+) {
     // Camera2d をスポーン
     commands.spawn(Camera2d);
 
-    info!("Replay Viewer: Setting up AI re-simulation");
+    let left_control = replay_data.metadata.left_control;
+    let right_control = replay_data.metadata.right_control;
+
+    info!(
+        "Replay Viewer: Setting up with left={:?}, right={:?}",
+        left_control, right_control
+    );
+
+    // Human プレイヤーがいる場合はリプレイ再生を開始
+    let has_human = left_control == ControlType::Human || right_control == ControlType::Human;
+    if has_human {
+        // ReplayData を clone してリプレイ再生を開始
+        replay_player.start_playback(replay_data.clone());
+        info!("Replay playback started for Human player input injection");
+    }
 
     // コート境界を描画
     spawn_court(&mut commands, &config);
 
-    // Player 1 (AI) をスポーン（1Pコート側: 画面左側）
+    // Player 1 (Left側) をスポーン（1Pコート側: 画面左側）
     let player1_pos = Vec3::new(
         config.player.x_min + 1.0,
         0.0,
@@ -250,14 +280,20 @@ fn setup_replay_viewer(mut commands: Commands, config: Res<GameConfig>) {
     let (r, g, b) = config.player_visual.player1_color;
     let player1_color = Color::srgb(r, g, b);
     let player1_entity = character::spawn_articulated_player(&mut commands, 1, player1_pos, player1_color);
-    commands.entity(player1_entity).insert(AiController {
-        home_position: player1_pos,
-        target_position: player1_pos,
-        ..Default::default()
-    });
-    info!("Player 1 (AI) spawned at {:?}", player1_pos);
 
-    // Player 2 (AI) をスポーン（2Pコート側: 画面右側）
+    // Left側のコントロールタイプに応じて AiController を付与
+    if left_control == ControlType::Ai {
+        commands.entity(player1_entity).insert(AiController {
+            home_position: player1_pos,
+            target_position: player1_pos,
+            ..Default::default()
+        });
+        info!("Player 1 (AI) spawned at {:?}", player1_pos);
+    } else {
+        info!("Player 1 (Human - replay input) spawned at {:?}", player1_pos);
+    }
+
+    // Player 2 (Right側) をスポーン（2Pコート側: 画面右側）
     let player2_pos = Vec3::new(
         config.player.x_max - 1.0,
         0.0,
@@ -266,12 +302,18 @@ fn setup_replay_viewer(mut commands: Commands, config: Res<GameConfig>) {
     let (r, g, b) = config.player_visual.player2_color;
     let player2_color = Color::srgb(r, g, b);
     let player2_entity = character::spawn_articulated_player(&mut commands, 2, player2_pos, player2_color);
-    commands.entity(player2_entity).insert(AiController {
-        home_position: player2_pos,
-        target_position: player2_pos,
-        ..Default::default()
-    });
-    info!("Player 2 (AI) spawned at {:?}", player2_pos);
+
+    // Right側のコントロールタイプに応じて AiController を付与
+    if right_control == ControlType::Ai {
+        commands.entity(player2_entity).insert(AiController {
+            home_position: player2_pos,
+            target_position: player2_pos,
+            ..Default::default()
+        });
+        info!("Player 2 (AI) spawned at {:?}", player2_pos);
+    } else {
+        info!("Player 2 (Human - replay input) spawned at {:?}", player2_pos);
+    }
 }
 
 /// スプライト（矩形）を生成するヘルパー

@@ -14,8 +14,11 @@ pub mod recorder;
 
 use bevy::{app::Last, ecs::message::MessageReader, prelude::*};
 
+use crate::components::{HumanControlled, Player};
+use crate::core::CourtSide;
 use crate::resource::{GameRng, MatchFlowState};
 
+pub use data::ControlType;
 pub use manager::ReplayManager;
 pub use recorder::{ReplayRecorder, StartReplayRecording, StopReplayRecording};
 
@@ -52,6 +55,7 @@ fn start_replay_on_match_start(
     mut recorder: ResMut<ReplayRecorder>,
     match_score: Res<crate::resource::MatchScore>,
     game_rng: Res<GameRng>,
+    players: Query<(&Player, Option<&HumanControlled>)>,
 ) {
     // GameRng から現在のシードを取得
     let seed = game_rng.seed();
@@ -59,10 +63,26 @@ fn start_replay_on_match_start(
     // ゲーム状態から初期サーブ側を取得
     let initial_serve_side = match_score.server;
 
-    recorder.start_recording(seed, initial_serve_side);
+    // プレイヤーのコントロールタイプを判定
+    let mut left_control = ControlType::Ai;
+    let mut right_control = ControlType::Ai;
+
+    for (player, human) in players.iter() {
+        let control = if human.is_some() {
+            ControlType::Human
+        } else {
+            ControlType::Ai
+        };
+        match player.court_side {
+            CourtSide::Left => left_control = control,
+            CourtSide::Right => right_control = control,
+        }
+    }
+
+    recorder.start_recording(seed, initial_serve_side, left_control, right_control);
     info!(
-        "Replay recording started with seed: {}, initial_serve_side: {:?}",
-        seed, initial_serve_side
+        "Replay recording started with seed: {}, initial_serve_side: {:?}, left: {:?}, right: {:?}",
+        seed, initial_serve_side, left_control, right_control
     );
 }
 

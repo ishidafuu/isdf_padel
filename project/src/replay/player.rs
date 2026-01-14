@@ -7,7 +7,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{InputState, Player};
+use crate::components::{AiController, InputState, Player};
 use crate::core::CourtSide;
 use crate::resource::FixedDeltaTime;
 
@@ -112,10 +112,11 @@ impl ReplayPlayer {
 /// 入力注入システム
 /// @spec REQ-77103-008
 /// ECS設計原則: court_sideベースでプレイヤーを識別（固定IDを排除）
+/// AIプレイヤー（AiController持ち）には入力を注入しない
 pub fn replay_input_system(
     fixed_dt: Res<FixedDeltaTime>,
     mut replay_player: ResMut<ReplayPlayer>,
-    mut players: Query<(&Player, &mut InputState)>,
+    mut players: Query<(&Player, &mut InputState), Without<AiController>>,
 ) {
     if !replay_player.is_playing() {
         return;
@@ -147,7 +148,7 @@ pub fn replay_input_system(
     let left_hold_time = replay_player.left_hold_time;
     let right_hold_time = replay_player.right_hold_time;
 
-    // 各プレイヤーに入力を注入
+    // 各プレイヤーに入力を注入（AiControllerを持たないプレイヤーのみ）
     for (player, mut input) in players.iter_mut() {
         let (snapshot, hold_time) = match player.court_side {
             CourtSide::Left => (&left_snapshot, left_hold_time),
