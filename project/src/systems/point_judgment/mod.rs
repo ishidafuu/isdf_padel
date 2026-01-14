@@ -19,7 +19,7 @@ pub use bounce_judgment::{
 pub use net_judgment::{let_judgment_system, net_fault_judgment_system};
 pub use out_judgment::{out_of_bounds_judgment_system, wall_hit_judgment_system};
 
-use crate::resource::RallyState;
+use crate::resource::{MatchFlowState, RallyState};
 
 /// ポイント判定プラグイン
 /// @spec 30901_point_judgment_spec.md
@@ -27,22 +27,35 @@ pub struct PointJudgmentPlugin;
 
 impl Plugin for PointJudgmentPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<RallyState>().add_systems(
-            Update,
-            (
-                // 最初にフラグをリセット
-                reset_rally_end_event_flag_system,
-                update_last_shooter_system,
-                bounce_count_update_system,
-                double_bounce_judgment_system,
-                out_of_bounds_judgment_system,
-                wall_hit_judgment_system,
-                let_judgment_system,
-                net_fault_judgment_system,
-                own_court_hit_judgment_system,
+        app.init_resource::<RallyState>()
+            // 常に動作するシステム（フラグリセット、ショット追跡、バウンスカウント）
+            .add_systems(
+                Update,
+                (
+                    // 最初にフラグをリセット
+                    reset_rally_end_event_flag_system,
+                    update_last_shooter_system,
+                    bounce_count_update_system,
+                )
+                    .chain(),
             )
-                .chain(),
-        );
+            // ラリー中のみ動作するポイント判定システム
+            // @spec 30901_point_judgment_spec.md
+            // サーブ中（Serve状態）ではこれらは動作しない
+            // （サーブのフォルト判定は FaultJudgmentPlugin が担当）
+            .add_systems(
+                Update,
+                (
+                    double_bounce_judgment_system,
+                    out_of_bounds_judgment_system,
+                    wall_hit_judgment_system,
+                    let_judgment_system,
+                    net_fault_judgment_system,
+                    own_court_hit_judgment_system,
+                )
+                    .chain()
+                    .run_if(in_state(MatchFlowState::Rally)),
+            );
     }
 }
 
