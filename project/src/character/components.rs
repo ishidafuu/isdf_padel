@@ -15,6 +15,8 @@ pub enum PartKind {
     RightKnee,
     LeftFoot,
     RightFoot,
+    /// @spec 31001_parts_spec.md#req-31001-008
+    Racket,
 }
 
 impl PartKind {
@@ -30,10 +32,12 @@ impl PartKind {
             PartKind::RightKnee,
             PartKind::LeftFoot,
             PartKind::RightFoot,
+            PartKind::Racket,
         ]
     }
 
     /// 左右対称パーツかどうか
+    /// Racketは右手側のみなので対称パーツには含めない
     pub fn is_symmetric(&self) -> bool {
         matches!(
             self,
@@ -43,6 +47,7 @@ impl PartKind {
                 | PartKind::RightKnee
                 | PartKind::LeftFoot
                 | PartKind::RightFoot
+                | PartKind::Racket
         )
     }
 
@@ -51,7 +56,7 @@ impl PartKind {
     pub fn is_right(&self) -> bool {
         matches!(
             self,
-            PartKind::RightHand | PartKind::RightKnee | PartKind::RightFoot
+            PartKind::RightHand | PartKind::RightKnee | PartKind::RightFoot | PartKind::Racket
         )
     }
 }

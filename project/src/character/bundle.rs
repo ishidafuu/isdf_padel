@@ -83,6 +83,14 @@ pub fn default_part_configs(base_color: Color) -> Vec<PartConfig> {
             size: Vec2::new(8.0, 8.0),
             color: base_color,
         },
+        // ラケット（右手に追従: z=3で最前面）
+        // @spec 31001_parts_spec.md#req-31001-008
+        PartConfig {
+            kind: PartKind::Racket,
+            base_offset: Vec3::new(12.0, 24.0, 3.0),
+            size: Vec2::new(6.0, 16.0),
+            color: Color::srgb(0.9, 0.9, 0.3),
+        },
     ]
 }
 

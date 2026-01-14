@@ -92,6 +92,8 @@ pub struct PartKeyframes {
     pub right_knee: Option<Vec<Keyframe>>,
     pub left_foot: Option<Vec<Keyframe>>,
     pub right_foot: Option<Vec<Keyframe>>,
+    /// @spec 31001_parts_spec.md#req-31001-008
+    pub racket: Option<Vec<Keyframe>>,
 }
 
 impl PartKeyframes {
@@ -121,6 +123,9 @@ impl PartKeyframes {
         }
         if let Some(kf) = &self.right_foot {
             map.insert(PartKind::RightFoot, kf.clone());
+        }
+        if let Some(kf) = &self.racket {
+            map.insert(PartKind::Racket, kf.clone());
         }
         map
     }
