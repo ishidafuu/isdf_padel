@@ -11,27 +11,6 @@ use crate::resource::config::GameConfig;
 use crate::resource::{GameRng, MatchScore, RallyPhase, RallyState};
 use crate::simulation::DebugLogger;
 
-/// 打球方向にランダムブレを追加
-/// @spec 30302_ai_shot_spec.md#req-30302-055
-///
-/// 2D回転行列で方向ベクトルを回転させる
-fn apply_direction_variance(base_direction: Vec2, variance_deg: f32, game_rng: &mut GameRng) -> Vec2 {
-    if variance_deg <= 0.0 {
-        return base_direction;
-    }
-
-    let variance_rad = variance_deg.to_radians();
-    let offset = game_rng.random_range(-variance_rad..=variance_rad);
-
-    // 2D回転行列を適用
-    let cos = offset.cos();
-    let sin = offset.sin();
-    Vec2::new(
-        base_direction.x * cos - base_direction.y * sin,
-        base_direction.x * sin + base_direction.y * cos,
-    )
-}
-
 /// AIショットシステム v0.6
 /// @spec 30302_ai_shot_spec.md#req-30302-001
 /// @spec 30302_ai_shot_spec.md#req-30302-002
@@ -151,40 +130,10 @@ pub fn ai_shot_system(
     }
 }
 
-/// XZ平面での2D距離計算
-/// @spec 30302_ai_shot_spec.md#req-30302-001
-#[inline]
-fn distance_xz(a: Vec3, b: Vec3) -> f32 {
-    let dx = a.x - b.x;
-    let dz = a.z - b.z;
-    (dx * dx + dz * dz).sqrt()
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// REQ-30302-001: 距離計算テスト
-    #[test]
-    fn test_distance_xz() {
-        let ai_pos = Vec3::new(0.0, 1.0, 5.0);
-        let ball_pos = Vec3::new(1.0, 2.0, 5.0);
-
-        let distance = distance_xz(ai_pos, ball_pos);
-        // Y軸は無視されるので、距離は1.0
-        assert!((distance - 1.0).abs() < 0.001);
-    }
-
-    /// REQ-30302-001: 距離計算テスト（XZ両方に距離がある場合）
-    #[test]
-    fn test_distance_xz_diagonal() {
-        let ai_pos = Vec3::new(0.0, 0.0, 0.0);
-        let ball_pos = Vec3::new(3.0, 5.0, 4.0);
-
-        let distance = distance_xz(ai_pos, ball_pos);
-        // sqrt(3^2 + 4^2) = 5.0
-        assert!((distance - 5.0).abs() < 0.001);
-    }
 
     /// REQ-30302-003: 打球方向計算テスト
     /// X軸が打ち合い方向、Z軸がサイド方向

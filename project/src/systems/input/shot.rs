@@ -136,39 +136,10 @@ pub fn shot_cooldown_system(fixed_dt: Res<FixedDeltaTime>, mut query: Query<&mut
     }
 }
 
-/// 2D距離計算（XZ平面）
-/// @spec 30601_shot_input_spec.md#req-30601-002
-#[inline]
-fn distance_2d(a: Vec3, b: Vec3) -> f32 {
-    let dx = a.x - b.x;
-    let dz = a.z - b.z;
-    (dx * dx + dz * dz).sqrt()
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// TST-30604-002: 距離判定テスト
-    #[test]
-    fn test_distance_2d() {
-        let player_pos = Vec3::new(0.0, 0.0, 0.0);
-        let ball_pos = Vec3::new(1.0, 2.0, 0.0); // Y軸は無視される
-
-        let distance = distance_2d(player_pos, ball_pos);
-        assert!((distance - 1.0).abs() < 0.001);
-    }
-
-    /// TST-30604-002: 距離判定テスト（XZ両方に距離がある場合）
-    #[test]
-    fn test_distance_2d_diagonal() {
-        let player_pos = Vec3::new(0.0, 0.0, 0.0);
-        let ball_pos = Vec3::new(1.0, 0.0, 1.0);
-
-        let distance = distance_2d(player_pos, ball_pos);
-        let expected = (2.0_f32).sqrt();
-        assert!((distance - expected).abs() < 0.001);
-    }
 
     /// TST-30604-004: クールダウンテスト
     #[test]
