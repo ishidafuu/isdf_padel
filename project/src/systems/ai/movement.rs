@@ -168,6 +168,111 @@ fn calculate_idle_position(
     Vec3::new(base_x, 0.0, z_offset)
 }
 
+/// 反応遅延タイマーを更新
+/// @spec 30301_ai_movement_spec.md#req-30301-053
+fn update_reaction_timer(
+    ai: &mut AiController,
+    ball_coming_to_me: bool,
+    reaction_delay: f32,
+    delta: f32,
+) {
+    // 反応遅延はボールが初めて向かってきた時のみ設定
+    if ball_coming_to_me
+        && ai.movement_state == AiMovementState::Idle
+        && ai.reaction_timer <= 0.0
+    {
+        ai.reaction_timer = reaction_delay;
+    }
+
+    if ai.reaction_timer > 0.0 {
+        ai.reaction_timer -= delta;
+        if ai.reaction_timer < 0.0 {
+            ai.reaction_timer = 0.0;
+        }
+    }
+}
+
+/// 目標ロックの状態変化を検出
+/// @spec 30301_ai_movement_spec.md#req-30301-v07-003
+fn detect_lock_state_change(ai: &AiController, ball_vel_x: f32, ball_coming_to_me: bool) -> bool {
+    let current_sign = ball_vel_x > 0.0;
+    match ai.lock_ball_velocity_x_sign {
+        Some(prev_sign) => prev_sign != current_sign,
+        None => ball_coming_to_me,
+    }
+}
+
+/// 追跡目標位置を計算
+/// @spec 30301_ai_movement_spec.md#req-30301-v07-001
+/// @spec 30301_ai_movement_spec.md#req-30301-v07-002
+fn calculate_tracking_target(
+    ai: &mut AiController,
+    ai_pos: Vec3,
+    ball_pos: Vec3,
+    ball_vel: Vec3,
+    gravity: f32,
+    state_changed: bool,
+    config: &GameConfig,
+    game_rng: &mut GameRng,
+) -> Vec3 {
+    let is_short = is_short_ball(ai_pos.x, ball_pos, ball_vel, gravity);
+    let landing_pos = calculate_landing_position(ball_pos, ball_vel, gravity);
+    let current_ball_vel_x_sign = ball_vel.x > 0.0;
+
+    let (target_x, target_z) = if state_changed || ai.locked_target_z.is_none() {
+        // 軌道ライン追跡
+        let (target_x, target_z) = if is_short {
+            // 短いボール: 着地地点に向かって移動
+            match landing_pos {
+                Some(pos) => (pos.x, pos.z),
+                None => (ball_pos.x, ball_pos.z),
+            }
+        } else {
+            // 軌道ライン: AIのX座標での軌道ライン上Z座標を予測
+            let z = calculate_trajectory_line_z(ai_pos.x, ball_pos, ball_vel, gravity)
+                .unwrap_or(ball_pos.z);
+            (ai_pos.x, z)
+        };
+
+        // 誤差を1回だけ適用してロック
+        let with_error = apply_z_error(target_z, config, game_rng);
+        ai.locked_target_z = Some(with_error);
+        ai.lock_ball_velocity_x_sign = Some(current_ball_vel_x_sign);
+
+        (target_x, with_error)
+    } else {
+        // ロック済みの目標を使用
+        let x = if is_short {
+            landing_pos.map(|pos| pos.x).unwrap_or(ball_pos.x)
+        } else {
+            ai_pos.x
+        };
+        (x, ai.locked_target_z.unwrap_or(ball_pos.z))
+    };
+
+    Vec3::new(target_x, 0.0, target_z)
+}
+
+/// 到達距離を計算
+/// @spec 30301_ai_movement_spec.md#req-30301-v07-001
+fn calculate_arrival_distance(
+    ai_pos: Vec3,
+    target_pos: Vec3,
+    ball_pos: Vec3,
+    ball_vel: Vec3,
+    gravity: f32,
+) -> f32 {
+    let is_short = is_short_ball(ai_pos.x, ball_pos, ball_vel, gravity);
+    if is_short {
+        // 短いボール: XZ平面の距離で判定
+        let dx = target_pos.x - ai_pos.x;
+        let dz = target_pos.z - ai_pos.z;
+        (dx * dx + dz * dz).sqrt()
+    } else {
+        // 通常: Z座標のみで判定
+        (target_pos.z - ai_pos.z).abs()
+    }
+}
 
 /// AI移動システム v0.7
 /// @spec 30301_ai_movement_spec.md#req-30301-v07-001
@@ -236,29 +341,11 @@ pub fn ai_movement_system(
         // 動的待機位置（フォールバック用）
         let idle_pos = calculate_idle_position(ball_pos, player.court_side, &config);
 
-        // === 反応遅延の処理 ===
-        // @spec 30301_ai_movement_spec.md#req-30301-053
-        // 反応遅延はボールが初めて向かってきた時のみ設定（毎フレームリセットしない）
-        if ball_coming_to_me && ai.movement_state == AiMovementState::Idle && ai.reaction_timer <= 0.0 {
-            ai.reaction_timer = config.ai.reaction_delay;
-        }
+        // 反応遅延の更新
+        update_reaction_timer(&mut ai, ball_coming_to_me, config.ai.reaction_delay, delta);
 
-        if ai.reaction_timer > 0.0 {
-            ai.reaction_timer -= delta;
-            if ai.reaction_timer < 0.0 {
-                ai.reaction_timer = 0.0;
-            }
-        }
-
-        // === 目標ロック機構 ===
-        // @spec 30301_ai_movement_spec.md#req-30301-v07-003
-        let current_ball_vel_x_sign = ball_vel.x > 0.0;
-
-        // ボール速度X成分の符号変化を検知 → ロック解除
-        let state_changed = match ai.lock_ball_velocity_x_sign {
-            Some(prev_sign) => prev_sign != current_ball_vel_x_sign,
-            None => ball_coming_to_me, // 初回かつボールが向かっている
-        };
+        // 目標ロックの状態変化を検出
+        let state_changed = detect_lock_state_change(&ai, ball_vel.x, ball_coming_to_me);
 
         // ボールが相手側に向かった場合はロック解除
         if !ball_coming_to_me {
@@ -268,55 +355,21 @@ pub fn ai_movement_system(
 
         // 状態遷移と目標位置計算
         let (new_state, target_pos) = if ball_coming_to_me {
-            // 反応遅延中は追跡を開始しない
             if ai.reaction_timer > 0.0 {
+                // 反応遅延中は追跡を開始しない
                 (AiMovementState::Idle, idle_pos)
             } else {
-                // === インターセプト方式 ===
-                // @spec 30301_ai_movement_spec.md#req-30301-v07-001
-                // @spec 30301_ai_movement_spec.md#req-30301-v07-002
-
-                // 状態変化時のみ目標を再計算
-                let is_short = is_short_ball(ai_pos.x, ball_pos, ball_vel, gravity);
-
-                // 着地地点を計算
-                let landing_pos = calculate_landing_position(ball_pos, ball_vel, gravity);
-
-
-                let (target_x, target_z) = if state_changed || ai.locked_target_z.is_none() {
-                    // 軌道ライン追跡
-                    // @spec 30301_ai_movement_spec.md#req-30301-v08-001
-                    // @spec 30301_ai_movement_spec.md#req-30301-v08-002
-                    let (target_x, target_z) = if is_short {
-                        // 短いボール: 着地地点に向かって移動
-                        match landing_pos {
-                            Some(pos) => (pos.x, pos.z),
-                            None => (ball_pos.x, ball_pos.z),
-                        }
-                    } else {
-                        // 軌道ライン: AIのX座標での軌道ライン上Z座標を予測
-                        let z = calculate_trajectory_line_z(ai_pos.x, ball_pos, ball_vel, gravity)
-                            .unwrap_or(ball_pos.z);
-                        (ai_pos.x, z)
-                    };
-
-                    // 誤差を1回だけ適用してロック
-                    let with_error = apply_z_error(target_z, &config, &mut game_rng);
-                    ai.locked_target_z = Some(with_error);
-                    ai.lock_ball_velocity_x_sign = Some(current_ball_vel_x_sign);
-
-                    (target_x, with_error)
-                } else {
-                    // ロック済みの目標を使用
-                    let x = if is_short {
-                        landing_pos.map(|pos| pos.x).unwrap_or(ball_pos.x)
-                    } else {
-                        ai_pos.x
-                    };
-                    (x, ai.locked_target_z.unwrap_or(ball_pos.z))
-                };
-
-                let target = Vec3::new(target_x, 0.0, target_z);
+                // 追跡目標を計算
+                let target = calculate_tracking_target(
+                    &mut ai,
+                    ai_pos,
+                    ball_pos,
+                    ball_vel,
+                    gravity,
+                    state_changed,
+                    &config,
+                    &mut game_rng,
+                );
                 (AiMovementState::Tracking, target)
             }
         } else {
@@ -347,17 +400,8 @@ pub fn ai_movement_system(
             }
         }
 
-        // 到達判定（短いボール時はXZ距離、それ以外はZ座標のみ）
-        let is_short = is_short_ball(ai_pos.x, ball_pos, ball_vel, gravity);
-        let distance = if is_short {
-            // 短いボール: XZ平面の距離で判定
-            let dx = target_pos.x - ai_pos.x;
-            let dz = target_pos.z - ai_pos.z;
-            (dx * dx + dz * dz).sqrt()
-        } else {
-            // 通常: Z座標のみで判定
-            (target_pos.z - ai_pos.z).abs()
-        };
+        // 到達距離を計算
+        let distance = calculate_arrival_distance(ai_pos, target_pos, ball_pos, ball_vel, gravity);
 
         let stop_distance = if matches!(new_state, AiMovementState::Tracking) {
             config.shot.max_distance
