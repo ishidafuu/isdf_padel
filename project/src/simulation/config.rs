@@ -58,6 +58,10 @@ pub struct TraceConfig {
     pub events: bool,
     /// 記録間隔（フレーム）
     pub interval_frames: u32,
+    /// ショット属性記録
+    /// @spec 77200_telemetry_spec.md#req-77200-002
+    #[serde(default)]
+    pub shot_attributes: bool,
 }
 
 impl Default for TraceConfig {
@@ -68,6 +72,7 @@ impl Default for TraceConfig {
             velocity: true,
             events: false,
             interval_frames: 10,
+            shot_attributes: false,
         }
     }
 }

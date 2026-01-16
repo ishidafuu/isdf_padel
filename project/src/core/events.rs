@@ -226,6 +226,42 @@ pub struct ShotExecutedEvent {
     pub is_jump_shot: bool,
 }
 
+/// ショット属性計算完了イベント（トレース用）
+/// @spec 77200_telemetry_spec.md#req-77200-001
+#[derive(Event, Message, Debug, Clone)]
+pub struct ShotAttributesCalculatedEvent {
+    /// プレイヤーID
+    pub player_id: u8,
+    /// 入力方式
+    pub input_mode: String,
+    /// 打点高さ
+    pub hit_height: f32,
+    /// バウンド経過時間
+    pub bounce_elapsed: Option<f32>,
+    /// 入り方内積
+    pub approach_dot: f32,
+    /// ボール距離
+    pub ball_distance: f32,
+    /// 高さ係数 (power, stability, angle)
+    pub height_factors: (f32, f32, f32),
+    /// タイミング係数 (power, stability, angle)
+    pub timing_factors: (f32, f32, f32),
+    /// 入り方係数 (power, angle)
+    pub approach_factors: (f32, f32),
+    /// 距離係数 (power, stability, accuracy)
+    pub distance_factors: (f32, f32, f32),
+    /// 最終威力
+    pub final_power: f32,
+    /// 最終安定性
+    pub final_stability: f32,
+    /// 最終角度
+    pub final_angle: f32,
+    /// 最終スピン
+    pub final_spin: f32,
+    /// 最終精度
+    pub final_accuracy: f32,
+}
+
 /// ラリー終了イベント（ポイント獲得のトリガー）
 /// @spec 30701_point_spec.md#req-30701-002
 #[derive(Event, Message, Debug, Clone)]

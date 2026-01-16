@@ -165,6 +165,41 @@ pub fn calculate_shot_attributes(
     context: &ShotContext,
     config: &ShotAttributesConfig,
 ) -> ShotAttributes {
+    calculate_shot_attributes_detail(context, config).attributes
+}
+
+/// ショット属性計算の詳細情報（中間係数を含む）
+/// @spec 77200_telemetry_spec.md#req-77200-001
+#[derive(Debug, Clone)]
+pub struct ShotAttributesDetail {
+    /// 入力方式
+    pub input_mode: InputMode,
+    /// 打点高さ
+    pub hit_height: f32,
+    /// バウンド経過時間
+    pub bounce_elapsed: Option<f32>,
+    /// 入り方内積
+    pub approach_dot: f32,
+    /// ボール距離
+    pub ball_distance: f32,
+    /// 高さ係数 (power, stability, angle)
+    pub height_factors: (f32, f32, f32),
+    /// タイミング係数 (power, stability, angle)
+    pub timing_factors: (f32, f32, f32),
+    /// 入り方係数 (power, angle)
+    pub approach_factors: (f32, f32),
+    /// 距離係数 (power, stability, accuracy)
+    pub distance_factors: (f32, f32, f32),
+    /// 最終属性
+    pub attributes: ShotAttributes,
+}
+
+/// ShotContext から ShotAttributesDetail を計算（中間係数を含む）
+/// @spec 77200_telemetry_spec.md#req-77200-001
+pub fn calculate_shot_attributes_detail(
+    context: &ShotContext,
+    config: &ShotAttributesConfig,
+) -> ShotAttributesDetail {
     // 入力方式による係数
     let (input_power_factor, input_stability_factor) = match context.input_mode {
         InputMode::Push => {
@@ -180,11 +215,10 @@ pub fn calculate_shot_attributes(
     };
 
     // 打点高さによる係数
-    let (height_power, height_stability, height_angle) =
-        get_height_factors(context.hit_height, &config.height_curve);
+    let height_factors = get_height_factors(context.hit_height, &config.height_curve);
 
     // タイミング（バウンド経過時間）による係数
-    let (timing_power, timing_stability, timing_angle) = match context.bounce_elapsed {
+    let timing_factors = match context.bounce_elapsed {
         Some(elapsed) => get_timing_factors(elapsed, &config.timing_curve),
         None => (
             config.volley_factors.power_bonus,
@@ -194,36 +228,30 @@ pub fn calculate_shot_attributes(
     };
 
     // 入り方による係数
-    let (approach_power, approach_angle) =
-        get_approach_factors(context.approach_dot, &config.approach_curve);
+    let approach_factors = get_approach_factors(context.approach_dot, &config.approach_curve);
 
     // 距離による係数
-    let (distance_power, distance_stability, distance_accuracy) =
-        get_distance_factors(context.ball_distance, &config.distance_curve);
+    let distance_factors = get_distance_factors(context.ball_distance, &config.distance_curve);
 
     // 威力の最終計算（加算方式）
-    // @spec 30604_shot_attributes_spec.md#req-30604-063
     let power = (config.base_power
-        + height_power
-        + timing_power
-        + approach_power
-        + distance_power)
+        + height_factors.0
+        + timing_factors.0
+        + approach_factors.0
+        + distance_factors.0)
         * input_power_factor;
 
     // 安定性の最終計算
-    // @spec 30604_shot_attributes_spec.md#req-30604-064
     let stability = config.base_stability
         * input_stability_factor
-        * height_stability
-        * timing_stability
-        * distance_stability;
+        * height_factors.1
+        * timing_factors.1
+        * distance_factors.1;
 
     // 角度の最終計算
-    // @spec 30604_shot_attributes_spec.md#req-30604-065
-    let angle = config.base_angle + height_angle + timing_angle + approach_angle;
+    let angle = config.base_angle + height_factors.2 + timing_factors.2 + approach_factors.1;
 
     // スピンの計算
-    // @spec 30604_shot_attributes_spec.md#req-30604-066
     let spin_height = get_spin_height_factor(context.hit_height, &config.spin_height_curve);
     let spin_timing = match context.bounce_elapsed {
         Some(elapsed) => get_spin_timing_factor(elapsed, &config.spin_timing_curve),
@@ -232,15 +260,25 @@ pub fn calculate_shot_attributes(
     let spin = (spin_height + spin_timing).clamp(-1.0, 1.0);
 
     // 精度の最終計算
-    // @spec 30604_shot_attributes_spec.md#req-30604-067
-    let accuracy = config.base_accuracy * distance_accuracy;
+    let accuracy = config.base_accuracy * distance_factors.2;
 
-    ShotAttributes {
-        power,
-        stability,
-        angle,
-        spin,
-        accuracy,
+    ShotAttributesDetail {
+        input_mode: context.input_mode,
+        hit_height: context.hit_height,
+        bounce_elapsed: context.bounce_elapsed,
+        approach_dot: context.approach_dot,
+        ball_distance: context.ball_distance,
+        height_factors,
+        timing_factors,
+        approach_factors,
+        distance_factors,
+        attributes: ShotAttributes {
+            power,
+            stability,
+            angle,
+            spin,
+            accuracy,
+        },
     }
 }
 

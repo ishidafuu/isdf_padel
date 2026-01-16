@@ -7,8 +7,8 @@ use bevy::prelude::*;
 
 use crate::components::{Ball, LogicalPosition, Player, Velocity};
 use crate::core::events::{
-    FaultEvent, GroundBounceEvent, PointScoredEvent, RallyEndEvent, ShotExecutedEvent,
-    WallReflectionEvent,
+    FaultEvent, GroundBounceEvent, PointScoredEvent, RallyEndEvent,
+    ShotAttributesCalculatedEvent, ShotExecutedEvent, WallReflectionEvent,
 };
 use crate::resource::FixedDeltaTime;
 
@@ -165,6 +165,41 @@ pub fn trace_fault_events_system(
     }
 }
 
+/// ショット属性詳細イベントを記録するシステム
+/// @spec 77200_telemetry_spec.md#req-77200-001
+/// @spec 77200_telemetry_spec.md#req-77200-002
+pub fn trace_shot_attributes_system(
+    mut tracer: ResMut<EventTracer>,
+    mut attrs_events: MessageReader<ShotAttributesCalculatedEvent>,
+) {
+    // REQ-77200-002: trace.shot_attributes が false の場合はスキップ
+    if !tracer.enabled || !tracer.config.shot_attributes {
+        // イベントを消費して破棄
+        attrs_events.read().count();
+        return;
+    }
+
+    for event in attrs_events.read() {
+        tracer.record_event(GameEvent::ShotAttributesCalculated {
+            player_id: event.player_id,
+            input_mode: event.input_mode.clone(),
+            hit_height: event.hit_height,
+            bounce_elapsed: event.bounce_elapsed,
+            approach_dot: event.approach_dot,
+            ball_distance: event.ball_distance,
+            height_factors: event.height_factors,
+            timing_factors: event.timing_factors,
+            approach_factors: event.approach_factors,
+            distance_factors: event.distance_factors,
+            final_power: event.final_power,
+            final_stability: event.final_stability,
+            final_angle: event.final_angle,
+            final_spin: event.final_spin,
+            final_accuracy: event.final_accuracy,
+        });
+    }
+}
+
 /// トレースシステムのプラグイン
 pub struct TraceSystemPlugin;
 
@@ -176,6 +211,7 @@ impl Plugin for TraceSystemPlugin {
                 trace_frame_advance_system,
                 trace_positions_system,
                 trace_shot_events_system,
+                trace_shot_attributes_system,
                 trace_bounce_events_system,
                 trace_wall_events_system,
                 trace_point_events_system,

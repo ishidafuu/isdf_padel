@@ -17,7 +17,7 @@ use crate::components::{
     Ball, BallSpin, BounceCount, BounceState, InputState, LastShooter, LogicalPosition, Player,
     Velocity,
 };
-use crate::core::events::{ShotEvent, ShotExecutedEvent};
+use crate::core::events::{ShotAttributesCalculatedEvent, ShotEvent, ShotExecutedEvent};
 use crate::core::CourtSide;
 use crate::resource::config::GameConfig;
 use crate::resource::debug::LastShotDebugInfo;
@@ -50,6 +50,8 @@ pub(super) struct NormalShotResult {
     pub accuracy: f32,
     pub stability: f32,
     pub is_jump_shot: bool,
+    /// ショット属性計算詳細（トレース用）
+    pub shot_attrs_detail: crate::systems::shot::attributes::ShotAttributesDetail,
 }
 
 /// ショット方向計算システム
@@ -77,6 +79,7 @@ pub fn shot_direction_system(
     >,
     player_query: Query<(&Player, &LogicalPosition, &Velocity, &InputState), Without<Ball>>,
     mut shot_executed_writer: MessageWriter<ShotExecutedEvent>,
+    mut shot_attrs_writer: MessageWriter<ShotAttributesCalculatedEvent>,
     mut debug_info: ResMut<LastShotDebugInfo>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
@@ -95,6 +98,7 @@ pub fn shot_direction_system(
             &mut ball_query,
             &player_query,
             &mut shot_executed_writer,
+            &mut shot_attrs_writer,
             &mut debug_info,
         );
     }
