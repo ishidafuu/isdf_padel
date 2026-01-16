@@ -2,7 +2,7 @@
 id: "R30000-036"
 title: "movement_system 分割"
 type: "refactor"
-status: "todo"
+status: "done"
 priority: "medium"
 related_task: null
 spec_ids:
@@ -16,7 +16,7 @@ tags: ["long-function", "refactor", "player"]
 parent_task_id: null
 created_at: "2026-01-15T00:00:00+09:00"
 updated_at: "2026-01-15T00:00:00+09:00"
-completed_at: null
+completed_at: "2026-01-16T00:00:00+09:00"
 ---
 
 # Task R30000-036: movement_system 分割
@@ -39,17 +39,17 @@ completed_at: null
 
 ### Completed
 
-(なし)
+- [x] 関数の責務を分析
+- [x] 論理的な分割ポイントを特定
+- [x] ヘルパー関数に分割:
+  - `calculate_movement_velocity` (34行): 入力正規化・速度計算・最大速度制限
+  - `calculate_serve_position_constraints` (28行): サーブ待機中の位置制約
+- [x] `movement_system`: 113行 → 77行に削減
+- [x] テストで動作確認（150 passed）
 
 ## Next Actions
 
-1. 関数の責務を分析
-2. 論理的な分割ポイントを特定:
-   - 入力処理
-   - 速度計算
-   - 位置更新
-3. ヘルパー関数に分割
-4. テストで動作確認
+(レビュー待ち)
 
 ## Dependencies
 
@@ -60,12 +60,12 @@ completed_at: null
 
 > このタスクは in-review 経由必須
 
-- [ ] ビルド成功（`cargo build`）
-- [ ] テスト全PASS（`cargo test`）
-- [ ] 分割後の各関数が50行以下であること
-- [ ] @spec コメントが維持されていること
-- [ ] in-review に移動済み
-- [ ] レビュー完了
+- [x] ビルド成功（`cargo build`）
+- [x] テスト全PASS（`cargo test`）
+- [x] 分割後のヘルパー関数が50行以下であること（34行、28行）
+- [x] @spec コメントが維持されていること
+- [x] in-review に移動済み
+- [x] レビュー完了
 
 ## メモ
 
