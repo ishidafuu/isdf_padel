@@ -293,6 +293,8 @@ impl ServeState {
 
     /// ダブルフォルト判定
     /// @spec 30102_serve_spec.md#req-30102-089
+    /// TODO: ダブルフォルト処理で使用予定
+    #[allow(dead_code)]
     pub fn is_double_fault(&self) -> bool {
         self.fault_count >= 2
     }

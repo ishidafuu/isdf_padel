@@ -3,6 +3,10 @@
 //!
 //! シミュレーション実行の制御を担当。
 //! AI vs AI の対戦をセットアップし、指定回数の試合を実行する。
+//!
+//! Note: 将来のヘッドレスシミュレーション統合に向けて実装済み
+
+#![allow(dead_code)]
 
 use bevy::app::ScheduleRunnerPlugin;
 use bevy::asset::AssetPlugin;

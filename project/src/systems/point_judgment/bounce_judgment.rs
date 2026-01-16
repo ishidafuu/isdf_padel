@@ -42,6 +42,7 @@ pub fn bounce_count_update_system(
 /// ツーバウンド判定システム
 /// @spec 30901_point_judgment_spec.md#req-30901-002
 /// BounceCount >= 2 でラリー終了（該当プレイヤーが失点）
+#[allow(clippy::type_complexity)]
 pub fn double_bounce_judgment_system(
     mut commands: Commands,
     mut query: Query<(Entity, &mut BounceCount), (With<Ball>, Without<PointEnded>)>,
@@ -102,6 +103,7 @@ pub fn double_bounce_judgment_system(
 /// 自コート打球失点判定システム
 /// @spec 30103_point_end_spec.md#req-30103-003
 /// 打った打球が自コートに落ちた場合は失点
+#[allow(clippy::type_complexity)]
 pub fn own_court_hit_judgment_system(
     mut commands: Commands,
     mut bounce_events: MessageReader<GroundBounceEvent>,

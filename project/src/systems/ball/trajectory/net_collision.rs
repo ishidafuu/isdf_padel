@@ -8,9 +8,11 @@ use crate::core::events::NetHitEvent;
 use crate::resource::config::GameConfig;
 
 /// ネット衝突検出・反射システム
+///
 /// ボールがネット位置を通過する際、高さがネット未満なら：
 /// 1. NetHitEvent を発行
 /// 2. ボールを跳ね返す（X方向の速度を反転・減衰）
+///
 /// @spec 30503_boundary_behavior.md#beh-30503-005
 pub fn ball_net_collision_system(
     config: Res<GameConfig>,

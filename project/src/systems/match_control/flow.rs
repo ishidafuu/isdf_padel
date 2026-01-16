@@ -167,6 +167,7 @@ fn point_end_enter_system(
 /// ポイント終了から次の状態への遷移システム
 /// @spec 30101_flow_spec.md#req-30101-004
 /// @spec 30101_flow_spec.md#req-30101-005
+#[allow(clippy::too_many_arguments)]
 fn point_end_to_next_system(
     fixed_dt: Res<FixedDeltaTime>,
     mut point_end_timer: ResMut<PointEndTimer>,
@@ -340,7 +341,7 @@ mod tests {
     fn test_state_transition_order() {
         // 状態遷移の順序を確認
         // MatchStart -> Serve -> Rally -> PointEnd -> Serve (または MatchEnd)
-        let states = vec![
+        let states = [
             MatchFlowState::MatchStart,
             MatchFlowState::Serve,
             MatchFlowState::Rally,

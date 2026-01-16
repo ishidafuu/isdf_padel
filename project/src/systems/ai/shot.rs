@@ -18,6 +18,7 @@ use crate::simulation::DebugLogger;
 /// @spec 30302_ai_shot_spec.md#req-30302-004
 /// @spec 30302_ai_shot_spec.md#req-30302-005
 /// @spec 30302_ai_shot_spec.md#req-30302-055
+#[allow(clippy::too_many_arguments)]
 pub fn ai_shot_system(
     config: Res<GameConfig>,
     mut game_rng: ResMut<GameRng>,

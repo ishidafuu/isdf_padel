@@ -2,6 +2,10 @@
 //! @spec 77100_headless_sim.md
 //!
 //! カテゴリ別のデバッグログ出力を管理するリソース。
+//!
+//! Note: 将来のヘッドレスシミュレーション統合に向けて実装済み
+
+#![allow(dead_code)]
 
 use bevy::prelude::*;
 use std::fs::File;

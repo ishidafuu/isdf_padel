@@ -15,6 +15,7 @@ use crate::simulation::DebugLogger;
 /// テニスルールに準拠したアウト判定。
 /// ボールがコート境界外に着地した場合、最後に打った側（LastShooter）の失点。
 /// 壁を超えてコート外に着地した場合のフォールバックとして機能。
+#[allow(clippy::type_complexity)]
 pub fn out_of_bounds_judgment_system(
     mut commands: Commands,
     mut out_events: MessageReader<BallOutOfBoundsEvent>,
@@ -101,6 +102,7 @@ pub fn out_of_bounds_judgment_system(
 /// ボールが壁（フェンス）に当たった時点でラリー終了（アウト）。
 /// テニスでは壁に当たった時点でインプレーではなくなる。
 /// 最後に打った側（LastShooter）の失点となる。
+#[allow(clippy::type_complexity)]
 pub fn wall_hit_judgment_system(
     mut commands: Commands,
     mut wall_events: MessageReader<WallReflectionEvent>,

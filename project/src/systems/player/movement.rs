@@ -94,6 +94,7 @@ fn calculate_serve_position_constraints(
 /// @spec 30102_serve_spec.md#req-30102-086
 /// @spec 20006_input_system.md - InputState 対応
 /// NOTE: B30201-002 で境界制限(REQ-30201-004)を削除（コート外移動許可）
+#[allow(clippy::too_many_arguments)]
 pub fn movement_system(
     fixed_dt: Res<FixedDeltaTime>,
     config: Res<GameConfig>,

@@ -11,6 +11,8 @@ use serde::Deserialize;
 pub struct ShotConfig {
     #[serde(default = "default_max_distance")]
     pub max_distance: f32,
+    /// TODO: ショットシステムで使用予定
+    #[allow(dead_code)]
     #[serde(default = "default_max_height_diff")]
     pub max_height_diff: f32,
     #[serde(default = "default_cooldown_time")]

@@ -106,6 +106,7 @@ pub fn serve_position_system(
 /// トス入力システム（1回目ボタン）
 /// @spec 30102_serve_spec.md#req-30102-080
 /// Waiting状態でショットボタンを押すとトスを開始
+#[allow(clippy::too_many_arguments)]
 pub fn serve_toss_input_system(
     mut commands: Commands,
     config: Res<GameConfig>,

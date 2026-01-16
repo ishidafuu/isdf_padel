@@ -14,6 +14,7 @@ use crate::simulation::DebugLogger;
 /// レット判定システム
 /// @spec 30901_point_judgment_spec.md#req-30901-003
 /// サーブ時にネットに触れて相手コートに入った場合はレット（再サーブ）
+#[allow(clippy::type_complexity)]
 pub fn let_judgment_system(
     mut commands: Commands,
     mut net_events: MessageReader<NetHitEvent>,
@@ -83,6 +84,8 @@ pub fn let_judgment_system(
 /// ネット失点判定システム（ラリー中）
 /// @spec 30103_point_end_spec.md#req-30103-002
 /// ラリー中にネットに当たった後、自コートに落ちた場合は失点
+#[allow(clippy::too_many_arguments)]
+#[allow(clippy::type_complexity)]
 pub fn net_fault_judgment_system(
     mut commands: Commands,
     mut net_events: MessageReader<NetHitEvent>,
@@ -165,7 +168,7 @@ mod tests {
     #[test]
     fn test_req_30103_004_rally_end_reason() {
         // RallyEndReasonに必要な理由が含まれているか確認
-        let reasons = vec![
+        let reasons = [
             RallyEndReason::DoubleBounce,
             RallyEndReason::NetFault,
             RallyEndReason::OwnCourtHit,

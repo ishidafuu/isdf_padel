@@ -12,18 +12,13 @@ use crate::core::CourtSide;
 
 /// プレイヤーのコントロールタイプ
 /// @spec REQ-77103-002
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum ControlType {
     /// 人間操作
     Human,
-    /// AI操作
+    /// AI操作（デフォルト: 後方互換性）
+    #[default]
     Ai,
-}
-
-impl Default for ControlType {
-    fn default() -> Self {
-        ControlType::Ai // 後方互換性：デフォルトはAI
-    }
 }
 
 /// リプレイデータ全体
@@ -197,7 +192,7 @@ impl BinaryInputSnapshot {
     }
 
     /// バイナリ形式から InputSnapshot に変換
-    pub fn to_snapshot(&self) -> InputSnapshot {
+    pub fn to_snapshot(self) -> InputSnapshot {
         InputSnapshot {
             movement: Vec2::new(
                 self.movement_x as f32 / 127.0,
@@ -236,7 +231,7 @@ impl BinaryFrameInput {
     }
 
     /// バイナリ形式から FrameInput に変換
-    pub fn to_frame_input(&self, frame_number: u32) -> FrameInput {
+    pub fn to_frame_input(self, frame_number: u32) -> FrameInput {
         FrameInput {
             frame: frame_number,
             p1: self.p1.to_snapshot(),

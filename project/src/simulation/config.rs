@@ -3,6 +3,10 @@
 //!
 //! シミュレーター専用の外部設定。
 //! ゲーム本体の GameConfig とは独立して管理。
+//!
+//! Note: 将来のヘッドレスシミュレーション統合に向けて実装済み
+
+#![allow(dead_code)]
 
 use serde::Deserialize;
 use std::fs;

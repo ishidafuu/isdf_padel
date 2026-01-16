@@ -205,6 +205,7 @@ fn detect_lock_state_change(ai: &AiController, ball_vel_x: f32, ball_coming_to_m
 /// 追跡目標位置を計算
 /// @spec 30301_ai_movement_spec.md#req-30301-v07-001
 /// @spec 30301_ai_movement_spec.md#req-30301-v07-002
+#[allow(clippy::too_many_arguments)]
 fn calculate_tracking_target(
     ai: &mut AiController,
     ai_pos: Vec3,

@@ -3,6 +3,10 @@
 //!
 //! シミュレーション中の位置・速度・イベントをフレーム単位で記録する。
 //! TraceConfig の設定に基づいて記録内容を制御する。
+//!
+//! Note: 将来のヘッドレスシミュレーション統合に向けて実装済み
+
+#![allow(dead_code)]
 
 use bevy::prelude::*;
 use std::fs::File;
@@ -463,7 +467,7 @@ impl FrameTrace {
 
 /// EventTracer リソース
 /// シミュレーション中のデータを記録する
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct EventTracer {
     /// トレース有効フラグ
     pub enabled: bool,
@@ -477,19 +481,6 @@ pub struct EventTracer {
     last_position_frame: u64,
     /// 現在フレームのイベントバッファ
     pending_events: Vec<GameEvent>,
-}
-
-impl Default for EventTracer {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            frames: Vec::new(),
-            config: TraceConfig::default(),
-            current_frame: 0,
-            last_position_frame: 0,
-            pending_events: Vec::new(),
-        }
-    }
 }
 
 impl EventTracer {

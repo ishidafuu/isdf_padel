@@ -2,7 +2,7 @@
 id: "R30000-037"
 title: "Clippy 警告対応"
 type: "refactor"
-status: "in-review"
+status: "done"
 priority: "low"
 related_task: null
 spec_ids: []
@@ -15,7 +15,7 @@ tags: ["clippy", "code-quality"]
 parent_task_id: null
 created_at: "2026-01-15T00:00:00+09:00"
 updated_at: "2026-01-16T00:00:00+09:00"
-completed_at: null
+completed_at: "2026-01-16T00:00:00+09:00"
 ---
 
 # Task R30000-037: Clippy 警告対応
@@ -88,7 +88,7 @@ completed_at: null
 - [x] テスト全PASS（`cargo test`）- 150件
 - [x] `cargo clippy` で警告ゼロ
 - [x] in-review に移動済み
-- [ ] レビュー完了
+- [x] レビュー完了
 
 ## メモ
 
