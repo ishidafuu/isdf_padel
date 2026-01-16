@@ -2,15 +2,14 @@
 id: "30061"
 title: "QAプロンプトチューニング"
 type: "game-dev"
-status: "todo"
+status: "in-progress"
 priority: "medium"
 related_task: null
 spec_ids:
   - "REQ-77202-004"
   - "REQ-77202-005"
   - "REQ-77202-006"
-blocked_by:
-  - "30060"
+blocked_by: []
 blocks: []
 branch_name: null
 worktree_path: null
