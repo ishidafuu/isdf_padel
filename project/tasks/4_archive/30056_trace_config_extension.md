@@ -2,11 +2,12 @@
 id: "30056"
 title: "TraceConfig拡張"
 type: "game-dev"
-status: "todo"
+status: "done"
 priority: "medium"
 related_task: null
 spec_ids:
   - "REQ-77200-002"
+  - "REQ-77200-007"
 blocked_by:
   - "30053"
 blocks: []
@@ -20,7 +21,7 @@ tags:
 parent_task_id: null
 created_at: "2026-01-16T16:00:00+09:00"
 updated_at: "2026-01-16T16:00:00+09:00"
-completed_at: null
+completed_at: "2026-01-16T18:00:00+09:00"
 ---
 
 # Task 30056: TraceConfig拡張
@@ -37,7 +38,11 @@ TraceConfigに新イベントカテゴリのフラグを追加し、テレメト
 
 ### Completed
 
-(なし)
+- [x] TraceConfigに`ai_decisions`フィールド追加
+- [x] TraceConfigに`physics_anomalies`フィールド追加
+- [x] デフォルト値設定（全てfalse）
+- [x] ビルド成功
+- [x] テスト全150 PASS
 
 ## Next Actions
 
@@ -59,9 +64,9 @@ TraceConfigに新イベントカテゴリのフラグを追加し、テレメト
 
 > このタスクは in-review 経由必須
 
-- [ ] ビルド成功（`cargo build`）
-- [ ] テスト全PASS（`cargo test`）
-- [ ] in-review に移動済み
+- [x] ビルド成功（`cargo build`）
+- [x] テスト全PASS（`cargo test`）
+- [x] in-review に移動済み
 - [ ] レビュー完了
 
 ## メモ
