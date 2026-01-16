@@ -62,6 +62,14 @@ pub struct TraceConfig {
     /// @spec 77200_telemetry_spec.md#req-77200-002
     #[serde(default)]
     pub shot_attributes: bool,
+    /// AI決定記録
+    /// @spec 77200_telemetry_spec.md#req-77200-007
+    #[serde(default)]
+    pub ai_decisions: bool,
+    /// 物理異常記録
+    /// @spec 77200_telemetry_spec.md#req-77200-005
+    #[serde(default)]
+    pub physics_anomalies: bool,
 }
 
 impl Default for TraceConfig {
@@ -73,6 +81,8 @@ impl Default for TraceConfig {
             events: false,
             interval_frames: 10,
             shot_attributes: false,
+            ai_decisions: false,
+            physics_anomalies: false,
         }
     }
 }
