@@ -34,3 +34,4 @@ Cargo.lock
 # Serena MCP
 .serena/
 .worktrees/
+plans/
