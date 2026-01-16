@@ -2,7 +2,7 @@
 id: "30054"
 title: "ショット属性トレース実装"
 type: "game-dev"
-status: "in-review"
+status: "completed"
 priority: "high"
 related_task: null
 spec_ids:
