@@ -8,6 +8,7 @@ related_task: null
 spec_ids:
   - "REQ-77200-003"
   - "REQ-77200-004"
+  - "REQ-77200-007"
 blocked_by:
   - "30053"
 blocks: []
