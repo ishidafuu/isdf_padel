@@ -2,7 +2,7 @@
 id: "30060"
 title: "QAレビュースキル設計"
 type: "game-dev"
-status: "todo"
+status: "in-review"
 priority: "medium"
 related_task: null
 spec_ids:
@@ -41,15 +41,15 @@ Claude Codeスキルとして `/qa-review` コマンドを実装。基本的な�
 
 ### Completed
 
-(なし)
-
-## Next Actions
-
 1. `.claude/commands/qa-review.md` を新規作成
 2. スキルの基本構造を定義（引数、説明）
 3. 入力処理ロジックを設計
 4. 基本的なプロンプトテンプレートを作成
 5. 出力形式（マークダウンレポート）を定義
+
+## Next Actions
+
+(完了 - レビュー待ち)
 
 ## Dependencies
 
@@ -58,9 +58,9 @@ Claude Codeスキルとして `/qa-review` コマンドを実装。基本的な�
 
 ## 完了チェックリスト
 
-- [ ] スキルファイル作成完了
-- [ ] 基本動作確認
-- [ ] ドキュメント整合性確認
+- [x] スキルファイル作成完了
+- [x] 基本動作確認（スキルファイル構文確認済み）
+- [x] ドキュメント整合性確認（77202仕様書準拠）
 
 ## メモ
 

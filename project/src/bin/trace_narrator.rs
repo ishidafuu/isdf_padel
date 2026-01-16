@@ -11,6 +11,9 @@
 //!
 //! # ファイル出力
 //! cargo run --bin trace_narrator -- input.jsonl -o output.md
+//!
+//! # 詳細度指定
+//! cargo run --bin trace_narrator -- input.jsonl -d full -o output.md
 //! ```
 
 // モジュール名の衝突を避けるためにpathアトリビュートを使用
@@ -20,31 +23,39 @@ mod types;
 mod parser;
 #[path = "trace_narrator/analyzer.rs"]
 mod analyzer;
+#[path = "trace_narrator/formatter.rs"]
+mod formatter;
 
+use std::fs;
+use std::io::{self, Write};
 use std::path::PathBuf;
 
 use clap::Parser;
 
 use analyzer::analyze_rallies;
+use formatter::{format_markdown, DetailLevel, FormatOptions};
 use parser::parse_trace_file;
-use types::GameEvent;
 
 /// Trace Narrator - テレメトリログ変換ツール
+/// @spec REQ-77201-007, REQ-77201-008
 #[derive(Parser, Debug)]
-#[command(author, version, about = "Convert telemetry logs to narrative format")]
+#[command(author, version, about = "Convert telemetry logs to narrative markdown format")]
 struct Args {
     /// 入力JSONLファイル
     input: PathBuf,
 
     /// 出力ファイル（省略時はstdout）
+    /// @spec REQ-77201-007
     #[arg(short, long)]
     output: Option<PathBuf>,
 
     /// 詳細度 (summary/normal/full)
+    /// @spec REQ-77201-008
     #[arg(short, long, default_value = "normal")]
     detail_level: String,
 
     /// 異常検出の閾値倍率
+    /// @spec REQ-77201-006
     #[arg(short, long, default_value = "1.5")]
     anomaly_threshold: f32,
 
@@ -55,13 +66,19 @@ struct Args {
     /// ラリー要約のみ出力
     #[arg(long)]
     rally_only: bool,
+
+    /// 統計情報を標準エラー出力に表示
+    #[arg(long)]
+    verbose: bool,
 }
 
 fn main() {
     let args = Args::parse();
 
     // ファイル読み込み
-    println!("Loading trace file: {:?}", args.input);
+    if args.verbose {
+        eprintln!("Loading trace file: {:?}", args.input);
+    }
 
     let result = match parse_trace_file(&args.input) {
         Ok(r) => r,
@@ -71,155 +88,68 @@ fn main() {
         }
     };
 
-    // パース結果サマリー
-    println!("\n=== Parse Result ===");
-    println!("Total frames: {}", result.frames.len());
-    println!("Skipped lines: {}", result.skipped_lines);
+    // パース結果サマリー（verbose モードのみ）
+    if args.verbose {
+        eprintln!("\n=== Parse Result ===");
+        eprintln!("Total frames: {}", result.frames.len());
+        eprintln!("Skipped lines: {}", result.skipped_lines);
 
-    if !result.errors.is_empty() {
-        println!("\nParse errors:");
-        for (line, error) in result.errors.iter().take(5) {
-            println!("  Line {}: {}", line, error);
-        }
-        if result.errors.len() > 5 {
-            println!("  ... and {} more errors", result.errors.len() - 5);
-        }
-    }
-
-    // 基本統計
-    let total_events: usize = result.frames.iter().map(|f| f.events.len()).sum();
-    let point_events = result
-        .frames
-        .iter()
-        .flat_map(|f| &f.events)
-        .filter(|e: &&GameEvent| e.is_point())
-        .count();
-    let anomaly_events = result
-        .frames
-        .iter()
-        .flat_map(|f| &f.events)
-        .filter(|e: &&GameEvent| e.is_anomaly())
-        .count();
-
-    println!("\n=== Trace Statistics ===");
-    if let (Some(first), Some(last)) = (result.frames.first(), result.frames.last()) {
-        println!(
-            "Frame range: {} - {} ({} frames)",
-            first.frame,
-            last.frame,
-            result.frames.len()
-        );
-        println!(
-            "Time range: {:.3}s - {:.3}s ({:.3}s duration)",
-            first.timestamp,
-            last.timestamp,
-            last.timestamp - first.timestamp
-        );
-    }
-    println!("Total events: {}", total_events);
-    println!("Point events: {}", point_events);
-    println!("Anomaly events: {}", anomaly_events);
-
-    // イベント種別の内訳
-    let mut event_counts: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
-    for frame in &result.frames {
-        for event in &frame.events {
-            *event_counts.entry(event.type_name()).or_insert(0) += 1;
+        if !result.errors.is_empty() {
+            eprintln!("\nParse errors:");
+            for (line, error) in result.errors.iter().take(5) {
+                eprintln!("  Line {}: {}", line, error);
+            }
+            if result.errors.len() > 5 {
+                eprintln!("  ... and {} more errors", result.errors.len() - 5);
+            }
         }
     }
 
-    if !event_counts.is_empty() {
-        println!("\nEvent breakdown:");
-        let mut sorted: Vec<_> = event_counts.iter().collect();
-        sorted.sort_by(|a, b| b.1.cmp(a.1));
-        for (event_type, count) in sorted {
-            println!("  {}: {}", event_type, count);
-        }
-    }
-
-    // 出力オプションの表示（将来の実装用）
-    println!("\n=== Options ===");
-    println!("Detail level: {}", args.detail_level);
-    println!("Anomaly threshold: {}", args.anomaly_threshold);
-    println!("Include physics: {}", args.include_physics);
-    println!("Rally only: {}", args.rally_only);
-    if let Some(ref output) = args.output {
-        println!("Output file: {:?}", output);
-    } else {
-        println!("Output: stdout");
-    }
-
-    // @spec REQ-77201-003, REQ-77201-004, REQ-77201-005, REQ-77201-006: ラリー解析
-    println!("\n=== Rally Analysis ===");
+    // ラリー解析
+    // @spec REQ-77201-003, REQ-77201-004, REQ-77201-005, REQ-77201-006
     let analysis = analyze_rallies(&result.frames, args.anomaly_threshold);
 
-    println!("Total rallies: {}", analysis.rallies.len());
-    println!(
-        "Physics anomalies: {}",
-        analysis.all_anomalies.len()
-    );
-    println!(
-        "Statistical anomalies: {}",
-        analysis.statistical_anomalies.len()
-    );
-
-    // ラリー詳細を表示
-    if !analysis.rallies.is_empty() {
-        println!("\n--- Rally Details ---");
-        for rally in &analysis.rallies {
-            println!(
-                "\nRally {} (Frame {}-{}): P{} wins ({}) - {:.2}s",
-                rally.number,
-                rally.start_frame,
-                rally.end_frame,
-                rally.winner,
-                rally.end_reason,
-                rally.duration_secs
-            );
-            println!(
-                "  Shots: {} (P1: {}, P2: {})",
-                rally.stats.shot_count, rally.stats.p1_shot_count, rally.stats.p2_shot_count
-            );
-            println!("  Bounces: {}, Wall reflects: {}", rally.bounce_count, rally.wall_reflect_count);
-
-            if rally.stats.p1_shot_count > 0 || rally.stats.p2_shot_count > 0 {
-                println!(
-                    "  P1 avg: power={:.2}, accuracy={:.2}, spin={:.2}",
-                    rally.stats.p1_avg_power, rally.stats.p1_avg_accuracy, rally.stats.p1_avg_spin
-                );
-                println!(
-                    "  P2 avg: power={:.2}, accuracy={:.2}, spin={:.2}",
-                    rally.stats.p2_avg_power, rally.stats.p2_avg_accuracy, rally.stats.p2_avg_spin
-                );
-            }
-
-            // ラリー内の異常を表示
-            for anomaly in &rally.anomalies {
-                println!(
-                    "  {} Frame {}: {}",
-                    anomaly.severity.emoji(),
-                    anomaly.frame,
-                    anomaly.description
-                );
-            }
-        }
+    if args.verbose {
+        eprintln!("\n=== Rally Analysis ===");
+        eprintln!("Total rallies: {}", analysis.rallies.len());
+        eprintln!("Physics anomalies: {}", analysis.all_anomalies.len());
+        eprintln!(
+            "Statistical anomalies: {}",
+            analysis.statistical_anomalies.len()
+        );
     }
 
-    // 統計的外れ値を表示
-    if !analysis.statistical_anomalies.is_empty() {
-        println!("\n--- Statistical Anomalies (threshold: {}σ) ---", args.anomaly_threshold);
-        for anomaly in analysis.statistical_anomalies.iter().take(10) {
-            println!(
-                "  {} Frame {}: {}",
-                anomaly.severity.emoji(),
-                anomaly.frame,
-                anomaly.description
-            );
+    // フォーマットオプション構築
+    // @spec REQ-77201-008
+    let options = FormatOptions {
+        detail_level: DetailLevel::from_str(&args.detail_level),
+        include_physics: args.include_physics,
+        rally_only: args.rally_only,
+    };
+
+    // @spec REQ-77201-007: マークダウン出力
+    let markdown = format_markdown(&result.frames, &analysis, &options);
+
+    // 出力先に応じて書き込み
+    if let Some(ref output_path) = args.output {
+        match fs::write(output_path, &markdown) {
+            Ok(_) => {
+                if args.verbose {
+                    eprintln!("\nOutput written to: {:?}", output_path);
+                }
+            }
+            Err(e) => {
+                eprintln!("Error writing output file: {}", e);
+                std::process::exit(1);
+            }
         }
-        if analysis.statistical_anomalies.len() > 10 {
-            println!("  ... and {} more", analysis.statistical_anomalies.len() - 10);
+    } else {
+        // stdout に出力
+        let stdout = io::stdout();
+        let mut handle = stdout.lock();
+        if let Err(e) = handle.write_all(markdown.as_bytes()) {
+            eprintln!("Error writing to stdout: {}", e);
+            std::process::exit(1);
         }
     }
-
-    println!("\n[Note] Markdown output will be implemented in task 30059");
 }
