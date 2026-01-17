@@ -2,7 +2,7 @@
 id: "R30000-038"
 title: "ai_movement_system 分割"
 type: "refactor"
-status: "in-review"
+status: "done"
 priority: "medium"
 related_task: null
 spec_ids: []
@@ -15,7 +15,7 @@ tags: ["long-function", "code-quality", "ai"]
 parent_task_id: null
 created_at: "2026-01-17T00:00:00+09:00"
 updated_at: "2026-01-17T10:15:00+09:00"
-completed_at: null
+completed_at: "2026-01-17T10:20:00+09:00"
 ---
 
 # Task R30000-038: ai_movement_system 分割
