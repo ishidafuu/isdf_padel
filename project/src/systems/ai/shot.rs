@@ -11,6 +11,87 @@ use crate::resource::config::GameConfig;
 use crate::resource::{GameRng, MatchScore, RallyPhase, RallyState};
 use crate::simulation::DebugLogger;
 
+/// ショット可能条件をチェック
+/// @spec 30302_ai_shot_spec.md#req-30302-001
+/// @spec 30302_ai_shot_spec.md#req-30302-002
+///
+/// 以下の条件をすべて満たす場合のみ true を返す:
+/// - ふっとばし中でない
+/// - サーブ時のリターナー制約を満たしている
+/// - 自分が打ったボールでない
+/// - クールダウン中でない
+/// - ボールが射程距離内
+#[allow(clippy::too_many_arguments)]
+fn can_ai_shoot(
+    knockback: &KnockbackState,
+    rally_state: &RallyState,
+    match_score: &MatchScore,
+    bounce_count: &BounceCount,
+    player: &Player,
+    last_shooter: &LastShooter,
+    shot_state: &ShotState,
+    distance_3d: f32,
+    max_distance: f32,
+) -> bool {
+    // ふっとばし中はショット禁止
+    if knockback.is_knockback_active() {
+        return false;
+    }
+
+    // サーブ中でボールがまだバウンドしていない場合、リターナーはショット禁止
+    // パデルルール: サーブは必ず1バウンドしてからリターンする
+    if rally_state.phase == RallyPhase::Serving && bounce_count.count == 0 {
+        // リターナー（サーバーの相手側）のみブロック
+        if player.court_side != match_score.server {
+            return false;
+        }
+    }
+
+    // 自分が打ったボールは打てない（相手が打ち返すまで待つ）
+    if last_shooter.side == Some(player.court_side) {
+        return false;
+    }
+
+    // REQ-30302-002: クールダウン中はショット禁止
+    if shot_state.is_on_cooldown() {
+        return false;
+    }
+
+    // REQ-30302-001: 球体判定（3D距離）
+    if distance_3d > max_distance {
+        return false;
+    }
+
+    true
+}
+
+/// 打球方向の制御値を計算
+/// @spec 30302_ai_shot_spec.md#req-30302-003
+/// @spec 30302_ai_shot_spec.md#req-30302-055
+///
+/// 戻り値の Vec2:
+/// - x: 深さ制御 (-1.0=ネット際, 0.0=サービスライン付近, +1.0=ベースライン際)
+/// - y: 横方向制御 (-1.0〜+1.0)
+fn calculate_shot_direction(
+    game_rng: &mut GameRng,
+    direction_variance: f32,
+) -> Vec2 {
+    // ネットフォルトを避けるため、サービスライン〜ベースライン中間を狙う
+    let base_depth = 0.3_f32; // やや浅め（安全マージン）
+    let base_lateral = 0.0_f32; // コート中央
+
+    // REQ-30302-055: ランダムブレを適用（制御値として）
+    // direction_variance（度）を制御値範囲に変換
+    let variance_factor = (direction_variance / 45.0).clamp(0.0, 1.0);
+    let depth_offset = game_rng.random_range(-variance_factor..=variance_factor) * 0.2;
+    let lateral_offset = game_rng.random_range(-variance_factor..=variance_factor) * 0.5;
+
+    Vec2::new(
+        (base_depth + depth_offset).clamp(-0.5, 1.0), // ネット際は避ける（-0.5以上）
+        (base_lateral + lateral_offset).clamp(-1.0, 1.0),
+    )
+}
+
 /// AIショットシステム v0.6
 /// @spec 30302_ai_shot_spec.md#req-30302-001
 /// @spec 30302_ai_shot_spec.md#req-30302-002
@@ -44,60 +125,26 @@ pub fn ai_shot_system(
     let ball_pos = ball_logical_pos.value;
 
     for (player, ai_pos, mut shot_state, knockback) in ai_query.iter_mut() {
-        // ふっとばし中はショット禁止
-        if knockback.is_knockback_active() {
-            continue;
-        }
-
-        // サーブ中でボールがまだバウンドしていない場合、リターナーはショット禁止
-        // パデルルール: サーブは必ず1バウンドしてからリターンする
-        if rally_state.phase == RallyPhase::Serving && bounce_count.count == 0 {
-            // リターナー（サーバーの相手側）のみブロック
-            if player.court_side != match_score.server {
-                continue;
-            }
-        }
-
-        // 自分が打ったボールは打てない（相手が打ち返すまで待つ）
-        if last_shooter.side == Some(player.court_side) {
-            continue;
-        }
-
-        // REQ-30302-002: クールダウン中はショット禁止
-        if shot_state.is_on_cooldown() {
-            continue;
-        }
-
         let ai_position = ai_pos.value;
-
-        // REQ-30302-001: 球体判定（3D距離）
         let distance_3d = (ai_position - ball_pos).length();
-        if distance_3d > config.shot.max_distance {
+
+        // ショット可能条件をチェック
+        if !can_ai_shoot(
+            knockback,
+            &rally_state,
+            &match_score,
+            bounce_count,
+            player,
+            last_shooter,
+            &shot_state,
+            distance_3d,
+            config.shot.max_distance,
+        ) {
             continue;
         }
 
-        // REQ-30302-003: 打球方向を制御値として設定
-        // ShotEvent.direction は制御値（-1.0〜+1.0）として解釈される
-        // direction.x: 深さ制御 (-1.0=ネット際, 0.0=サービスライン付近, +1.0=ベースライン際)
-        // direction.y: 横方向制御 (-1.0〜+1.0)
-        //
-        // 注意: 両サイドのプレイヤーとも同じ制御値セマンティクスを使用
-        // landing_position.rs がコートサイドに応じて適切に変換する
-
-        // ネットフォルトを避けるため、サービスライン〜ベースライン中間を狙う
-        let base_depth = 0.3_f32; // やや浅め（安全マージン）
-        let base_lateral = 0.0_f32; // コート中央
-
-        // REQ-30302-055: ランダムブレを適用（制御値として）
-        // direction_variance（度）を制御値範囲に変換
-        let variance_factor = (config.ai.direction_variance / 45.0).clamp(0.0, 1.0);
-        let depth_offset = game_rng.random_range(-variance_factor..=variance_factor) * 0.2;
-        let lateral_offset = game_rng.random_range(-variance_factor..=variance_factor) * 0.5;
-
-        let direction = Vec2::new(
-            (base_depth + depth_offset).clamp(-0.5, 1.0), // ネット際は避ける（-0.5以上）
-            (base_lateral + lateral_offset).clamp(-1.0, 1.0),
-        );
+        // 打球方向を計算
+        let direction = calculate_shot_direction(&mut game_rng, config.ai.direction_variance);
 
         // REQ-30302-004: クールダウン開始
         shot_state.start_cooldown(config.ai.shot_cooldown);
@@ -151,5 +198,23 @@ mod tests {
         assert!(direction.x > 0.0, "Should aim towards +X (opponent's court)");
         // 中央に打つのでZ方向は小さい
         assert!(direction.z.abs() < 0.001, "Z should be near zero");
+    }
+
+    /// REQ-30302-055: 方向計算のランダムブレテスト
+    #[test]
+    fn test_shot_direction_variance() {
+        use crate::resource::GameRng;
+
+        let mut rng = GameRng::from_seed(12345);
+
+        // 誤差0の場合は基本値
+        let dir_no_variance = calculate_shot_direction(&mut rng, 0.0);
+        assert!((dir_no_variance.x - 0.3).abs() < 0.001);
+        assert!((dir_no_variance.y - 0.0).abs() < 0.001);
+
+        // 誤差ありの場合は範囲内
+        let dir_with_variance = calculate_shot_direction(&mut rng, 15.0);
+        assert!(dir_with_variance.x >= -0.5 && dir_with_variance.x <= 1.0);
+        assert!(dir_with_variance.y >= -1.0 && dir_with_variance.y <= 1.0);
     }
 }
