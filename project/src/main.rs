@@ -41,28 +41,64 @@ fn main() {
     let config = load_game_config("assets/config/game_config.ron")
         .expect("Failed to load game config");
 
-    App::new()
-        .add_plugins(
-            DefaultPlugins
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "Padel Game - MVP v0.1".into(),
-                        resolution: (1280, 720).into(),
-                        ..default()
-                    }),
-                    ..default()
-                })
-                // ホットリロード有効化
-                // @spec 30026: GameConfig ホットリロード対応
-                .set(AssetPlugin {
-                    watch_for_changes_override: Some(true),
+    let mut app = App::new();
+
+    // Bevy基本プラグイン・アセット登録
+    add_default_plugins(&mut app);
+
+    // ゲームプラグイン追加
+    add_game_plugins(&mut app);
+
+    // リソース・メッセージ初期化
+    add_resources(&mut app, config);
+    add_messages(&mut app);
+
+    // システム登録
+    app.add_systems(Startup, (setup, load_config_asset));
+    app.configure_sets(Update, GameSystemSet::Input.before(GameSystemSet::GameLogic));
+    app.add_systems(Update, escape_to_exit);
+    add_input_systems(&mut app);
+    add_game_logic_systems(&mut app);
+
+    app.run();
+}
+
+/// DefaultPlugins とアセット登録
+fn add_default_plugins(app: &mut App) {
+    app.add_plugins(
+        DefaultPlugins
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "Padel Game - MVP v0.1".into(),
+                    resolution: (1280, 720).into(),
                     ..default()
                 }),
-        )
-        // GameConfig の Asset 登録
-        .init_asset::<GameConfig>()
-        .init_asset_loader::<GameConfigLoader>()
-        .add_plugins(BoundaryPlugin)
+                ..default()
+            })
+            // ホットリロード有効化
+            // @spec 30026: GameConfig ホットリロード対応
+            .set(AssetPlugin {
+                watch_for_changes_override: Some(true),
+                ..default()
+            }),
+    );
+
+    // GameConfig の Asset 登録
+    app.init_asset::<GameConfig>()
+        .init_asset_loader::<GameConfigLoader>();
+}
+
+/// リソースを初期化
+fn add_resources(app: &mut App, config: GameConfig) {
+    app.insert_resource(config)
+        .init_resource::<FixedDeltaTime>()
+        .init_resource::<GameRng>()
+        .init_resource::<LastShotDebugInfo>();
+}
+
+/// ゲームプラグインを追加
+fn add_game_plugins(app: &mut App) {
+    app.add_plugins(BoundaryPlugin)
         .add_plugins(BallTrajectoryPlugin)
         .add_plugins(BallCollisionPlugin)
         .add_plugins(ScoringPlugin)
@@ -74,77 +110,77 @@ fn main() {
         .add_plugins(DebugUiPlugin)
         .add_plugins(CharacterPlugin)
         // @spec 77103_replay_spec.md: リプレイ記録機能
-        .add_plugins(replay::ReplayRecordPlugin)
-        .insert_resource(config)
-        .init_resource::<FixedDeltaTime>()
-        .init_resource::<GameRng>()
-        .init_resource::<LastShotDebugInfo>()
-        .add_message::<PlayerMoveEvent>()
+        .add_plugins(replay::ReplayRecordPlugin);
+}
+
+/// メッセージ（イベント）を登録
+fn add_messages(app: &mut App) {
+    app.add_message::<PlayerMoveEvent>()
         .add_message::<PlayerJumpEvent>()
         .add_message::<PlayerLandEvent>()
         .add_message::<BallHitEvent>()
         .add_message::<PlayerKnockbackEvent>()
         .add_message::<ShotEvent>()
-        .add_message::<ShotExecutedEvent>()
-        .add_systems(Startup, (setup, load_config_asset))
-        // SystemSet の順序を設定: Input → GameLogic
-        .configure_sets(Update, GameSystemSet::Input.before(GameSystemSet::GameLogic))
-        // エスケープキーでウィンドウを閉じる
-        .add_systems(Update, escape_to_exit)
-        // 入力システム（Input セット）
-        .add_systems(
-            Update,
-            (
-                // 人間入力読み取り（HumanControlled を持つプレイヤーの InputState を更新）
-                // @spec 20006_input_system.md
-                human_input_system,
-                // ゲームパッド入力読み取り（device_id=1 の HumanControlled）
-                // @spec 20006_input_system.md#req-20006-050
-                gamepad_input_system,
-            )
-                .chain()
-                .in_set(GameSystemSet::Input),
+        .add_message::<ShotExecutedEvent>();
+}
+
+/// 入力システムを追加（Input セット）
+fn add_input_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        (
+            // 人間入力読み取り（HumanControlled を持つプレイヤーの InputState を更新）
+            // @spec 20006_input_system.md
+            human_input_system,
+            // ゲームパッド入力読み取り（device_id=1 の HumanControlled）
+            // @spec 20006_input_system.md#req-20006-050
+            gamepad_input_system,
         )
-        // ゲームロジックシステム（GameLogic セット）
-        .add_systems(
-            Update,
-            (
-                // 設定ホットリロード
-                update_config_on_change,
-                // ふっとばし開始（BallHitEvent を処理）
-                knockback_start_system,
-                // ジャンプ・重力
-                (jump_system, gravity_system, vertical_movement_system).chain(),
-                // 水平移動（ふっとばし中はスキップ）
-                movement_system,
-                // AI移動（AiController を持つプレイヤー）
-                // @spec 30301_ai_movement_spec.md
-                ai_movement_system,
-                // ショット入力処理（Rally状態でのみ動作 - サーブ中は shot_input_system を動かさない）
-                shot_input_system.run_if(in_state(MatchFlowState::Rally)),
-                // AIショット処理（Rally状態でのみ動作）
-                // @spec 30302_ai_shot_spec.md
-                ai_shot_system.run_if(in_state(MatchFlowState::Rally)),
-                // 方向計算・クールダウン（常に動作 - サーブの ShotEvent も処理する）
-                (shot_direction_system, shot_cooldown_system),
-                // ふっとばし移動・タイマー
-                (knockback_movement_system, knockback_timer_system),
-                // 境界チェック
-                (ceiling_collision_system, landing_system),
-                // 座標変換（論理座標→表示座標）
-                sync_transform_system,
-                // 影システム
-                (spawn_ball_shadow_system, spawn_player_shadow_system, sync_shadow_system, despawn_ball_shadow_system),
-                // 視覚フィードバック（色変化）
-                // @spec 30802_visual_feedback_spec.md
-                (save_player_original_color_system, player_hold_visual_system, ball_spin_color_system),
-                // デバッグマーカー（Xボタンで弾道情報をログ出力）
-                debug_marker_system,
-            )
-                .chain()
-                .in_set(GameSystemSet::GameLogic),
+            .chain()
+            .in_set(GameSystemSet::Input),
+    );
+}
+
+/// ゲームロジックシステムを追加（GameLogic セット）
+fn add_game_logic_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        (
+            // 設定ホットリロード
+            update_config_on_change,
+            // ふっとばし開始（BallHitEvent を処理）
+            knockback_start_system,
+            // ジャンプ・重力
+            (jump_system, gravity_system, vertical_movement_system).chain(),
+            // 水平移動（ふっとばし中はスキップ）
+            movement_system,
+            // AI移動（AiController を持つプレイヤー）
+            // @spec 30301_ai_movement_spec.md
+            ai_movement_system,
+            // ショット入力処理（Rally状態でのみ動作 - サーブ中は shot_input_system を動かさない）
+            shot_input_system.run_if(in_state(MatchFlowState::Rally)),
+            // AIショット処理（Rally状態でのみ動作）
+            // @spec 30302_ai_shot_spec.md
+            ai_shot_system.run_if(in_state(MatchFlowState::Rally)),
+            // 方向計算・クールダウン（常に動作 - サーブの ShotEvent も処理する）
+            (shot_direction_system, shot_cooldown_system),
+            // ふっとばし移動・タイマー
+            (knockback_movement_system, knockback_timer_system),
+            // 境界チェック
+            (ceiling_collision_system, landing_system),
+            // 座標変換（論理座標→表示座標）
+            sync_transform_system,
+            // 影システム
+            (spawn_ball_shadow_system, spawn_player_shadow_system, sync_shadow_system, despawn_ball_shadow_system),
+            // 視覚フィードバック（色変化）
+            // @spec 30802_visual_feedback_spec.md
+            (save_player_original_color_system, player_hold_visual_system, ball_spin_color_system),
+            // デバッグマーカー（Xボタンで弾道情報をログ出力）
+            debug_marker_system,
         )
-        .run();
+            .chain()
+            .in_set(GameSystemSet::GameLogic),
+    );
 }
 
 /// 初期セットアップ
