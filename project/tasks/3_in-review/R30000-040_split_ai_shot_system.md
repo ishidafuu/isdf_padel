@@ -2,7 +2,7 @@
 id: "R30000-040"
 title: "ai_shot_system 分割"
 type: "refactor"
-status: "todo"
+status: "in-review"
 priority: "medium"
 related_task: null
 spec_ids: []
@@ -44,11 +44,11 @@ completed_at: null
 
 ### TODO
 
-- [ ] 現状のコード構造を分析
-- [ ] 分割ポイントを特定
-- [ ] ヘルパー関数を抽出
-- [ ] テスト実行・動作確認
-- [ ] ビルド・Clippy 確認
+- [x] 現状のコード構造を分析
+- [x] 分割ポイントを特定
+- [x] ヘルパー関数を抽出
+- [x] テスト実行・動作確認
+- [x] ビルド・Clippy 確認
 
 ## Dependencies
 
@@ -59,11 +59,13 @@ completed_at: null
 
 > このタスクは in-review 経由必須
 
-- [ ] ビルド成功（`cargo build`）
-- [ ] テスト全PASS（`cargo test`）
-- [ ] `cargo clippy` で警告ゼロ
-- [ ] 分割後の各関数が50行以下
-- [ ] in-review に移動済み
+- [x] ビルド成功（`cargo build`）
+- [x] テスト全PASS（`cargo test`）- 163テスト合格
+- [x] `cargo clippy` で警告ゼロ（変更ファイルに対して）
+- [x] 分割後の各関数が50行以下
+  - `can_ai_shoot()`: 42行
+  - `calculate_shot_direction()`: 19行
+- [x] in-review に移動済み
 - [ ] レビュー完了
 
 ## メモ

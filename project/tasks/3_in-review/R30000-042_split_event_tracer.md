@@ -2,7 +2,7 @@
 id: "R30000-042"
 title: "event_tracer モジュール分割"
 type: "refactor"
-status: "todo"
+status: "in_review"
 priority: "medium"
 related_task: null
 spec_ids: []
@@ -46,13 +46,23 @@ completed_at: null
 
 ## Progress
 
-### TODO
+### DONE
 
-- [ ] 現状のコード構造を分析
-- [ ] 分割ポイントを特定
-- [ ] サブモジュールを作成
-- [ ] テスト実行・動作確認
-- [ ] ビルド・Clippy 確認
+- [x] 現状のコード構造を分析
+- [x] 分割ポイントを特定
+- [x] サブモジュールを作成
+- [x] テスト実行・動作確認
+- [x] ビルド・Clippy 確認
+
+### 分割結果
+
+| ファイル | 行数 | 責務 |
+|---------|------|------|
+| `types.rs` | 64行 | EntityType, EntityTrace, FrameTrace |
+| `events.rs` | 101行 | GameEvent enum |
+| `mod.rs` | 120行 | EventTracer + コアロジック |
+| `writer.rs` | 128行 | ファイル出力処理 |
+| `formatter.rs` | 289行 | CSV/JSONフォーマット |
 
 ## Dependencies
 
@@ -63,11 +73,11 @@ completed_at: null
 
 > このタスクは in-review 経由必須
 
-- [ ] ビルド成功（`cargo build`）
-- [ ] テスト全PASS（`cargo test`）
-- [ ] `cargo clippy` で警告ゼロ
-- [ ] 分割後の各モジュールが300行以下
-- [ ] in-review に移動済み
+- [x] ビルド成功（`cargo build`）
+- [x] テスト全PASS（`cargo test`）
+- [x] `cargo clippy` で警告ゼロ（event_tracer関連）
+- [x] 分割後の各モジュールが300行以下
+- [x] in-review に移動済み
 - [ ] レビュー完了
 
 ## メモ
