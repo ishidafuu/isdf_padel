@@ -114,116 +114,152 @@ pub struct AnalysisResult {
     pub statistical_anomalies: Vec<Anomaly>,
 }
 
+/// 現在のラリー状態（一時データ保持用）
+#[derive(Default)]
+struct CurrentRallyState {
+    start_frame: u64,
+    start_time: f32,
+    shots: Vec<ShotInfo>,
+    bounces: u32,
+    wall_reflects: u32,
+    anomalies: Vec<Anomaly>,
+    rally_number: u32,
+}
+
+impl CurrentRallyState {
+    /// ショット属性イベントを処理
+    fn handle_shot(&mut self, shot: ShotInfo) -> ShotInfo {
+        self.shots.push(shot.clone());
+        shot
+    }
+
+    /// バウンスイベントを処理
+    fn handle_bounce(&mut self) {
+        self.bounces += 1;
+    }
+
+    /// 壁反射イベントを処理
+    fn handle_wall_reflect(&mut self) {
+        self.wall_reflects += 1;
+    }
+
+    /// 物理異常イベントを処理
+    fn handle_anomaly(&mut self, anomaly: Anomaly) -> Anomaly {
+        self.anomalies.push(anomaly.clone());
+        anomaly
+    }
+
+    /// ラリー終了時の処理（Rallyを生成し、状態をリセット）
+    fn finalize_rally(&mut self, end_frame: u64, end_time: f32, winner: u8, reason: String) -> Rally {
+        self.rally_number += 1;
+        let stats = calculate_rally_stats(&self.shots);
+
+        let rally = Rally {
+            number: self.rally_number,
+            start_frame: self.start_frame,
+            end_frame,
+            duration_secs: end_time - self.start_time,
+            winner,
+            end_reason: reason,
+            shots: std::mem::take(&mut self.shots),
+            bounce_count: self.bounces,
+            wall_reflect_count: self.wall_reflects,
+            anomalies: std::mem::take(&mut self.anomalies),
+            stats,
+        };
+
+        // 次のラリーの開始点をリセット
+        self.start_frame = end_frame;
+        self.start_time = end_time;
+        self.bounces = 0;
+        self.wall_reflects = 0;
+
+        rally
+    }
+}
+
+/// GameEventからShotInfoを生成
+fn create_shot_info(frame: u64, event: &GameEvent) -> Option<ShotInfo> {
+    if let GameEvent::ShotAttributesCalculated {
+        player_id,
+        final_power,
+        final_stability,
+        final_accuracy,
+        final_spin,
+        ..
+    } = event
+    {
+        Some(ShotInfo {
+            frame,
+            player: *player_id,
+            power: *final_power,
+            stability: *final_stability,
+            accuracy: *final_accuracy,
+            spin: *final_spin,
+        })
+    } else {
+        None
+    }
+}
+
+/// GameEventからAnomalyを生成
+fn create_anomaly_from_event(frame: u64, event: &GameEvent) -> Option<Anomaly> {
+    if let GameEvent::PhysicsAnomaly {
+        anomaly_type,
+        expected_value,
+        actual_value,
+        severity,
+        ..
+    } = event
+    {
+        let sev = if severity == "Error" {
+            AnomalySeverity::Error
+        } else {
+            AnomalySeverity::Warning
+        };
+        Some(Anomaly {
+            frame,
+            severity: sev,
+            description: anomaly_type.clone(),
+            expected: Some(*expected_value),
+            actual: Some(*actual_value),
+        })
+    } else {
+        None
+    }
+}
+
 /// ラリー解析を行う
 /// @spec REQ-77201-003, REQ-77201-004, REQ-77201-005, REQ-77201-006
 pub fn analyze_rallies(frames: &[FrameTrace], anomaly_threshold: f32) -> AnalysisResult {
     let mut rallies = Vec::new();
     let mut all_anomalies = Vec::new();
     let mut all_shots = Vec::new();
-
-    // @spec REQ-77201-003: ラリー境界検出
-    let mut rally_start_frame: u64 = 0;
-    let mut rally_start_time: f32 = 0.0;
-    let mut current_shots = Vec::new();
-    let mut current_bounces = 0u32;
-    let mut current_wall_reflects = 0u32;
-    let mut current_anomalies = Vec::new();
-    let mut rally_number = 0u32;
+    let mut state = CurrentRallyState::default();
 
     for frame in frames {
-        // このフレームのイベントを処理
         for event in &frame.events {
             match event {
-                // ショット属性情報を収集
-                GameEvent::ShotAttributesCalculated {
-                    player_id,
-                    final_power,
-                    final_stability,
-                    final_accuracy,
-                    final_spin,
-                    ..
-                } => {
-                    let shot = ShotInfo {
-                        frame: frame.frame,
-                        player: *player_id,
-                        power: *final_power,
-                        stability: *final_stability,
-                        accuracy: *final_accuracy,
-                        spin: *final_spin,
-                    };
-                    current_shots.push(shot.clone());
-                    all_shots.push(shot);
+                GameEvent::ShotAttributesCalculated { .. } => {
+                    if let Some(shot) = create_shot_info(frame.frame, event) {
+                        all_shots.push(state.handle_shot(shot));
+                    }
                 }
-
-                // バウンス
-                GameEvent::Bounce { .. } => {
-                    current_bounces += 1;
+                GameEvent::Bounce { .. } => state.handle_bounce(),
+                GameEvent::WallReflect { .. } => state.handle_wall_reflect(),
+                GameEvent::PhysicsAnomaly { .. } => {
+                    if let Some(anomaly) = create_anomaly_from_event(frame.frame, event) {
+                        all_anomalies.push(state.handle_anomaly(anomaly));
+                    }
                 }
-
-                // 壁反射
-                GameEvent::WallReflect { .. } => {
-                    current_wall_reflects += 1;
-                }
-
-                // @spec REQ-77201-005: PhysicsAnomalyのハイライト
-                GameEvent::PhysicsAnomaly {
-                    anomaly_type,
-                    expected_value,
-                    actual_value,
-                    severity,
-                    ..
-                } => {
-                    let sev = if severity == "Error" {
-                        AnomalySeverity::Error
-                    } else {
-                        AnomalySeverity::Warning
-                    };
-                    let anomaly = Anomaly {
-                        frame: frame.frame,
-                        severity: sev,
-                        description: anomaly_type.clone(),
-                        expected: Some(*expected_value),
-                        actual: Some(*actual_value),
-                    };
-                    current_anomalies.push(anomaly.clone());
-                    all_anomalies.push(anomaly);
-                }
-
-                // @spec REQ-77201-003: Pointイベントでラリー区切り
                 GameEvent::Point { winner, reason } => {
-                    rally_number += 1;
-
-                    // @spec REQ-77201-004: ラリー統計計算
-                    let stats = calculate_rally_stats(&current_shots);
-
-                    let rally = Rally {
-                        number: rally_number,
-                        start_frame: rally_start_frame,
-                        end_frame: frame.frame,
-                        duration_secs: frame.timestamp - rally_start_time,
-                        winner: *winner,
-                        end_reason: reason.clone(),
-                        shots: std::mem::take(&mut current_shots),
-                        bounce_count: current_bounces,
-                        wall_reflect_count: current_wall_reflects,
-                        anomalies: std::mem::take(&mut current_anomalies),
-                        stats,
-                    };
-                    rallies.push(rally);
-
-                    // 次のラリーの開始点をリセット
-                    rally_start_frame = frame.frame;
-                    rally_start_time = frame.timestamp;
-                    current_bounces = 0;
-                    current_wall_reflects = 0;
+                    rallies.push(state.finalize_rally(frame.frame, frame.timestamp, *winner, reason.clone()));
                 }
-
                 _ => {}
             }
         }
     }
 
-    // @spec REQ-77201-006: 統計的異常検出
     let statistical_anomalies = detect_statistical_anomalies(&all_shots, anomaly_threshold);
 
     AnalysisResult {
@@ -278,12 +314,17 @@ fn calculate_std(values: &[f32], mean: f32) -> f32 {
 /// @spec REQ-77201-006: 平均から閾値×標準偏差を超える値を異常としてマーキング
 fn detect_statistical_anomalies(shots: &[ShotInfo], threshold: f32) -> Vec<Anomaly> {
     if shots.len() < 3 {
-        return Vec::new(); // サンプル数が少なすぎる場合はスキップ
+        return Vec::new();
     }
 
     let mut anomalies = Vec::new();
+    detect_power_anomalies(shots, threshold, &mut anomalies);
+    detect_spin_anomalies(shots, threshold, &mut anomalies);
+    anomalies
+}
 
-    // パワーの異常検出
+/// パワーの外れ値を検出
+fn detect_power_anomalies(shots: &[ShotInfo], threshold: f32, anomalies: &mut Vec<Anomaly>) {
     let powers: Vec<f32> = shots.iter().map(|s| s.power).collect();
     let power_mean = calculate_average(powers.iter().copied());
     let power_std = calculate_std(&powers, power_mean);
@@ -302,8 +343,10 @@ fn detect_statistical_anomalies(shots: &[ShotInfo], threshold: f32) -> Vec<Anoma
             });
         }
     }
+}
 
-    // スピンの異常検出
+/// スピンの外れ値を検出
+fn detect_spin_anomalies(shots: &[ShotInfo], threshold: f32, anomalies: &mut Vec<Anomaly>) {
     let spins: Vec<f32> = shots.iter().map(|s| s.spin).collect();
     let spin_mean = calculate_average(spins.iter().copied());
     let spin_std = calculate_std(&spins, spin_mean);
@@ -322,8 +365,6 @@ fn detect_statistical_anomalies(shots: &[ShotInfo], threshold: f32) -> Vec<Anoma
             });
         }
     }
-
-    anomalies
 }
 
 #[cfg(test)]
