@@ -262,10 +262,18 @@ impl-agent（実装完了）
   ↓（PASS なら）
 code-simplifier（コード簡素化）※変更10行超の場合
   ↓
+qa-agent（QA確認）※ゲーム開発タスク、推奨
+  ↓（問題なし or スキップ）
 review-agent（整合性検証）
   ↓（問題なければ）
 実装完了
 ```
+
+**qa-agent について**:
+- ゲーム開発タスク（30XXX/B30XXX/R30XXX）で推奨
+- ヘッドレスシミュレーションで動的なバグを検出
+- 問題検出時は B30XXX-NNN としてバグタスク作成を提案
+- 詳細は `agents/qa-agent.md` を参照
 
 ### ⚠️ 越権行為の検出
 
@@ -578,11 +586,37 @@ mv project/tasks/2_in-progress/30XXX-*.md project/tasks/3_in-review/
 Edit(status: "in-progress" -> "in-review")
 ```
 
-#### 4. review-agent でレビューを実施
+#### 4. QA確認（推奨）
+
+ゲーム開発タスクでは、review-agent の前に qa-agent によるQA確認を推奨:
+
+```
+「QA確認を実行しますか？」とユーザーに提案
+  ↓
+承諾された場合:
+  1. qa-agent ガイドラインに従ってQAを実行
+  2. /qa-cycle で軽量QA（1試合シミュレーション）
+  3. 問題検出時はバグタスク（B30XXX-NNN）作成を提案
+  ↓
+問題なし or スキップの場合:
+  review-agent でレビュー続行
+```
+
+**QA確認のメリット**:
+- 静的レビューでは検出できない動的なバグを発見
+- 物理演算・AI挙動・UXの違和感を早期検出
+- バグを in-review 段階で発見し、手戻りを削減
+
+**スキップ可能なケース**:
+- 仕様書のみの変更（コード変更なし）
+- テストコードのみの変更
+- ユーザーが明示的にスキップを指示
+
+#### 5. review-agent でレビューを実施
 
 review-agent ガイドラインを参照してレビューを実行。
 
-#### 5. レビュー完了後
+#### 6. レビュー完了後
 
 - **問題なし**: task-manager-agent でタスク完了処理を実行
 - **問題あり**: impl-agent に差し戻し（`3_in-review/` → `2_in-progress/`）
