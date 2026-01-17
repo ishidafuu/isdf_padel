@@ -1,0 +1,24 @@
+# Task management configuration for framework tasks
+
+# Task ID numbering
+id_numbering:
+  # Framework tasks use F prefix
+  framework:
+    prefix: "F"
+    start: 1
+    format: "F{:03d}"  # F001, F002, etc.
+
+# Archive settings
+archive:
+  auto_archive_done: false  # Do not automatically archive done tasks
+  retention_days: null  # Keep archived tasks indefinitely
+
+# Default settings
+defaults:
+  priority: "medium"
+  status: "todo"
+  type: "framework"
+
+# Worktree settings
+worktree:
+  enabled: false  # Worktree not supported for framework tasks

@@ -1,0 +1,23 @@
+# 廃止仕様書
+project/docs/_deprecated/
+
+# ビルド成果物（言語に応じて追加）
+# target/           # Rust
+# node_modules/     # Node.js
+# __pycache__/      # Python
+# .venv/            # Python virtual env
+# dist/             # 一般的なビルド出力
+# build/            # 一般的なビルド出力
+
+# IDE/エディタ
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ログ
+*.log

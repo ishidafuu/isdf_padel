@@ -1,0 +1,42 @@
+# Task management configuration for project tasks
+
+# Task ID numbering
+id_numbering:
+  # Game development tasks use spec REQ-ID system (30XXX)
+  game_dev:
+    prefix: "30"
+    start: 30101
+    command: "/id-next"  # Use framework's ID generation command
+
+  # Project-wide tasks use P prefix
+  project_wide:
+    prefix: "P"
+    start: 1
+    format: "P{:03d}"  # P001, P002, etc.
+
+# Archive settings
+archive:
+  auto_archive_done: false  # Do not automatically archive done tasks
+  retention_days: null  # Keep archived tasks indefinitely
+
+# Default settings
+defaults:
+  priority: "medium"
+  status: "todo"
+  type: "game-dev"
+
+# Worktree settings
+worktree:
+  enabled: true  # Enable worktree for game-dev tasks
+  base_path: ".."  # Parent directory of repository
+  branch_prefix: "auto"  # auto-{pid}-{feature}
+
+# Backlog settings
+backlog:
+  path: "0_backlog"
+  templates:
+    bug: "_bug_template.md"
+  statuses:
+    - unreviewed  # 未精査
+    - reviewed    # 精査済み
+    - tasked      # タスク化済み
