@@ -14,8 +14,9 @@ use bevy::{asset::AssetPlugin, prelude::*};
 use character::CharacterPlugin;
 use components::HumanControlled;
 use core::{
-    BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent,
-    ShotEvent, ShotExecutedEvent,
+    BallHitEvent, FaultEvent, GroundBounceEvent, PlayerJumpEvent, PlayerKnockbackEvent,
+    PlayerLandEvent, PlayerMoveEvent, PointScoredEvent, RallyEndEvent, ShotAttributesCalculatedEvent,
+    ShotEvent, ShotExecutedEvent, WallReflectionEvent,
 };
 use presentation::{
     ball_spin_color_system, despawn_ball_shadow_system, player_hold_visual_system,
@@ -121,7 +122,14 @@ fn add_messages(app: &mut App) {
         .add_message::<BallHitEvent>()
         .add_message::<PlayerKnockbackEvent>()
         .add_message::<ShotEvent>()
-        .add_message::<ShotExecutedEvent>();
+        .add_message::<ShotExecutedEvent>()
+        // トレース用イベント
+        .add_message::<ShotAttributesCalculatedEvent>()
+        .add_message::<GroundBounceEvent>()
+        .add_message::<WallReflectionEvent>()
+        .add_message::<RallyEndEvent>()
+        .add_message::<PointScoredEvent>()
+        .add_message::<FaultEvent>();
 }
 
 /// 入力システムを追加（Input セット）

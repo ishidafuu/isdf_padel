@@ -9,8 +9,9 @@ use bevy::prelude::*;
 use crate::character::CharacterPlugin;
 use crate::replay::ReplayRecordPlugin;
 use crate::core::{
-    BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent,
-    ShotEvent, ShotExecutedEvent,
+    BallHitEvent, FaultEvent, GroundBounceEvent, PlayerJumpEvent, PlayerKnockbackEvent,
+    PlayerLandEvent, PlayerMoveEvent, PointScoredEvent, RallyEndEvent, ShotAttributesCalculatedEvent,
+    ShotEvent, ShotExecutedEvent, WallReflectionEvent,
 };
 use crate::resource::debug::LastShotDebugInfo;
 use crate::resource::MatchFlowState;
@@ -56,7 +57,14 @@ impl Plugin for HeadlessPlugins {
             .add_message::<BallHitEvent>()
             .add_message::<PlayerKnockbackEvent>()
             .add_message::<ShotEvent>()
-            .add_message::<ShotExecutedEvent>();
+            .add_message::<ShotExecutedEvent>()
+            // トレース用イベント
+            .add_message::<ShotAttributesCalculatedEvent>()
+            .add_message::<GroundBounceEvent>()
+            .add_message::<WallReflectionEvent>()
+            .add_message::<RallyEndEvent>()
+            .add_message::<PointScoredEvent>()
+            .add_message::<FaultEvent>();
 
         // SystemSet の順序を設定
         app.configure_sets(Update, GameSystemSet::Input.before(GameSystemSet::GameLogic));

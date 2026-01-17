@@ -1,8 +1,8 @@
-//! フォーマット処理 - CSV/JSON出力用のフォーマッタ
+//! フォーマット処理 - CSV/JSON/JSONL出力用のフォーマッタ
 //! @spec 77100_headless_sim.md
 
 use super::events::GameEvent;
-use super::types::EntityTrace;
+use super::types::{EntityTrace, FrameTrace};
 
 impl GameEvent {
     /// CSV形式の詳細文字列を取得
@@ -284,6 +284,22 @@ impl EntityTrace {
             self.entity_type.as_str(),
             self.position.x, self.position.y, self.position.z,
             self.velocity.x, self.velocity.y, self.velocity.z
+        )
+    }
+}
+
+impl FrameTrace {
+    /// JSONL形式用の1行JSON文字列を取得
+    pub(crate) fn to_json_line(&self) -> String {
+        let entities_json: Vec<String> = self.entities.iter().map(|e| e.to_json()).collect();
+        let events_json: Vec<String> = self.events.iter().map(|e| e.to_json()).collect();
+
+        format!(
+            "{{\"frame\": {}, \"timestamp\": {:.3}, \"entities\": [{}], \"events\": [{}]}}",
+            self.frame,
+            self.timestamp,
+            entities_json.join(", "),
+            events_json.join(", ")
         )
     }
 }

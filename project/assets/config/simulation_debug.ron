@@ -12,7 +12,7 @@
     ),
     output: (
         result_file: Some("debug_result.json"),
-        trace_file: Some("debug_trace.csv"),
+        trace_file: Some("debug_trace.jsonl"),
     ),
     trace: (
         enabled: true,

@@ -1,4 +1,4 @@
-//! ファイル出力 - CSV/JSON形式での出力処理
+//! ファイル出力 - CSV/JSON/JSONL形式での出力処理
 //! @spec 77100_headless_sim.md
 
 use std::fs::File;
@@ -104,10 +104,24 @@ impl EventTracer {
         Ok(())
     }
 
+    /// JSONL形式でファイルに出力（1フレーム1行）
+    pub fn write_jsonl<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
+        let file = File::create(path)?;
+        let mut writer = BufWriter::new(file);
+
+        for frame in &self.frames {
+            writeln!(writer, "{}", frame.to_json_line())?;
+        }
+
+        writer.flush()?;
+        Ok(())
+    }
+
     /// 指定されたパスに基づいて適切な形式で出力
-    /// - .csv 拡張子: CSV形式のみ
-    /// - .json 拡張子: JSON形式のみ
-    /// - それ以外: 両方出力（.csv と .json を付加）
+    /// - .csv 拡張子: CSV形式
+    /// - .json 拡張子: JSON形式
+    /// - .jsonl 拡張子: JSONL形式（1フレーム1行）
+    /// - それ以外: CSV と JSON の両方出力
     pub fn write_to_file<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
         let path = path.as_ref();
         let extension = path.extension().and_then(|e| e.to_str());
@@ -115,8 +129,9 @@ impl EventTracer {
         match extension {
             Some("csv") => self.write_csv(path),
             Some("json") => self.write_json(path),
+            Some("jsonl") => self.write_jsonl(path),
             _ => {
-                // 拡張子なし: 両方出力
+                // 拡張子なし: CSV と JSON の両方出力
                 let csv_path = path.with_extension("csv");
                 let json_path = path.with_extension("json");
                 self.write_csv(&csv_path)?;
