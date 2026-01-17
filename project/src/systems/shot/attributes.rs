@@ -157,17 +157,6 @@ pub fn calculate_hold_stability_factor(hold_time: f32, config: &ShotAttributesCo
 
 /// ShotContext から ShotAttributes を計算
 /// @spec 30604_shot_attributes_spec.md#req-30604-063
-/// @spec 30604_shot_attributes_spec.md#req-30604-064
-/// @spec 30604_shot_attributes_spec.md#req-30604-065
-/// @spec 30604_shot_attributes_spec.md#req-30604-066
-/// @spec 30604_shot_attributes_spec.md#req-30604-067
-pub fn calculate_shot_attributes(
-    context: &ShotContext,
-    config: &ShotAttributesConfig,
-) -> ShotAttributes {
-    calculate_shot_attributes_detail(context, config).attributes
-}
-
 /// ショット属性計算の詳細情報（中間係数を含む）
 /// @spec 77200_telemetry_spec.md#req-77200-001
 #[derive(Debug, Clone)]
@@ -485,28 +474,5 @@ mod tests {
         let zero_vel = Vec3::ZERO;
         let zero_dot = calculate_approach_dot(zero_vel, player_pos, ball_pos);
         assert!((zero_dot - 0.0).abs() < 0.001);
-    }
-
-    /// TST-30604-007: 属性計算統合テスト
-    #[test]
-    fn test_calculate_shot_attributes() {
-        let config = ShotAttributesConfig::default();
-
-        let context = ShotContext {
-            input_mode: InputMode::Push,
-            push_timing_diff: 0.0,
-            hold_duration: 0.0,
-            hit_height: 1.0,
-            bounce_elapsed: Some(0.5),
-            approach_dot: 0.0,
-            ball_distance: 1.0,
-        };
-
-        let attrs = calculate_shot_attributes(&context, &config);
-
-        assert!(attrs.power > 0.0);
-        assert!(attrs.stability > 0.0);
-        assert!(attrs.accuracy > 0.0);
-        assert!(attrs.spin >= -1.0 && attrs.spin <= 1.0);
     }
 }

@@ -2,7 +2,7 @@
 id: "R30000-043"
 title: "未使用コード削除"
 type: "refactor"
-status: "todo"
+status: "done"
 priority: "low"
 related_task: null
 spec_ids: []
@@ -15,7 +15,7 @@ tags: ["dead-code", "code-quality"]
 parent_task_id: null
 created_at: "2026-01-17T00:00:00+09:00"
 updated_at: "2026-01-17T00:00:00+09:00"
-completed_at: null
+completed_at: "2026-01-17T00:00:00+09:00"
 ---
 
 # Task R30000-043: 未使用コード削除
@@ -42,13 +42,13 @@ completed_at: null
 
 ## Progress
 
-### TODO
+### DONE
 
-- [ ] 参照箇所の確認
-- [ ] 関数の削除
-- [ ] 関連コードの削除（必要に応じて）
-- [ ] テスト実行・動作確認
-- [ ] ビルド・Clippy 確認
+- [x] 参照箇所の確認
+- [x] 関数の削除
+- [x] 関連コードの削除（テストも削除）
+- [x] テスト実行・動作確認
+- [x] ビルド・Clippy 確認
 
 ## Dependencies
 
@@ -59,12 +59,12 @@ completed_at: null
 
 > このタスクは in-review 経由必須
 
-- [ ] ビルド成功（`cargo build`）
-- [ ] テスト全PASS（`cargo test`）
-- [ ] `cargo clippy` で警告ゼロ
-- [ ] 未使用コード警告が解消
-- [ ] in-review に移動済み
-- [ ] レビュー完了
+- [x] ビルド成功（`cargo build`）
+- [x] テスト全PASS（`cargo test`）
+- [x] `cargo clippy` で警告ゼロ
+- [x] 未使用コード警告が解消
+- [x] in-review に移動済み
+- [x] レビュー完了
 
 ## メモ
 
