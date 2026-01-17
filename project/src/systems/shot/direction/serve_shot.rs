@@ -18,8 +18,8 @@ pub(super) fn handle_serve_shot(
     match_score: &MatchScore,
     event: &ShotEvent,
     shot_executed_writer: &mut MessageWriter<ShotExecutedEvent>,
-    meshes: &mut Assets<Mesh>,
-    materials: &mut Assets<ColorMaterial>,
+    meshes: &mut Option<ResMut<Assets<Mesh>>>,
+    materials: &mut Option<ResMut<Assets<ColorMaterial>>>,
 ) {
     // 打点位置を取得（サーブ時は必須）
     let hit_position = match event.hit_position {
@@ -51,15 +51,23 @@ pub(super) fn handle_serve_shot(
     // 最終的な打球ベクトルを計算
     let shot_velocity = trajectory_result.direction * trajectory_result.final_speed;
 
-    // ボールを新規生成
+    // ボールを新規生成（描画リソースがあればBundleで、なければヘッドレスで生成）
     // @spec 30602_shot_direction_spec.md#req-30602-031
-    commands.spawn(BallBundle::with_shooter(
-        hit_position,
-        shot_velocity,
-        event.court_side,
-        meshes,
-        materials,
-    ));
+    if let (Some(ref mut m), Some(ref mut mat)) = (meshes, materials) {
+        commands.spawn(BallBundle::with_shooter(
+            hit_position,
+            shot_velocity,
+            event.court_side,
+            m,
+            mat,
+        ));
+    } else {
+        commands.spawn(BallBundle::with_shooter_headless(
+            hit_position,
+            shot_velocity,
+            event.court_side,
+        ));
+    }
 
     // ShotExecutedEvent の発行
     shot_executed_writer.write(ShotExecutedEvent {

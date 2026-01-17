@@ -81,8 +81,8 @@ pub fn shot_direction_system(
     mut shot_executed_writer: MessageWriter<ShotExecutedEvent>,
     mut shot_attrs_writer: MessageWriter<ShotAttributesCalculatedEvent>,
     mut debug_info: ResMut<LastShotDebugInfo>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut meshes: Option<ResMut<Assets<Mesh>>>,
+    mut materials: Option<ResMut<Assets<ColorMaterial>>>,
 ) {
     for event in shot_events.read() {
         // サーブ処理分岐

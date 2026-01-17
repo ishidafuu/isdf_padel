@@ -115,8 +115,8 @@ pub fn serve_toss_input_system(
     player_query: Query<(&Player, &LogicalPosition, &InputState)>,
     toss_ball_query: Query<Entity, With<TossBall>>,
     ball_query: Query<Entity, With<Ball>>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut meshes: Option<ResMut<Assets<Mesh>>>,
+    mut materials: Option<ResMut<Assets<ColorMaterial>>>,
 ) {
     // @spec 30102_serve_spec.md#req-30102-080: Waiting状態でのみトス可能
     if serve_state.phase != ServeSubPhase::Waiting {
@@ -142,7 +142,12 @@ pub fn serve_toss_input_system(
     let toss_pos = logical_pos.value + Vec3::new(0.0, config.serve.toss_start_offset_y, 0.0);
     let toss_vel = Vec3::new(0.0, config.serve.toss_velocity_y, 0.0);
 
-    commands.spawn(TossBallBundle::new(toss_pos, toss_vel, &mut meshes, &mut materials));
+    // 描画リソースがあればBundleで、なければヘッドレスで生成
+    if let (Some(ref mut m), Some(ref mut mat)) = (&mut meshes, &mut materials) {
+        commands.spawn(TossBallBundle::new(toss_pos, toss_vel, m, mat));
+    } else {
+        commands.spawn(TossBallBundle::new_headless(toss_pos, toss_vel));
+    }
 
     // ServeState更新
     serve_state.start_toss(logical_pos.value);

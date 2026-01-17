@@ -178,6 +178,25 @@ impl BallBundle {
             transform: Transform::default(),
         }
     }
+
+    /// ヘッドレス用ボール生成（描画コンポーネント無し）
+    /// @spec 30103_point_end_spec.md#req-30103-003
+    pub fn with_shooter_headless(
+        position: Vec3,
+        velocity: Vec3,
+        shooter: CourtSide,
+    ) -> (Ball, LogicalPosition, Velocity, BounceCount, BounceState, LastShooter, BallSpin, Transform) {
+        (
+            Ball,
+            LogicalPosition { value: position },
+            Velocity { value: velocity },
+            BounceCount::default(),
+            BounceState::default(),
+            LastShooter { side: Some(shooter) },
+            BallSpin::default(),
+            Transform::default(),
+        )
+    }
 }
 
 /// トスボールバンドル（トスボール生成時に使用）
@@ -209,5 +228,16 @@ impl TossBallBundle {
             material: MeshMaterial2d(materials.add(ColorMaterial::from_color(Color::srgb(0.9, 0.9, 0.2)))),
             transform: Transform::default(),
         }
+    }
+
+    /// ヘッドレス用トスボール生成（描画コンポーネント無し）
+    /// @spec 30102_serve_spec.md#req-30102-080
+    pub fn new_headless(position: Vec3, velocity: Vec3) -> (TossBall, LogicalPosition, Velocity, Transform) {
+        (
+            TossBall,
+            LogicalPosition { value: position },
+            Velocity { value: velocity },
+            Transform::default(),
+        )
     }
 }
