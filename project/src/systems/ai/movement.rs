@@ -275,6 +275,111 @@ fn calculate_arrival_distance(
     }
 }
 
+/// ボール不在時のAI状態をリセットしてホームポジションへ移動
+fn handle_no_ball_state(
+    ai: &mut AiController,
+    logical_pos: &mut LogicalPosition,
+    velocity: &mut Velocity,
+    move_speed: f32,
+    delta: f32,
+) {
+    ai.locked_target_z = None;
+    ai.lock_ball_velocity_x_sign = None;
+    ai.reaction_timer = 0.0;
+    move_towards_target(logical_pos, velocity, ai.home_position, move_speed, delta);
+}
+
+/// ボールがAIに向かっているかを判定
+fn is_ball_coming_to_ai(court_side: CourtSide, ball_vel_x: f32) -> bool {
+    match court_side {
+        CourtSide::Left => ball_vel_x < 0.0,
+        CourtSide::Right => ball_vel_x > 0.0,
+    }
+}
+
+/// AIの状態遷移と目標位置を決定
+#[allow(clippy::too_many_arguments)]
+fn determine_ai_target(
+    ai: &mut AiController,
+    ai_pos: Vec3,
+    ball_pos: Vec3,
+    ball_vel: Vec3,
+    gravity: f32,
+    ball_coming_to_me: bool,
+    idle_pos: Vec3,
+    state_changed: bool,
+    config: &GameConfig,
+    game_rng: &mut GameRng,
+) -> (AiMovementState, Vec3) {
+    if ball_coming_to_me {
+        if ai.reaction_timer > 0.0 {
+            (AiMovementState::Idle, idle_pos)
+        } else {
+            let target = calculate_tracking_target(
+                ai, ai_pos, ball_pos, ball_vel, gravity, state_changed, config, game_rng,
+            );
+            (AiMovementState::Tracking, target)
+        }
+    } else {
+        (AiMovementState::Idle, idle_pos)
+    }
+}
+
+/// AI移動のデバッグログを出力
+fn log_ai_movement_debug(
+    logger: &mut DebugLogger,
+    player_id: u8,
+    target_pos: Vec3,
+    ball_pos: Vec3,
+    new_state: AiMovementState,
+    prev_state: AiMovementState,
+    state_changed: bool,
+) {
+    if prev_state != new_state || state_changed {
+        let reason = match new_state {
+            AiMovementState::Tracking => "Tracking",
+            AiMovementState::Idle => "Idle",
+            AiMovementState::Recovering => "Recovering",
+        };
+        logger.log_ai(&format!(
+            "P{} target=({:.2},{:.2},{:.2}) state={} ball_pos=({:.2},{:.2},{:.2})",
+            player_id,
+            target_pos.x, target_pos.y, target_pos.z,
+            reason,
+            ball_pos.x, ball_pos.y, ball_pos.z
+        ));
+    }
+}
+
+/// AI移動を実行（到達判定付き）
+#[allow(clippy::too_many_arguments)]
+fn execute_ai_movement(
+    logical_pos: &mut LogicalPosition,
+    velocity: &mut Velocity,
+    ai_pos: Vec3,
+    target_pos: Vec3,
+    ball_pos: Vec3,
+    ball_vel: Vec3,
+    gravity: f32,
+    new_state: AiMovementState,
+    config: &GameConfig,
+    delta: f32,
+) {
+    let distance = calculate_arrival_distance(ai_pos, target_pos, ball_pos, ball_vel, gravity);
+    let stop_distance = if matches!(new_state, AiMovementState::Tracking) {
+        config.shot.max_distance
+    } else {
+        config.ai.home_return_stop_distance
+    };
+
+    if distance <= stop_distance {
+        velocity.value.x = 0.0;
+        velocity.value.z = 0.0;
+    } else {
+        move_towards_target(logical_pos, velocity, target_pos, config.ai.move_speed, delta);
+    }
+}
+
 /// AI移動システム v0.7
 /// @spec 30301_ai_movement_spec.md#req-30301-v07-001
 /// @spec 30301_ai_movement_spec.md#req-30301-v07-002
@@ -301,129 +406,48 @@ pub fn ai_movement_system(
 ) {
     let delta = fixed_dt.delta_secs();
     let gravity = config.physics.gravity;
-
-    // ボール情報を取得
     let ball_info = ball_query.iter().next().map(|(pos, vel)| (pos.value, vel.value));
 
     for (player, mut ai, mut logical_pos, mut velocity, knockback) in ai_query.iter_mut() {
-        // ふっとばし中は移動しない
         if knockback.is_knockback_active() {
             continue;
         }
 
         let ai_pos = logical_pos.value;
 
-        // ボールが存在しない場合はホームポジションへ
-        let (ball_pos, ball_vel) = match ball_info {
-            Some((pos, vel)) => (pos, vel),
-            None => {
-                // ロック解除
-                ai.locked_target_z = None;
-                ai.lock_ball_velocity_x_sign = None;
-                ai.reaction_timer = 0.0;
-                // ホームポジションへ移動
-                move_towards_target(
-                    &mut logical_pos,
-                    &mut velocity,
-                    ai.home_position,
-                    config.ai.move_speed,
-                    delta,
-                );
-                continue;
-            }
+        // ボール不在時はホームポジションへ
+        let Some((ball_pos, ball_vel)) = ball_info else {
+            handle_no_ball_state(&mut ai, &mut logical_pos, &mut velocity, config.ai.move_speed, delta);
+            continue;
         };
 
-        // ボールが自分に向かっているかチェック（飛行方向で判定）
-        let ball_coming_to_me = match player.court_side {
-            CourtSide::Left => ball_vel.x < 0.0,  // 左に向かっている
-            CourtSide::Right => ball_vel.x > 0.0, // 右に向かっている
-        };
-
-        // 動的待機位置（フォールバック用）
+        let ball_coming_to_me = is_ball_coming_to_ai(player.court_side, ball_vel.x);
         let idle_pos = calculate_idle_position(ball_pos, player.court_side, &config);
 
-        // 反応遅延の更新
         update_reaction_timer(&mut ai, ball_coming_to_me, config.ai.reaction_delay, delta);
-
-        // 目標ロックの状態変化を検出
         let state_changed = detect_lock_state_change(&ai, ball_vel.x, ball_coming_to_me);
 
-        // ボールが相手側に向かった場合はロック解除
         if !ball_coming_to_me {
             ai.locked_target_z = None;
             ai.lock_ball_velocity_x_sign = None;
         }
 
-        // 状態遷移と目標位置計算
-        let (new_state, target_pos) = if ball_coming_to_me {
-            if ai.reaction_timer > 0.0 {
-                // 反応遅延中は追跡を開始しない
-                (AiMovementState::Idle, idle_pos)
-            } else {
-                // 追跡目標を計算
-                let target = calculate_tracking_target(
-                    &mut ai,
-                    ai_pos,
-                    ball_pos,
-                    ball_vel,
-                    gravity,
-                    state_changed,
-                    &config,
-                    &mut game_rng,
-                );
-                (AiMovementState::Tracking, target)
-            }
-        } else {
-            // ボールが相手側: 動的待機位置へ移動
-            (AiMovementState::Idle, idle_pos)
-        };
-
-        // 状態と目標位置を更新
         let prev_state = ai.movement_state;
+        let (new_state, target_pos) = determine_ai_target(
+            &mut ai, ai_pos, ball_pos, ball_vel, gravity,
+            ball_coming_to_me, idle_pos, state_changed, &config, &mut game_rng,
+        );
+
         ai.movement_state = new_state;
         ai.target_position = target_pos;
 
-        // AI移動ログ出力
         if let Some(ref mut logger) = debug_logger {
-            if prev_state != new_state || state_changed {
-                let reason = match new_state {
-                    AiMovementState::Tracking => "Tracking",
-                    AiMovementState::Idle => "Idle",
-                    AiMovementState::Recovering => "Recovering",
-                };
-                logger.log_ai(&format!(
-                    "P{} target=({:.2},{:.2},{:.2}) state={} ball_pos=({:.2},{:.2},{:.2})",
-                    player.id,
-                    target_pos.x, target_pos.y, target_pos.z,
-                    reason,
-                    ball_pos.x, ball_pos.y, ball_pos.z
-                ));
-            }
+            log_ai_movement_debug(logger, player.id, target_pos, ball_pos, new_state, prev_state, state_changed);
         }
 
-        // 到達距離を計算
-        let distance = calculate_arrival_distance(ai_pos, target_pos, ball_pos, ball_vel, gravity);
-
-        let stop_distance = if matches!(new_state, AiMovementState::Tracking) {
-            config.shot.max_distance
-        } else {
-            config.ai.home_return_stop_distance
-        };
-
-        if distance <= stop_distance {
-            // 目標に到達 → 停止
-            velocity.value.x = 0.0;
-            velocity.value.z = 0.0;
-            continue;
-        }
-
-        // 目標に向かって移動
-        move_towards_target(
-            &mut logical_pos,
-            &mut velocity,
-            target_pos,
-            config.ai.move_speed,
-            delta,
+        execute_ai_movement(
+            &mut logical_pos, &mut velocity, ai_pos, target_pos,
+            ball_pos, ball_vel, gravity, new_state, &config, delta,
         );
     }
 }

@@ -2,7 +2,7 @@
 id: "R30000-038"
 title: "ai_movement_system 分割"
 type: "refactor"
-status: "todo"
+status: "in-review"
 priority: "medium"
 related_task: null
 spec_ids: []
@@ -14,7 +14,7 @@ plan_file: null
 tags: ["long-function", "code-quality", "ai"]
 parent_task_id: null
 created_at: "2026-01-17T00:00:00+09:00"
-updated_at: "2026-01-17T00:00:00+09:00"
+updated_at: "2026-01-17T10:15:00+09:00"
 completed_at: null
 ---
 
@@ -42,13 +42,28 @@ completed_at: null
 
 ## Progress
 
-### TODO
+### DONE
 
-- [ ] 現状のコード構造を分析
-- [ ] 分割ポイントを特定
-- [ ] ヘルパー関数を抽出
-- [ ] テスト実行・動作確認
-- [ ] ビルド・Clippy 確認
+- [x] 現状のコード構造を分析
+- [x] 分割ポイントを特定
+- [x] ヘルパー関数を抽出
+- [x] テスト実行・動作確認
+- [x] ビルド・Clippy 確認
+
+### 抽出したヘルパー関数
+
+| 関数名 | 行数 | 責務 |
+|--------|------|------|
+| `handle_no_ball_state` | 11 | ボール不在時のAI状態リセット |
+| `is_ball_coming_to_ai` | 6 | ボール方向判定 |
+| `determine_ai_target` | 25 | 状態遷移・目標位置決定 |
+| `log_ai_movement_debug` | 24 | デバッグログ出力 |
+| `execute_ai_movement` | 25 | 移動実行（到達判定含む） |
+
+### 結果
+
+- **Before**: 144行
+- **After**: 47行（関数本体）、64行（シグネチャ含む）
 
 ## Dependencies
 
@@ -59,14 +74,15 @@ completed_at: null
 
 > このタスクは in-review 経由必須
 
-- [ ] ビルド成功（`cargo build`）
-- [ ] テスト全PASS（`cargo test`）
-- [ ] `cargo clippy` で警告ゼロ
-- [ ] 分割後の各関数が50行以下
-- [ ] in-review に移動済み
+- [x] ビルド成功（`cargo build`）
+- [x] テスト全PASS（`cargo test`）
+- [x] `cargo clippy` で警告ゼロ（既存のdead-code警告除く）
+- [x] 分割後の各関数が50行以下
+- [x] in-review に移動済み
 - [ ] レビュー完了
 
 ## メモ
 
 - Effort: S（小規模）
 - Bevy システム関数の分割パターンを適用
+- 既存の`calculate_shot_attributes`未使用警告は別タスク対象
