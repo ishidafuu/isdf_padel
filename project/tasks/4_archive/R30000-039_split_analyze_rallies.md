@@ -2,7 +2,7 @@
 id: "R30000-039"
 title: "analyze_rallies 分割"
 type: "refactor"
-status: "in-review"
+status: "done"
 priority: "low"
 related_task: null
 spec_ids: []
@@ -15,7 +15,7 @@ tags: ["long-function", "code-quality", "trace-narrator"]
 parent_task_id: null
 created_at: "2026-01-17T00:00:00+09:00"
 updated_at: "2026-01-17T00:00:00+09:00"
-completed_at: null
+completed_at: "2026-01-17T12:30:00+09:00"
 ---
 
 # Task R30000-039: analyze_rallies 分割
@@ -64,7 +64,7 @@ completed_at: null
 - [x] `cargo clippy` で対象ファイル警告ゼロ（既存警告は別ファイル）
 - [x] 分割後の各関数が50行以下（analyze_rallies: 115行→37行）
 - [x] in-review に移動済み
-- [ ] レビュー完了
+- [x] レビュー完了
 
 ## メモ
 
