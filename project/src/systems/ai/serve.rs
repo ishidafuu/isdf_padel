@@ -1,6 +1,7 @@
 //! AI自動サーブシステム
 //! @spec 30102_serve_spec.md#req-30102-087
 //! @spec 30102_serve_spec.md#req-30102-088
+//! @spec 30303_ai_tactics_spec.md#req-30303-030
 //!
 //! v0.4: トス→ヒット方式
 //! AIプレイヤーがサーブ権を持つ時、
@@ -9,7 +10,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{AiController, Ball, LogicalPosition, Player, TossBall, TossBallBundle};
+use crate::components::{AiController, Ball, LogicalPosition, Player, TacticsType, TossBall, TossBallBundle};
 use crate::core::ShotEvent;
 use crate::resource::scoring::{ServeState, ServeSubPhase};
 use crate::resource::{FixedDeltaTime, GameConfig, GameRng, MatchFlowState, MatchScore};
@@ -18,6 +19,7 @@ use crate::systems::GameSystemSet;
 
 /// AIサーブ待機タイマー（リソース）
 /// @spec 30102_serve_spec.md#req-30102-087
+/// @spec 30303_ai_tactics_spec.md#req-30303-030
 ///
 /// サーブ権を持つAIの待機時間を管理する。
 #[derive(Resource, Default)]
@@ -26,13 +28,21 @@ pub struct AiServeTimer {
     pub toss_timer: Option<Timer>,
     /// サーブ方向のZ軸オフセット（事前決定）
     /// @spec 30102_serve_spec.md#req-30102-071
+    /// @spec 30303_ai_tactics_spec.md#req-30303-031
+    /// @spec 30303_ai_tactics_spec.md#req-30303-032
     pub direction_z_offset: f32,
     /// ヒット済みフラグ（連続ヒット防止）
     pub hit_executed: bool,
+    /// サーブ戦術（攻め/守り）
+    /// @spec 30303_ai_tactics_spec.md#req-30303-030
+    pub serve_tactics: TacticsType,
 }
 
 /// AIサーブタイマー初期化システム
 /// @spec 30102_serve_spec.md#req-30102-087
+/// @spec 30303_ai_tactics_spec.md#req-30303-030
+/// @spec 30303_ai_tactics_spec.md#req-30303-031
+/// @spec 30303_ai_tactics_spec.md#req-30303-032
 ///
 /// Serve状態に入った時、AIがサーバーでWaiting状態ならタイマーを初期化する。
 pub fn ai_serve_timer_init_system(
@@ -53,6 +63,7 @@ pub fn ai_serve_timer_init_system(
         // 人間がサーバーの場合、タイマーをクリア
         ai_serve_timer.toss_timer = None;
         ai_serve_timer.hit_executed = false;
+        ai_serve_timer.serve_tactics = TacticsType::Defensive;
         return;
     }
 
@@ -69,25 +80,48 @@ pub fn ai_serve_timer_init_system(
     // @spec 30102_serve_spec.md#req-30102-087: ランダムな待機時間を決定
     let delay = game_rng.random_range(config.ai.serve_delay_min..=config.ai.serve_delay_max);
 
-    // @spec 30102_serve_spec.md#req-30102-071: サーブ方向のランダムバリエーションを事前決定
-    let direction_z_offset =
-        game_rng.random_range(-config.ai.serve_direction_variance..=config.ai.serve_direction_variance);
+    // REQ-30303-030: サーブ戦術を選択
+    let roll: f32 = game_rng.random_range(0.0..=1.0);
+    let serve_tactics = if roll < config.ai.serve_offensive_probability {
+        TacticsType::Offensive
+    } else {
+        TacticsType::Defensive
+    };
+
+    // 戦術に応じてサーブ方向を決定
+    // @spec 30303_ai_tactics_spec.md#req-30303-031: 守り → サービスエリア中央（Z ≈ 0）
+    // @spec 30303_ai_tactics_spec.md#req-30303-032: 攻め → サービスエリア端（±margin）
+    let direction_z_offset = match serve_tactics {
+        TacticsType::Defensive => {
+            // 守り: 中央狙い（小さなバリエーションのみ）
+            game_rng.random_range(-0.2..=0.2)
+        }
+        TacticsType::Offensive => {
+            // 攻め: サービスエリア端狙い
+            // service_area_width / 2 - margin の位置を狙う
+            // direction は制御値なので、端を狙う場合は大きな値
+            let target = config.ai.serve_direction_variance - config.ai.serve_offensive_margin;
+            // 左右ランダム選択
+            if game_rng.random_range(0..=1) == 0 { target } else { -target }
+        }
+    };
 
     ai_serve_timer.toss_timer = Some(Timer::from_seconds(delay, TimerMode::Once));
     ai_serve_timer.direction_z_offset = direction_z_offset;
     ai_serve_timer.hit_executed = false;
+    ai_serve_timer.serve_tactics = serve_tactics;
 
-    // AIサーブタイマー初期化ログ出力
+    // AIサーブタイマー初期化ログ出力（戦術情報を追加）
     if let Some(ref mut logger) = debug_logger {
         logger.log_ai(&format!(
-            "SERVE_INIT server={:?} delay={:.2}s z_offset={:.2}",
-            match_score.server, delay, direction_z_offset
+            "SERVE_INIT server={:?} tactics={:?} delay={:.2}s z_offset={:.2}",
+            match_score.server, serve_tactics, delay, direction_z_offset
         ));
     }
 
     info!(
-        "AI toss timer initialized: {:.2}s, direction_z_offset: {:.2}",
-        delay, direction_z_offset
+        "AI toss timer initialized: {:.2}s, tactics: {:?}, direction_z_offset: {:.2}",
+        delay, serve_tactics, direction_z_offset
     );
 }
 

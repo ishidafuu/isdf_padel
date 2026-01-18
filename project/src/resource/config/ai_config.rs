@@ -2,6 +2,7 @@
 //! @spec 30301_ai_movement_spec.md
 //! @spec 30302_ai_shot_spec.md
 //! @spec 30102_serve_spec.md#req-30102-070
+//! @spec 30303_ai_tactics_spec.md
 
 use serde::Deserialize;
 
@@ -64,6 +65,23 @@ pub struct AiConfig {
     /// 反応遅延（秒）
     /// @spec 30301_ai_movement_spec.md#req-30301-053
     pub reaction_delay: f32,
+    // === 戦術パラメータ ===
+    // @spec 30303_ai_tactics_spec.md
+    /// 攻め可能な最適距離（m）- この距離以内なら攻め可能
+    /// @spec 30303_ai_tactics_spec.md#req-30303-010
+    pub optimal_distance: f32,
+    /// 攻め確率（0.0～1.0）- 条件を満たした時に攻める確率
+    /// @spec 30303_ai_tactics_spec.md#req-30303-011
+    pub offensive_probability: f32,
+    /// 攻めマージン（m）- ライン際からの内側マージン
+    /// @spec 30303_ai_tactics_spec.md#req-30303-022
+    pub offensive_margin: f32,
+    /// サーブ攻め確率（0.0～1.0）
+    /// @spec 30303_ai_tactics_spec.md#req-30303-030
+    pub serve_offensive_probability: f32,
+    /// サーブ攻めマージン（m）- サービスエリア端からのマージン
+    /// @spec 30303_ai_tactics_spec.md#req-30303-032
+    pub serve_offensive_margin: f32,
 }
 
 impl Default for AiConfig {
@@ -86,6 +104,12 @@ impl Default for AiConfig {
             prediction_error: 0.5,
             direction_variance: 10.0,
             reaction_delay: 0.15,
+            // 戦術パラメータ
+            optimal_distance: 1.2,
+            offensive_probability: 0.6,
+            offensive_margin: 0.8,
+            serve_offensive_probability: 0.5,
+            serve_offensive_margin: 0.3,
         }
     }
 }

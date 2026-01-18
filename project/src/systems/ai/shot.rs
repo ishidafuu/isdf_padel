@@ -1,10 +1,11 @@
 //! AIショットシステム v0.6
 //! @spec 30302_ai_shot_spec.md
+//! @spec 30303_ai_tactics_spec.md
 
 use bevy::prelude::*;
 
 use crate::components::{
-    AiController, Ball, BounceCount, KnockbackState, LastShooter, LogicalPosition, Player, ShotState,
+    AiController, Ball, BounceCount, KnockbackState, LastShooter, LogicalPosition, Player, ShotState, TacticsType,
 };
 use crate::core::events::ShotEvent;
 use crate::resource::config::GameConfig;
@@ -65,20 +66,72 @@ fn can_ai_shoot(
     true
 }
 
+/// 戦術を選択
+/// @spec 30303_ai_tactics_spec.md#req-30303-010
+/// @spec 30303_ai_tactics_spec.md#req-30303-011
+///
+/// 打点距離に応じて攻め/守りを決定し、確率調整を適用する
+fn select_tactics(
+    distance_to_ball: f32,
+    optimal_distance: f32,
+    offensive_probability: f32,
+    game_rng: &mut GameRng,
+) -> TacticsType {
+    // REQ-30303-010: 距離が最適距離より大きい場合は守り
+    if distance_to_ball > optimal_distance {
+        return TacticsType::Defensive;
+    }
+
+    // REQ-30303-011: 距離が短くても確率で守りを選ぶ場合がある
+    let roll: f32 = game_rng.random_range(0.0..=1.0);
+    if roll < offensive_probability {
+        TacticsType::Offensive
+    } else {
+        TacticsType::Defensive
+    }
+}
+
 /// 打球方向の制御値を計算
 /// @spec 30302_ai_shot_spec.md#req-30302-003
 /// @spec 30302_ai_shot_spec.md#req-30302-055
+/// @spec 30303_ai_tactics_spec.md#req-30303-020
+/// @spec 30303_ai_tactics_spec.md#req-30303-021
 ///
 /// 戻り値の Vec2:
 /// - x: 深さ制御 (-1.0=ネット際, 0.0=サービスライン付近, +1.0=ベースライン際)
 /// - y: 横方向制御 (-1.0〜+1.0)
 fn calculate_shot_direction(
+    tactics: TacticsType,
+    court_width: f32,
+    offensive_margin: f32,
     game_rng: &mut GameRng,
     direction_variance: f32,
 ) -> Vec2 {
-    // ネットフォルトを避けるため、サービスライン〜ベースライン中間を狙う
-    let base_depth = 0.3_f32; // やや浅め（安全マージン）
-    let base_lateral = 0.0_f32; // コート中央
+    // 戦術に応じたベース値を設定
+    let (base_depth, base_lateral) = match tactics {
+        // REQ-30303-020: 守り → コート中央狙い
+        TacticsType::Defensive => {
+            (0.3_f32, 0.0_f32)  // やや浅め、中央
+        }
+        // REQ-30303-021: 攻め → ライン際狙い
+        TacticsType::Offensive => {
+            // 深い位置（ベースライン際）を狙う
+            let depth = 0.8_f32;
+            // ライン際を狙う（Z座標の制御値に変換）
+            // offensive_margin をコート幅半分からの比率で制御値に変換
+            // margin=0.8m, width=12m → サイドライン(6m)から0.8m内側 → 5.2m
+            // 制御値 = 5.2 / 6.0 ≈ 0.87
+            let half_width = court_width / 2.0;
+            let target_z_ratio = (half_width - offensive_margin) / half_width;
+            // 左右ランダム選択
+            let lateral = if game_rng.random_range(0..=1) == 0 {
+                target_z_ratio
+            } else {
+                -target_z_ratio
+            };
+            (depth, lateral)
+        }
+    };
 
     // REQ-30302-055: ランダムブレを適用（制御値として）
     // direction_variance（度）を制御値範囲に変換
@@ -87,8 +140,8 @@ fn calculate_shot_direction(
     let lateral_offset = game_rng.random_range(-variance_factor..=variance_factor) * 0.5;
 
     Vec2::new(
-        (base_depth + depth_offset).clamp(-0.5, 1.0), // ネット際は避ける（-0.5以上）
-        (base_lateral + lateral_offset).clamp(-1.0, 1.0),
+        (base_depth + depth_offset).clamp(-0.5_f32, 1.0_f32), // ネット際は避ける（-0.5以上）
+        (base_lateral + lateral_offset).clamp(-1.0_f32, 1.0_f32),
     )
 }
 
@@ -99,6 +152,8 @@ fn calculate_shot_direction(
 /// @spec 30302_ai_shot_spec.md#req-30302-004
 /// @spec 30302_ai_shot_spec.md#req-30302-005
 /// @spec 30302_ai_shot_spec.md#req-30302-055
+/// @spec 30303_ai_tactics_spec.md#req-30303-010
+/// @spec 30303_ai_tactics_spec.md#req-30303-011
 #[allow(clippy::too_many_arguments)]
 pub fn ai_shot_system(
     config: Res<GameConfig>,
@@ -113,8 +168,8 @@ pub fn ai_shot_system(
             &LogicalPosition,
             &mut ShotState,
             &KnockbackState,
+            &mut AiController,
         ),
-        With<AiController>,
     >,
     mut event_writer: MessageWriter<ShotEvent>,
 ) {
@@ -124,7 +179,7 @@ pub fn ai_shot_system(
     };
     let ball_pos = ball_logical_pos.value;
 
-    for (player, ai_pos, mut shot_state, knockback) in ai_query.iter_mut() {
+    for (player, ai_pos, mut shot_state, knockback, mut ai_controller) in ai_query.iter_mut() {
         let ai_position = ai_pos.value;
         let distance_3d = (ai_position - ball_pos).length();
 
@@ -143,8 +198,23 @@ pub fn ai_shot_system(
             continue;
         }
 
-        // 打球方向を計算
-        let direction = calculate_shot_direction(&mut game_rng, config.ai.direction_variance);
+        // REQ-30303-010, REQ-30303-011: 戦術を選択
+        let tactics = select_tactics(
+            distance_3d,
+            config.ai.optimal_distance,
+            config.ai.offensive_probability,
+            &mut game_rng,
+        );
+        ai_controller.current_tactics = tactics;
+
+        // 打球方向を計算（戦術に応じて変化）
+        let direction = calculate_shot_direction(
+            tactics,
+            config.court.width,
+            config.ai.offensive_margin,
+            &mut game_rng,
+            config.ai.direction_variance,
+        );
 
         // REQ-30302-004: クールダウン開始
         shot_state.start_cooldown(config.ai.shot_cooldown);
@@ -163,17 +233,17 @@ pub fn ai_shot_system(
             hit_position: None,
         });
 
-        // AIショットログ出力
+        // AIショットログ出力（戦術情報を追加）
         if let Some(ref mut logger) = debug_logger {
             logger.log_ai(&format!(
-                "P{} SHOT distance_3d={:.2} dir=({:.2},{:.2}) cooldown={:.2}",
-                player.id, distance_3d, direction.x, direction.y, config.ai.shot_cooldown
+                "P{} SHOT tactics={:?} distance_3d={:.2} dir=({:.2},{:.2}) cooldown={:.2}",
+                player.id, tactics, distance_3d, direction.x, direction.y, config.ai.shot_cooldown
             ));
         }
 
         info!(
-            "AI Player {} shot! direction: {:?}, distance_3d: {:.2}",
-            player.id, direction, distance_3d
+            "AI Player {} shot! tactics: {:?}, direction: {:?}, distance_3d: {:.2}",
+            player.id, tactics, direction, distance_3d
         );
     }
 }
@@ -200,20 +270,97 @@ mod tests {
         assert!(direction.z.abs() < 0.001, "Z should be near zero");
     }
 
+    /// REQ-30303-010: 戦術選択テスト（距離による選択）
+    #[test]
+    fn test_select_tactics_by_distance() {
+        use crate::resource::GameRng;
+
+        let mut rng = GameRng::from_seed(12345);
+        let optimal_distance = 1.2;
+        let offensive_probability = 1.0; // 確実に攻め
+
+        // 距離が短い場合 → 攻め
+        let tactics_close = select_tactics(1.0, optimal_distance, offensive_probability, &mut rng);
+        assert_eq!(tactics_close, TacticsType::Offensive);
+
+        // 距離が遠い場合 → 守り
+        let tactics_far = select_tactics(2.0, optimal_distance, offensive_probability, &mut rng);
+        assert_eq!(tactics_far, TacticsType::Defensive);
+    }
+
+    /// REQ-30303-011: 戦術選択テスト（確率による選択）
+    #[test]
+    fn test_select_tactics_by_probability() {
+        use crate::resource::GameRng;
+
+        let mut rng = GameRng::from_seed(12345);
+        let optimal_distance = 1.2;
+
+        // 攻め確率0%の場合 → 常に守り
+        let tactics_0 = select_tactics(1.0, optimal_distance, 0.0, &mut rng);
+        assert_eq!(tactics_0, TacticsType::Defensive);
+    }
+
+    /// REQ-30303-020: 守りショット方向テスト（コート中央）
+    #[test]
+    fn test_defensive_shot_direction() {
+        use crate::resource::GameRng;
+
+        let mut rng = GameRng::from_seed(12345);
+        let court_width = 12.0;
+        let offensive_margin = 0.8;
+
+        // 守り戦術の場合、中央狙い（y ≈ 0）
+        let dir = calculate_shot_direction(
+            TacticsType::Defensive,
+            court_width,
+            offensive_margin,
+            &mut rng,
+            0.0, // ブレなし
+        );
+        assert!((dir.y - 0.0).abs() < 0.001, "Defensive should aim center (y ≈ 0)");
+        assert!((dir.x - 0.3).abs() < 0.001, "Defensive depth should be 0.3");
+    }
+
+    /// REQ-30303-021: 攻めショット方向テスト（ライン際）
+    #[test]
+    fn test_offensive_shot_direction() {
+        use crate::resource::GameRng;
+
+        let mut rng = GameRng::from_seed(12345);
+        let court_width = 12.0;
+        let offensive_margin = 0.8;
+        // 期待値: (6.0 - 0.8) / 6.0 = 5.2 / 6.0 ≈ 0.867
+
+        // 攻め戦術の場合、ライン際狙い（|y| > 0.8）
+        let dir = calculate_shot_direction(
+            TacticsType::Offensive,
+            court_width,
+            offensive_margin,
+            &mut rng,
+            0.0, // ブレなし
+        );
+        assert!(dir.y.abs() > 0.8, "Offensive should aim sideline (|y| > 0.8)");
+        assert!((dir.x - 0.8).abs() < 0.001, "Offensive depth should be 0.8");
+    }
+
     /// REQ-30302-055: 方向計算のランダムブレテスト
     #[test]
     fn test_shot_direction_variance() {
         use crate::resource::GameRng;
 
         let mut rng = GameRng::from_seed(12345);
-
-        // 誤差0の場合は基本値
-        let dir_no_variance = calculate_shot_direction(&mut rng, 0.0);
-        assert!((dir_no_variance.x - 0.3).abs() < 0.001);
-        assert!((dir_no_variance.y - 0.0).abs() < 0.001);
+        let court_width = 12.0;
+        let offensive_margin = 0.8;
 
         // 誤差ありの場合は範囲内
-        let dir_with_variance = calculate_shot_direction(&mut rng, 15.0);
+        let dir_with_variance = calculate_shot_direction(
+            TacticsType::Defensive,
+            court_width,
+            offensive_margin,
+            &mut rng,
+            15.0, // ブレあり
+        );
         assert!(dir_with_variance.x >= -0.5 && dir_with_variance.x <= 1.0);
         assert!(dir_with_variance.y >= -1.0 && dir_with_variance.y <= 1.0);
     }

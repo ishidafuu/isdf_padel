@@ -130,6 +130,13 @@ GameConfig(
         prediction_error: 0.5,          // 最大予測誤差（m）
         direction_variance: 10.0,       // 打球方向ブレ（度）
         reaction_delay: 0.15,           // 反応遅延（秒、150ms）
+        // v0.4 戦術パラメータ
+        // @spec 30303_ai_tactics_spec.md
+        optimal_distance: 1.2,          // 攻め可能な最適距離（m）
+        offensive_probability: 0.6,     // 攻め確率（60%）
+        offensive_margin: 0.8,          // ライン際からのマージン（m）
+        serve_offensive_probability: 0.5, // サーブ攻め確率（50%）
+        serve_offensive_margin: 0.3,    // サービスエリア端からのマージン（m）
     ),
     // @spec 30401_trajectory_spec.md#req-30401-100
     // @spec 30401_trajectory_spec.md#req-30401-101

@@ -1,7 +1,19 @@
 //! AI関連コンポーネント
 //! @spec 30301_ai_movement_spec.md
+//! @spec 30303_ai_tactics_spec.md
 
 use bevy::prelude::*;
+
+/// AI戦術タイプ
+/// @spec 30303_ai_tactics_spec.md#req-30303-001
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum TacticsType {
+    /// 守り: コート中央狙い（アウトリスク低）
+    #[default]
+    Defensive,
+    /// 攻め: ライン際狙い（アウトリスク高）
+    Offensive,
+}
 
 /// AI移動状態
 /// @spec 30301_ai_movement_spec.md#req-30301-v05
@@ -39,4 +51,7 @@ pub struct AiController {
     /// 目標をロックした時のボール速度X符号（状態変化検知用）
     /// @spec 30301_ai_movement_spec.md#req-30301-v07-003
     pub lock_ball_velocity_x_sign: Option<bool>,
+    /// 現在の戦術（攻め/守り）
+    /// @spec 30303_ai_tactics_spec.md#req-30303-010
+    pub current_tactics: TacticsType,
 }
