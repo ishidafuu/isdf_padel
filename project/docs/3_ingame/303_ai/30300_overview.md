@@ -276,6 +276,7 @@ AIのパラメータは `8_data/80101_game_constants.md` に定義されます�
 |---------|------|-----------|
 | [30301_ai_movement_spec.md](30301_ai_movement_spec.md) | AI移動・ポジショニング | MVP + v0.2 |
 | [30302_ai_shot_spec.md](30302_ai_shot_spec.md) | AIショット・難易度調整 | MVP + v0.2 |
+| [30303_ai_tactics_spec.md](30303_ai_tactics_spec.md) | AI戦術選択（攻め/守り） | v0.4 |
 
 ---
 
