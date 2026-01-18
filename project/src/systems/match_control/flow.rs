@@ -201,20 +201,21 @@ fn point_end_to_next_system(
         info!("Toss ball despawned for next serve");
     }
 
+    // @spec 30101_flow_spec.md#req-30101-005: 勝利条件を満たす
+    // NOTE: マッチ終了判定を先に行う（ダブルフォルトでマッチ終了した場合に対応）
+    if let GameState::MatchWon(_winner) = match_score.game_state {
+        // @spec 30101_flow_spec.md#req-30101-005: MatchState を MatchEnd に遷移する
+        next_state.set(MatchFlowState::MatchEnd);
+        info!("Match won! State: PointEnd -> MatchEnd");
+        return;
+    }
+
     // フォルトディレイの場合（セカンドサーブへ）
     if point_end_timer.is_fault_delay {
         point_end_timer.is_fault_delay = false;
         rally_state.next_serve();
         next_state.set(MatchFlowState::Serve);
         info!("Fault delay ended. Returning to serve.");
-        return;
-    }
-
-    // @spec 30101_flow_spec.md#req-30101-005: 勝利条件を満たす
-    if let GameState::MatchWon(_winner) = match_score.game_state {
-        // @spec 30101_flow_spec.md#req-30101-005: MatchState を MatchEnd に遷移する
-        next_state.set(MatchFlowState::MatchEnd);
-        info!("Match won! State: PointEnd -> MatchEnd");
         return;
     }
 

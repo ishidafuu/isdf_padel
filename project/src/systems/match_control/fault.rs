@@ -142,6 +142,11 @@ pub fn serve_landing_judgment_system(
                 fault_count: new_fault_count,
                 reason: FaultReason::OutOfServiceBox,
             });
+
+            // フォルト発行後は追加のバウンス判定を防ぐ
+            // (fault_countをリセットしないようにend_point()は呼ばない)
+            rally_state.phase = RallyPhase::PointEnded;
+            return;
         } else {
             // サービスボックス内 → 有効なサーブ（ラリー開始）
             info!(

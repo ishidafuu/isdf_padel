@@ -313,7 +313,9 @@ fn determine_ai_target(
 ) -> (AiMovementState, Vec3) {
     if ball_coming_to_me {
         if ai.reaction_timer > 0.0 {
-            (AiMovementState::Idle, idle_pos)
+            // @spec 30301_ai_movement_spec.md#req-30301-053
+            // 反応遅延中はその場で停止（待機位置に移動しない）
+            (AiMovementState::Idle, ai_pos)
         } else {
             let target = calculate_tracking_target(
                 ai, ai_pos, ball_pos, ball_vel, gravity, state_changed, config, game_rng,

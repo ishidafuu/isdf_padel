@@ -56,6 +56,11 @@ pub fn double_bounce_judgment_system(
         return;
     }
 
+    // サーブ中はツーバウンド判定を行わない（フォルト判定は別システムで処理）
+    if rally_state.phase == RallyPhase::Serving {
+        return;
+    }
+
     // 同一フレームで既にイベント発行済みならスキップ
     if rally_state.rally_end_event_sent_this_frame {
         return;
