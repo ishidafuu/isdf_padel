@@ -37,7 +37,7 @@ impl Deref for SharedReplayData {
 }
 use padel_game::core::{
     BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent,
-    ShotEvent, ShotExecutedEvent,
+    ShotAttributesCalculatedEvent, ShotEvent, ShotExecutedEvent,
 };
 use padel_game::presentation::{
     ball_spin_color_system, despawn_ball_shadow_system, player_hold_visual_system,
@@ -197,7 +197,8 @@ impl Plugin for ReplayViewerPlugins {
             .add_message::<BallHitEvent>()
             .add_message::<PlayerKnockbackEvent>()
             .add_message::<ShotEvent>()
-            .add_message::<ShotExecutedEvent>();
+            .add_message::<ShotExecutedEvent>()
+            .add_message::<ShotAttributesCalculatedEvent>();
 
         // SystemSet の順序を設定
         app.configure_sets(Update, GameSystemSet::Input.before(GameSystemSet::GameLogic));

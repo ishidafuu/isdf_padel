@@ -132,9 +132,9 @@ GameConfig(
         reaction_delay: 0.15,           // 反応遅延（秒、150ms）
         // v0.4 戦術パラメータ
         // @spec 30303_ai_tactics_spec.md
-        optimal_distance: 1.2,          // 攻め可能な最適距離（m）
+        optimal_distance: 1.6,          // 攻め可能な最適距離（m）
         offensive_probability: 0.6,     // 攻め確率（60%）
-        offensive_margin: 0.8,          // ライン際からのマージン（m）
+        offensive_margin: 0.3,          // ライン際からのマージン（m）- 攻め時はより際を狙う
         serve_offensive_probability: 0.5, // サーブ攻め確率（50%）
         serve_offensive_margin: 0.3,    // サービスエリア端からのマージン（m）
     ),
@@ -152,7 +152,7 @@ GameConfig(
     ),
     // @spec 30605_trajectory_calculation_spec.md
     trajectory: TrajectoryConfig(
-        landing_margin: 0.5,
+        landing_margin: 0.2,  // サイドライン際をより狙えるように調整
         default_landing_depth: 4.0,
         max_launch_angle: 60.0,
         spin_speed_flat: 1.0,
