@@ -230,7 +230,14 @@ impl DebugControlGuiApp {
     }
 
     fn save_runtime(&mut self) {
-        match save_runtime_overrides(DEBUG_RUNTIME_CONFIG_PATH, &self.runtime_overrides()) {
+        let mut overrides = self.runtime_overrides();
+        if overrides.has_any_value() && !overrides.enabled {
+            // 値があるのに無効だと「保存したのに反映されない」状態になるため自動有効化
+            overrides.enabled = true;
+            self.runtime_enabled = true;
+        }
+
+        match save_runtime_overrides(DEBUG_RUNTIME_CONFIG_PATH, &overrides) {
             Ok(()) => self.status_message = "実行中上書きの保存完了".to_string(),
             Err(err) => self.status_message = format!("実行中上書きの保存失敗: {}", err),
         }
