@@ -73,29 +73,6 @@ fn load_japanese_font_bytes() -> Option<Vec<u8>> {
 }
 
 #[derive(Clone, Copy)]
-struct OptionalBoolField {
-    use_override: bool,
-    value: bool,
-}
-
-impl OptionalBoolField {
-    fn from_option(value: Option<bool>) -> Self {
-        Self {
-            use_override: value.is_some(),
-            value: value.unwrap_or(false),
-        }
-    }
-
-    fn to_option(self) -> Option<bool> {
-        if self.use_override {
-            Some(self.value)
-        } else {
-            None
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
 struct OptionalF32Field {
     use_override: bool,
     value: f32,
@@ -129,7 +106,7 @@ struct DebugControlGuiApp {
     startup_env: DebugRuntimeOverrides,
 
     runtime_enabled: bool,
-    practice_infinite_mode: OptionalBoolField,
+    practice_infinite_mode: bool,
     player_move_speed: OptionalF32Field,
     player_move_speed_z: OptionalF32Field,
     ball_normal_shot_speed: OptionalF32Field,
@@ -151,7 +128,7 @@ impl DebugControlGuiApp {
             base_config: None,
             startup_env: DebugRuntimeOverrides::from_env(),
             runtime_enabled: false,
-            practice_infinite_mode: OptionalBoolField::from_option(None),
+            practice_infinite_mode: false,
             player_move_speed: OptionalF32Field::from_option(None),
             player_move_speed_z: OptionalF32Field::from_option(None),
             ball_normal_shot_speed: OptionalF32Field::from_option(None),
@@ -182,7 +159,7 @@ impl DebugControlGuiApp {
             base_config: Some(base),
             startup_env,
             runtime_enabled: runtime.enabled,
-            practice_infinite_mode: OptionalBoolField::from_option(runtime.practice_infinite_mode),
+            practice_infinite_mode: runtime.practice_infinite_mode.unwrap_or(false),
             player_move_speed: OptionalF32Field::from_option(runtime.player_move_speed),
             player_move_speed_z: OptionalF32Field::from_option(runtime.player_move_speed_z),
             ball_normal_shot_speed: OptionalF32Field::from_option(runtime.ball_normal_shot_speed),
@@ -200,7 +177,13 @@ impl DebugControlGuiApp {
     fn runtime_overrides(&self) -> DebugRuntimeOverrides {
         DebugRuntimeOverrides {
             enabled: self.runtime_enabled,
-            practice_infinite_mode: self.practice_infinite_mode.to_option(),
+            // フラグ項目は1チェック方式:
+            // ONのときのみ明示上書きし、OFFは未指定（デフォルトOFFをそのまま使う）
+            practice_infinite_mode: if self.practice_infinite_mode {
+                Some(true)
+            } else {
+                None
+            },
             player_move_speed: self.player_move_speed.to_option(),
             player_move_speed_z: self.player_move_speed_z.to_option(),
             ball_normal_shot_speed: self.ball_normal_shot_speed.to_option(),
@@ -319,12 +302,7 @@ impl DebugControlGuiApp {
         });
         ui.separator();
 
-        draw_optional_bool_row(
-            ui,
-            "練習サーブ無限化",
-            &mut self.practice_infinite_mode,
-            "有効",
-        );
+        ui.checkbox(&mut self.practice_infinite_mode, "練習サーブ無限化");
         draw_optional_f32_row(ui, "プレイヤー移動速度(X)", &mut self.player_move_speed);
         draw_optional_f32_row(ui, "プレイヤー移動速度(Z)", &mut self.player_move_speed_z);
         draw_optional_f32_row(
@@ -445,20 +423,6 @@ impl eframe::App for DebugControlGuiApp {
             });
         });
     }
-}
-
-fn draw_optional_bool_row(
-    ui: &mut egui::Ui,
-    label: &str,
-    field: &mut OptionalBoolField,
-    caption: &str,
-) {
-    ui.horizontal(|ui| {
-        ui.checkbox(&mut field.use_override, label);
-        ui.add_enabled_ui(field.use_override, |ui| {
-            ui.checkbox(&mut field.value, caption);
-        });
-    });
 }
 
 fn draw_optional_f32_row(ui: &mut egui::Ui, label: &str, field: &mut OptionalF32Field) {
