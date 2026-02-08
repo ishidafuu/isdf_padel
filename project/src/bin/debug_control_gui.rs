@@ -142,6 +142,23 @@ impl DebugFieldDef {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum MainTab {
+    Runtime,
+    Env,
+    Effective,
+}
+
+impl MainTab {
+    fn title(self) -> &'static str {
+        match self {
+            Self::Runtime => "実行中上書き",
+            Self::Env => "起動時環境変数",
+            Self::Effective => "実効値プレビュー",
+        }
+    }
+}
+
 struct DebugControlGuiApp {
     base_config: Option<padel_game::resource::GameConfig>,
     startup_env: DebugRuntimeOverrides,
@@ -151,6 +168,9 @@ struct DebugControlGuiApp {
     runtime_seed: DebugRuntimeOverrides,
     flag_states: BTreeMap<String, bool>,
     float_states: BTreeMap<String, FloatState>,
+    active_tab: MainTab,
+    runtime_section_index: usize,
+    runtime_filter: String,
 
     env_rows: Vec<EnvRow>,
     new_env_key: String,
@@ -170,6 +190,9 @@ impl DebugControlGuiApp {
             runtime_seed: DebugRuntimeOverrides::default(),
             flag_states: BTreeMap::new(),
             float_states: BTreeMap::new(),
+            active_tab: MainTab::Runtime,
+            runtime_section_index: 0,
+            runtime_filter: String::new(),
             env_rows: Vec::new(),
             new_env_key: String::new(),
             new_env_value: String::new(),
@@ -208,6 +231,9 @@ impl DebugControlGuiApp {
             runtime_seed: runtime,
             flag_states,
             float_states,
+            active_tab: MainTab::Runtime,
+            runtime_section_index: 0,
+            runtime_filter: String::new(),
             env_rows,
             new_env_key: String::new(),
             new_env_value: String::new(),
@@ -401,14 +427,59 @@ impl DebugControlGuiApp {
         });
         ui.separator();
 
-        for section in self.catalog.sections.clone() {
-            egui::CollapsingHeader::new(&section.title)
-                .default_open(true)
-                .show(ui, |ui| {
-                    for field in &section.fields {
-                        self.draw_runtime_field(ui, field);
-                    }
-                });
+        self.ensure_runtime_section_index();
+
+        let section_tabs: Vec<(usize, String, usize)> = self
+            .catalog
+            .sections
+            .iter()
+            .enumerate()
+            .map(|(index, section)| (index, section.title.clone(), section.fields.len()))
+            .collect();
+        ui.horizontal_wrapped(|ui| {
+            for (index, title, field_count) in &section_tabs {
+                let selected = *index == self.runtime_section_index;
+                let label = format!("{} ({})", title, field_count);
+                if ui.selectable_label(selected, label).clicked() {
+                    self.runtime_section_index = *index;
+                }
+            }
+        });
+        ui.separator();
+
+        ui.horizontal(|ui| {
+            ui.label("絞り込み:");
+            ui.add(
+                egui::TextEdit::singleline(&mut self.runtime_filter)
+                    .desired_width(260.0)
+                    .hint_text("ラベル or キー"),
+            );
+            if !self.runtime_filter.is_empty() && ui.button("クリア").clicked() {
+                self.runtime_filter.clear();
+            }
+        });
+        ui.separator();
+
+        let selected_section = self
+            .catalog
+            .sections
+            .get(self.runtime_section_index)
+            .cloned();
+        if let Some(section) = selected_section {
+            let mut shown = 0usize;
+            for field in &section.fields {
+                if !field_matches_filter(field, &self.runtime_filter) {
+                    continue;
+                }
+                shown += 1;
+                self.draw_runtime_field(ui, field);
+            }
+
+            if shown == 0 {
+                ui.label("該当する項目はありません。");
+            }
+        } else {
+            ui.label("表示可能な項目セクションがありません。");
         }
     }
 
@@ -529,6 +600,28 @@ impl DebugControlGuiApp {
             ui.separator();
         }
     }
+
+    fn ensure_runtime_section_index(&mut self) {
+        if self.catalog.sections.is_empty() {
+            self.runtime_section_index = 0;
+            return;
+        }
+        let max = self.catalog.sections.len() - 1;
+        if self.runtime_section_index > max {
+            self.runtime_section_index = max;
+        }
+    }
+
+    fn draw_main_tabs(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal_wrapped(|ui| {
+            for tab in [MainTab::Runtime, MainTab::Env, MainTab::Effective] {
+                let selected = self.active_tab == tab;
+                if ui.selectable_label(selected, tab.title()).clicked() {
+                    self.active_tab = tab;
+                }
+            }
+        });
+    }
 }
 
 impl eframe::App for DebugControlGuiApp {
@@ -555,15 +648,25 @@ impl eframe::App for DebugControlGuiApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                self.draw_runtime_editor(ui);
-                ui.separator();
-                self.draw_env_editor(ui);
-                ui.separator();
-                self.draw_effective_preview(ui);
+            self.draw_main_tabs(ui);
+            ui.separator();
+            egui::ScrollArea::vertical().show(ui, |ui| match self.active_tab {
+                MainTab::Runtime => self.draw_runtime_editor(ui),
+                MainTab::Env => self.draw_env_editor(ui),
+                MainTab::Effective => self.draw_effective_preview(ui),
             });
         });
     }
+}
+
+fn field_matches_filter(field: &DebugFieldDef, filter: &str) -> bool {
+    let filter = filter.trim();
+    if filter.is_empty() {
+        return true;
+    }
+
+    let needle = filter.to_lowercase();
+    field.label().to_lowercase().contains(&needle) || field.key().to_lowercase().contains(&needle)
 }
 
 fn load_or_create_field_catalog(path: &str) -> Result<DebugFieldCatalog, String> {
