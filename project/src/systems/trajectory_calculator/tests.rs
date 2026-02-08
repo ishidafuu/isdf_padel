@@ -246,9 +246,9 @@ fn test_serve_landing_position_stays_inside_service_box_z() {
     );
 }
 
-/// 高トスほど奥 + 高弾道になることを確認
+/// 高トスほど高弾道になることを確認
 #[test]
-fn test_serve_trajectory_high_toss_goes_deeper_and_higher() {
+fn test_serve_trajectory_high_toss_goes_higher_arc() {
     let config = make_test_config();
     let hit_position = Vec3::new(-6.5, 2.2, 3.0);
 
@@ -269,16 +269,39 @@ fn test_serve_trajectory_high_toss_goes_deeper_and_higher() {
     let high_result = calculate_serve_trajectory(&high_toss_ctx, &config);
 
     assert!(
-        high_result.landing_position.x > low_result.landing_position.x,
-        "Expected higher toss to land deeper. low_x={}, high_x={}",
-        low_result.landing_position.x,
-        high_result.landing_position.x
-    );
-    assert!(
         high_result.launch_angle > low_result.launch_angle,
         "Expected higher toss to have higher launch angle. low_angle={}, high_angle={}",
         low_result.launch_angle,
         high_result.launch_angle
+    );
+}
+
+/// サーブの長短は打点高さで決まることを確認
+#[test]
+fn test_serve_trajectory_higher_contact_goes_deeper() {
+    let config = make_test_config();
+
+    let low_contact_ctx = ServeTrajectoryContext {
+        input: Vec2::ZERO,
+        server: CourtSide::Left,
+        serve_side: ServeSide::Deuce,
+        hit_position: Vec3::new(-6.5, config.serve.hit_height_min + 0.05, 3.0),
+        base_speed: config.serve.serve_speed,
+        toss_velocity_y: config.serve.toss_velocity_y,
+    };
+    let high_contact_ctx = ServeTrajectoryContext {
+        hit_position: Vec3::new(-6.5, config.serve.hit_height_max - 0.05, 3.0),
+        ..low_contact_ctx.clone()
+    };
+
+    let low_result = calculate_serve_trajectory(&low_contact_ctx, &config);
+    let high_result = calculate_serve_trajectory(&high_contact_ctx, &config);
+
+    assert!(
+        high_result.landing_position.x > low_result.landing_position.x,
+        "Expected higher contact to land deeper. low_x={}, high_x={}",
+        low_result.landing_position.x,
+        high_result.landing_position.x
     );
 }
 

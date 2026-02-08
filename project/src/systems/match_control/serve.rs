@@ -165,12 +165,20 @@ pub fn serve_toss_input_system(
         return;
     }
 
-    // 押下中はチャージ継続（離した瞬間にトスする）
+    // 押下中はチャージ継続（離した瞬間、または最大保持時間到達で自動トス）
+    let max_hold_secs = config.serve.toss_hold_max_secs.max(0.0);
+    let mut auto_released = false;
     if input_state.holding {
         if serve_state.toss_charge_started {
             serve_state.toss_charge_elapsed_secs += fixed_dt.delta_secs();
+            if max_hold_secs > 0.0 && serve_state.toss_charge_elapsed_secs >= max_hold_secs {
+                serve_state.toss_charge_elapsed_secs = max_hold_secs;
+                auto_released = true;
+            }
         }
-        return;
+        if !auto_released {
+            return;
+        }
     }
     if !serve_state.toss_charge_started {
         return;
@@ -178,7 +186,11 @@ pub fn serve_toss_input_system(
 
     let input_hold_secs = (input_state.hold_time / 1000.0).max(0.0);
     let measured_hold_secs = serve_state.toss_charge_elapsed_secs.max(0.0);
-    let hold_secs = measured_hold_secs.max(input_hold_secs);
+    let hold_secs = if max_hold_secs > 0.0 {
+        measured_hold_secs.max(input_hold_secs).min(max_hold_secs)
+    } else {
+        measured_hold_secs.max(input_hold_secs)
+    };
     let (toss_velocity_y, _raw_hold_secs) =
         calculate_toss_velocity_by_hold(hold_secs * 1000.0, &config.serve);
 
@@ -197,8 +209,8 @@ pub fn serve_toss_input_system(
     serve_state.start_toss(logical_pos.value, toss_velocity_y);
 
     info!(
-        "Toss: Ball tossed at {:?} with velocity {:?} by Player{} (hold={:.2}s, measured={:.2}s, input={:.2}s)",
-        toss_pos, toss_vel, player.id, hold_secs, measured_hold_secs, input_hold_secs
+        "Toss: Ball tossed at {:?} with velocity {:?} by Player{} (hold={:.2}s, measured={:.2}s, input={:.2}s, auto_release={})",
+        toss_pos, toss_vel, player.id, hold_secs, measured_hold_secs, input_hold_secs, auto_released
     );
 }
 

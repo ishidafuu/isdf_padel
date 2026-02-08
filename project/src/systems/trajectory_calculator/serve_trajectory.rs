@@ -28,6 +28,14 @@ fn calculate_toss_factor(toss_velocity_y: f32, config: &GameConfig) -> f32 {
     ((toss_velocity_y - min_v) / range).clamp(0.0, 1.0)
 }
 
+#[inline]
+fn calculate_contact_factor(hit_height_y: f32, config: &GameConfig) -> f32 {
+    let min_h = config.serve.hit_height_min.min(config.serve.hit_height_max);
+    let max_h = config.serve.hit_height_min.max(config.serve.hit_height_max);
+    let range = (max_h - min_h).max(0.001);
+    ((hit_height_y - min_h) / range).clamp(0.0, 1.0)
+}
+
 /// サーブ用着地地点を計算
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-050
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-051
@@ -41,9 +49,8 @@ pub fn calculate_serve_landing_position(
     let service_box = get_service_box(server, serve_side, config);
     let margin = config.trajectory.landing_margin;
 
-    // REQ-30605-051: 前後入力による深さ調整
-    // input.y: -1.0=ネット際, 0.0=中央, +1.0=サービスライン際
-    let depth_t = (input.y + 1.0) / 2.0; // -1..1 → 0..1
+    // サーブの長短は打点（ヒット高さ）で決まるため、十字キーでは固定中間値を使用
+    let depth_t = 0.5;
     let target_x = lerp(
         service_box.x_min + margin * server.sign(),
         service_box.x_max - margin * server.sign(),
@@ -77,8 +84,9 @@ pub fn calculate_serve_trajectory(
     let mut landing_position =
         calculate_serve_landing_position(ctx.input, ctx.server, ctx.serve_side, config);
     let toss_factor = calculate_toss_factor(ctx.toss_velocity_y, config);
+    let contact_factor = calculate_contact_factor(ctx.hit_position.y, config);
 
-    // 高トスほど奥、低トスほど手前に寄せる（サービスボックス内にクランプ）
+    // 高い打点ほど奥、低い打点ほど手前に寄せる（サービスボックス内にクランプ）
     let service_box = get_service_box(ctx.server, ctx.serve_side, config);
     let margin = config.trajectory.landing_margin;
     let x_low = service_box.x_min.min(service_box.x_max) + margin;
@@ -86,7 +94,7 @@ pub fn calculate_serve_trajectory(
     let depth_shift = lerp(
         -config.serve.toss_depth_shift,
         config.serve.toss_depth_shift,
-        toss_factor,
+        contact_factor,
     );
     landing_position.x =
         (landing_position.x + depth_shift * ctx.server.sign()).clamp(x_low, x_high);

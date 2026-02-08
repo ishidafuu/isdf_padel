@@ -41,7 +41,7 @@ pub struct TrajectoryContext {
 /// サーブ用弾道計算コンテキスト
 #[derive(Debug, Clone)]
 pub struct ServeTrajectoryContext {
-    /// 入力方向（X=左右, Y=前後）
+    /// 入力方向（X=左右。Yはサーブでは未使用）
     pub input: Vec2,
     /// サーバーのコートサイド
     pub server: CourtSide,
