@@ -2,6 +2,7 @@
 //! @spec 77210_debug_control.md
 
 use eframe::egui;
+use ron::{extensions::Extensions, Options as RonOptions};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
@@ -1169,28 +1170,46 @@ fn parse_field_catalog_with_legacy_support(
     content: &str,
     path: &Path,
 ) -> Result<DebugFieldCatalog, String> {
-    match ron::from_str::<DebugFieldCatalog>(content) {
-        Ok(catalog) => Ok(catalog),
-        Err(primary_err) => {
-            let migrated = migrate_legacy_kind_literals(content);
-            if migrated == content {
-                return Err(format!(
-                    "Failed to parse field catalog {}: {}",
-                    path.display(),
-                    primary_err
-                ));
-            }
-
-            ron::from_str::<DebugFieldCatalog>(&migrated).map_err(|fallback_err| {
-                format!(
-                    "Failed to parse field catalog {}: {} (fallback: {})",
-                    path.display(),
-                    primary_err,
-                    fallback_err
-                )
-            })
-        }
+    if let Ok(catalog) = ron::from_str::<DebugFieldCatalog>(content) {
+        return Ok(catalog);
     }
+
+    let migrated = migrate_legacy_kind_literals(content);
+
+    if let Ok(catalog) = ron::from_str::<DebugFieldCatalog>(&migrated) {
+        return Ok(catalog);
+    }
+
+    if let Ok(catalog) = parse_field_catalog_implicit_some(content) {
+        return Ok(catalog);
+    }
+
+    if let Ok(catalog) = parse_field_catalog_implicit_some(&migrated) {
+        return Ok(catalog);
+    }
+
+    let primary_err = ron::from_str::<DebugFieldCatalog>(content).unwrap_err();
+    let fallback_err = if migrated == content {
+        "no legacy migration applied".to_string()
+    } else {
+        ron::from_str::<DebugFieldCatalog>(&migrated)
+            .unwrap_err()
+            .to_string()
+    };
+    Err(format!(
+        "Failed to parse field catalog {}: {} (fallback: {})",
+        path.display(),
+        primary_err,
+        fallback_err
+    ))
+}
+
+fn parse_field_catalog_implicit_some(
+    content: &str,
+) -> Result<DebugFieldCatalog, ron::error::SpannedError> {
+    RonOptions::default()
+        .with_default_extension(Extensions::IMPLICIT_SOME)
+        .from_str(content)
 }
 
 fn migrate_legacy_kind_literals(content: &str) -> String {
@@ -1269,5 +1288,35 @@ mod tests {
         let catalog: DebugFieldCatalog =
             ron::from_str(&migrated).expect("migrated legacy kind should parse");
         assert!(catalog.sections[0].fields[0].is_flag());
+    }
+
+    #[test]
+    fn implicit_some形式のmin_max_stepを読み込める() {
+        let ron = r#"
+(
+    sections: [
+        (
+            title: "t",
+            fields: [
+                (
+                    kind: "float",
+                    key: "physics.gravity",
+                    label: "x",
+                    min: -50.0,
+                    max: 0.0,
+                    step: 0.1,
+                ),
+            ],
+        ),
+    ],
+)
+"#;
+        let catalog =
+            parse_field_catalog_with_legacy_support(ron, Path::new("dummy.ron"))
+                .expect("implicit_some should parse");
+        let field = &catalog.sections[0].fields[0];
+        assert_eq!(field.min, Some(-50.0));
+        assert_eq!(field.max, Some(0.0));
+        assert_eq!(field.step, Some(0.1));
     }
 }
