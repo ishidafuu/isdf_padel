@@ -157,9 +157,14 @@ pub fn serve_toss_input_system(
     };
 
     // 1回目ボタンは「押して離す」でトス開始
-    // 押下中はチャージ状態のみ保持し、離した瞬間にトスする。
-    if input_state.holding {
+    // チャージ開始は just_pressed のみ許可し、前回入力の持ち越しを防ぐ。
+    if input_state.shot_pressed {
         serve_state.toss_charge_started = true;
+        return;
+    }
+
+    // 押下中はチャージ継続（離した瞬間にトスする）
+    if input_state.holding {
         return;
     }
     if !serve_state.toss_charge_started {
