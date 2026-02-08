@@ -27,6 +27,10 @@ pub struct ShotConfig {
     pub jump_shot_angle: f32,
     #[serde(default = "default_jump_threshold")]
     pub jump_threshold: f32,
+    /// ラケット接触駆動スイング設定
+    /// @spec 30606_racket_contact_spec.md
+    #[serde(default)]
+    pub racket_swing: RacketSwingConfig,
 }
 
 fn default_max_distance() -> f32 {
@@ -46,6 +50,83 @@ fn default_jump_shot_angle() -> f32 {
 }
 fn default_jump_threshold() -> f32 {
     0.5
+}
+
+/// ラケット接触駆動スイング設定
+/// @spec 30606_racket_contact_spec.md
+#[derive(Deserialize, Clone, Debug)]
+pub struct RacketSwingConfig {
+    /// スイング全体時間（秒）
+    #[serde(default = "default_swing_duration_seconds")]
+    pub duration_seconds: f32,
+    /// 目標接触時刻（秒）
+    #[serde(default = "default_swing_contact_time_seconds")]
+    pub contact_time_seconds: f32,
+    /// 接触判定を行う時間ウィンドウ（秒）
+    #[serde(default = "default_contact_window_seconds")]
+    pub contact_window_seconds: f32,
+    /// 打点予測の最小先読み時間（秒）
+    #[serde(default = "default_min_prediction_time")]
+    pub min_prediction_time: f32,
+    /// 打点予測の最大先読み時間（秒）
+    #[serde(default = "default_max_prediction_time")]
+    pub max_prediction_time: f32,
+    /// 打点予測の探索刻み（秒）
+    #[serde(default = "default_prediction_step")]
+    pub prediction_step: f32,
+    /// 到達可能距離（XZ平面）
+    #[serde(default = "default_reach_distance")]
+    pub reach_distance: f32,
+    /// 到達可能な高さ差
+    #[serde(default = "default_max_hit_height_diff")]
+    pub max_hit_height_diff: f32,
+    /// 接触半径
+    #[serde(default = "default_contact_radius")]
+    pub contact_radius: f32,
+}
+
+impl Default for RacketSwingConfig {
+    fn default() -> Self {
+        Self {
+            duration_seconds: default_swing_duration_seconds(),
+            contact_time_seconds: default_swing_contact_time_seconds(),
+            contact_window_seconds: default_contact_window_seconds(),
+            min_prediction_time: default_min_prediction_time(),
+            max_prediction_time: default_max_prediction_time(),
+            prediction_step: default_prediction_step(),
+            reach_distance: default_reach_distance(),
+            max_hit_height_diff: default_max_hit_height_diff(),
+            contact_radius: default_contact_radius(),
+        }
+    }
+}
+
+fn default_swing_duration_seconds() -> f32 {
+    0.36
+}
+fn default_swing_contact_time_seconds() -> f32 {
+    0.18
+}
+fn default_contact_window_seconds() -> f32 {
+    0.10
+}
+fn default_min_prediction_time() -> f32 {
+    0.04
+}
+fn default_max_prediction_time() -> f32 {
+    0.40
+}
+fn default_prediction_step() -> f32 {
+    1.0 / 60.0
+}
+fn default_reach_distance() -> f32 {
+    1.7
+}
+fn default_max_hit_height_diff() -> f32 {
+    2.2
+}
+fn default_contact_radius() -> f32 {
+    0.28
 }
 
 /// 弾道計算パラメータ
@@ -360,12 +441,42 @@ fn default_base_accuracy() -> f32 {
 /// @spec 30604_shot_attributes_spec.md#req-30604-055
 fn default_height_curve() -> Vec<HeightCurvePoint> {
     vec![
-        HeightCurvePoint { height: 0.0, power_bonus: -3.0, stability_factor: 0.5, angle_offset: 30.0 },
-        HeightCurvePoint { height: 0.5, power_bonus: -2.0, stability_factor: 0.7, angle_offset: 20.0 },
-        HeightCurvePoint { height: 1.0, power_bonus: -1.0, stability_factor: 1.0, angle_offset: 10.0 },
-        HeightCurvePoint { height: 1.5, power_bonus: 0.0, stability_factor: 0.9, angle_offset: 0.0 },
-        HeightCurvePoint { height: 2.0, power_bonus: 2.0, stability_factor: 0.8, angle_offset: -15.0 },
-        HeightCurvePoint { height: 2.5, power_bonus: 3.0, stability_factor: 0.7, angle_offset: -30.0 },
+        HeightCurvePoint {
+            height: 0.0,
+            power_bonus: -3.0,
+            stability_factor: 0.5,
+            angle_offset: 30.0,
+        },
+        HeightCurvePoint {
+            height: 0.5,
+            power_bonus: -2.0,
+            stability_factor: 0.7,
+            angle_offset: 20.0,
+        },
+        HeightCurvePoint {
+            height: 1.0,
+            power_bonus: -1.0,
+            stability_factor: 1.0,
+            angle_offset: 10.0,
+        },
+        HeightCurvePoint {
+            height: 1.5,
+            power_bonus: 0.0,
+            stability_factor: 0.9,
+            angle_offset: 0.0,
+        },
+        HeightCurvePoint {
+            height: 2.0,
+            power_bonus: 2.0,
+            stability_factor: 0.8,
+            angle_offset: -15.0,
+        },
+        HeightCurvePoint {
+            height: 2.5,
+            power_bonus: 3.0,
+            stability_factor: 0.7,
+            angle_offset: -30.0,
+        },
     ]
 }
 
@@ -373,11 +484,36 @@ fn default_height_curve() -> Vec<HeightCurvePoint> {
 /// @spec 30604_shot_attributes_spec.md#req-30604-058
 fn default_timing_curve() -> Vec<TimingCurvePoint> {
     vec![
-        TimingCurvePoint { elapsed: 0.0, power_bonus: 2.0, stability_factor: 0.6, angle_offset: -5.0 },
-        TimingCurvePoint { elapsed: 0.3, power_bonus: 1.0, stability_factor: 0.8, angle_offset: 0.0 },
-        TimingCurvePoint { elapsed: 0.5, power_bonus: 0.0, stability_factor: 1.0, angle_offset: 0.0 },
-        TimingCurvePoint { elapsed: 0.8, power_bonus: -1.0, stability_factor: 0.9, angle_offset: 10.0 },
-        TimingCurvePoint { elapsed: 1.0, power_bonus: -2.0, stability_factor: 0.7, angle_offset: 20.0 },
+        TimingCurvePoint {
+            elapsed: 0.0,
+            power_bonus: 2.0,
+            stability_factor: 0.6,
+            angle_offset: -5.0,
+        },
+        TimingCurvePoint {
+            elapsed: 0.3,
+            power_bonus: 1.0,
+            stability_factor: 0.8,
+            angle_offset: 0.0,
+        },
+        TimingCurvePoint {
+            elapsed: 0.5,
+            power_bonus: 0.0,
+            stability_factor: 1.0,
+            angle_offset: 0.0,
+        },
+        TimingCurvePoint {
+            elapsed: 0.8,
+            power_bonus: -1.0,
+            stability_factor: 0.9,
+            angle_offset: 10.0,
+        },
+        TimingCurvePoint {
+            elapsed: 1.0,
+            power_bonus: -2.0,
+            stability_factor: 0.7,
+            angle_offset: 20.0,
+        },
     ]
 }
 
@@ -385,9 +521,21 @@ fn default_timing_curve() -> Vec<TimingCurvePoint> {
 /// @spec 30604_shot_attributes_spec.md#req-30604-060
 fn default_approach_curve() -> Vec<ApproachCurvePoint> {
     vec![
-        ApproachCurvePoint { dot: -1.0, power_bonus: -2.0, angle_offset: 20.0 },
-        ApproachCurvePoint { dot: 0.0, power_bonus: 0.0, angle_offset: 0.0 },
-        ApproachCurvePoint { dot: 1.0, power_bonus: 3.0, angle_offset: -10.0 },
+        ApproachCurvePoint {
+            dot: -1.0,
+            power_bonus: -2.0,
+            angle_offset: 20.0,
+        },
+        ApproachCurvePoint {
+            dot: 0.0,
+            power_bonus: 0.0,
+            angle_offset: 0.0,
+        },
+        ApproachCurvePoint {
+            dot: 1.0,
+            power_bonus: 3.0,
+            angle_offset: -10.0,
+        },
     ]
 }
 
@@ -395,10 +543,30 @@ fn default_approach_curve() -> Vec<ApproachCurvePoint> {
 /// @spec 30604_shot_attributes_spec.md#req-30604-062
 fn default_distance_curve() -> Vec<DistanceCurvePoint> {
     vec![
-        DistanceCurvePoint { distance: 0.5, power_bonus: 1.0, stability_factor: 1.1, accuracy_factor: 1.1 },
-        DistanceCurvePoint { distance: 1.0, power_bonus: 0.0, stability_factor: 1.0, accuracy_factor: 1.0 },
-        DistanceCurvePoint { distance: 1.5, power_bonus: -1.5, stability_factor: 0.7, accuracy_factor: 0.7 },
-        DistanceCurvePoint { distance: 2.0, power_bonus: -3.0, stability_factor: 0.4, accuracy_factor: 0.4 },
+        DistanceCurvePoint {
+            distance: 0.5,
+            power_bonus: 1.0,
+            stability_factor: 1.1,
+            accuracy_factor: 1.1,
+        },
+        DistanceCurvePoint {
+            distance: 1.0,
+            power_bonus: 0.0,
+            stability_factor: 1.0,
+            accuracy_factor: 1.0,
+        },
+        DistanceCurvePoint {
+            distance: 1.5,
+            power_bonus: -1.5,
+            stability_factor: 0.7,
+            accuracy_factor: 0.7,
+        },
+        DistanceCurvePoint {
+            distance: 2.0,
+            power_bonus: -3.0,
+            stability_factor: 0.4,
+            accuracy_factor: 0.4,
+        },
     ]
 }
 
@@ -416,9 +584,18 @@ fn default_volley_factors() -> VolleyFactors {
 /// @spec 30604_shot_attributes_spec.md#req-30604-066
 fn default_spin_height_curve() -> Vec<SpinCurvePoint> {
     vec![
-        SpinCurvePoint { value: 0.5, spin_factor: -0.5 },
-        SpinCurvePoint { value: 1.0, spin_factor: 0.0 },
-        SpinCurvePoint { value: 2.0, spin_factor: 0.5 },
+        SpinCurvePoint {
+            value: 0.5,
+            spin_factor: -0.5,
+        },
+        SpinCurvePoint {
+            value: 1.0,
+            spin_factor: 0.0,
+        },
+        SpinCurvePoint {
+            value: 2.0,
+            spin_factor: 0.5,
+        },
     ]
 }
 
@@ -426,10 +603,25 @@ fn default_spin_height_curve() -> Vec<SpinCurvePoint> {
 /// @spec 30604_shot_attributes_spec.md#req-30604-066
 fn default_spin_timing_curve() -> Vec<SpinCurvePoint> {
     vec![
-        SpinCurvePoint { value: 0.0, spin_factor: 0.3 },
-        SpinCurvePoint { value: 0.3, spin_factor: 0.15 },
-        SpinCurvePoint { value: 0.5, spin_factor: 0.0 },
-        SpinCurvePoint { value: 0.8, spin_factor: -0.15 },
-        SpinCurvePoint { value: 1.0, spin_factor: -0.3 },
+        SpinCurvePoint {
+            value: 0.0,
+            spin_factor: 0.3,
+        },
+        SpinCurvePoint {
+            value: 0.3,
+            spin_factor: 0.15,
+        },
+        SpinCurvePoint {
+            value: 0.5,
+            spin_factor: 0.0,
+        },
+        SpinCurvePoint {
+            value: 0.8,
+            spin_factor: -0.15,
+        },
+        SpinCurvePoint {
+            value: 1.0,
+            spin_factor: -0.3,
+        },
     ]
 }

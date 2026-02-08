@@ -12,6 +12,16 @@
 
 入力受付、打球方向計算、ジャンプショット、タイミング判定など、ショットに関する全ての機能を含みます。
 
+## 仕様書一覧
+
+| ID | ファイル | 内容 |
+|----|---------|------|
+| 30601 | [30601_shot_input_spec.md](30601_shot_input_spec.md) | ショット入力 |
+| 30602 | [30602_shot_direction_spec.md](30602_shot_direction_spec.md) | 打球方向 |
+| 30604 | [30604_shot_attributes_spec.md](30604_shot_attributes_spec.md) | ショット属性 |
+| 30605 | [30605_trajectory_calculation_spec.md](30605_trajectory_calculation_spec.md) | 弾道計算 |
+| 30606 | [30606_racket_contact_spec.md](30606_racket_contact_spec.md) | ラケット接触駆動ショット |
+
 ---
 
 ## 管理する機能

@@ -21,8 +21,8 @@ use clap::Parser;
 use padel_game::character::{spawn_articulated_player, CharacterPlugin};
 use padel_game::components::AiController;
 use padel_game::core::{
-    BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent,
-    PlayerMoveEvent, ShotEvent, ShotExecutedEvent,
+    BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent,
+    RacketContactEvent, ShotEvent, ShotExecutedEvent, SwingIntentEvent,
 };
 use padel_game::replay::loader::load_replay;
 use padel_game::replay::player::{replay_input_system, ReplayPlayer};
@@ -34,9 +34,10 @@ use padel_game::simulation::AnomalyDetectorPlugin;
 use padel_game::systems::{
     ceiling_collision_system, gravity_system, jump_system, knockback_movement_system,
     knockback_start_system, knockback_timer_system, landing_system, movement_system,
-    shot_cooldown_system, shot_direction_system, shot_input_system, vertical_movement_system,
-    AiServePlugin, BallCollisionPlugin, BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin,
-    GameSystemSet, MatchFlowPlugin, PointJudgmentPlugin, ScoringPlugin,
+    plan_racket_swing_system, shot_cooldown_system, shot_direction_system, shot_input_system,
+    update_racket_swing_system, vertical_movement_system, AiServePlugin, BallCollisionPlugin,
+    BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin, GameSystemSet, MatchFlowPlugin,
+    PointJudgmentPlugin, ScoringPlugin,
 };
 
 /// Replay Player for Padel Game
@@ -188,10 +189,15 @@ impl Plugin for ReplayPlaybackPlugins {
             .add_message::<BallHitEvent>()
             .add_message::<PlayerKnockbackEvent>()
             .add_message::<ShotEvent>()
+            .add_message::<SwingIntentEvent>()
+            .add_message::<RacketContactEvent>()
             .add_message::<ShotExecutedEvent>();
 
         // SystemSet の順序を設定
-        app.configure_sets(Update, GameSystemSet::Input.before(GameSystemSet::GameLogic));
+        app.configure_sets(
+            Update,
+            GameSystemSet::Input.before(GameSystemSet::GameLogic),
+        );
 
         // 入力システム（リプレイから入力を注入）
         app.add_systems(Update, replay_input_system.in_set(GameSystemSet::Input));
@@ -208,6 +214,8 @@ impl Plugin for ReplayPlaybackPlugins {
                 movement_system,
                 // ショット入力処理（Rally状態でのみ）
                 shot_input_system.run_if(in_state(MatchFlowState::Rally)),
+                // ラケット接触駆動ショット
+                (plan_racket_swing_system, update_racket_swing_system),
                 // 方向計算・クールダウン
                 (shot_direction_system, shot_cooldown_system),
                 // ふっとばし移動・タイマー
@@ -296,8 +304,7 @@ fn replay_setup_system(
     let player1_pos = Vec3::new(config.player.x_min + 1.0, 0.0, 0.0);
     let (r, g, b) = config.player_visual.player1_color;
     let player1_color = Color::srgb(r, g, b);
-    let player1_entity =
-        spawn_articulated_player(&mut commands, 1, player1_pos, player1_color);
+    let player1_entity = spawn_articulated_player(&mut commands, 1, player1_pos, player1_color);
 
     // ControlType::Ai の場合のみ AiController を追加
     // ControlType::Human の場合は replay_input_system が入力を注入
@@ -316,8 +323,7 @@ fn replay_setup_system(
     let player2_pos = Vec3::new(config.player.x_max - 1.0, 0.0, 0.0);
     let (r, g, b) = config.player_visual.player2_color;
     let player2_color = Color::srgb(r, g, b);
-    let player2_entity =
-        spawn_articulated_player(&mut commands, 2, player2_pos, player2_color);
+    let player2_entity = spawn_articulated_player(&mut commands, 2, player2_pos, player2_color);
 
     if metadata.right_control == ControlType::Ai {
         commands.entity(player2_entity).insert(AiController {

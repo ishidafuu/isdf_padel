@@ -8,8 +8,9 @@ use super::animation::{
     AnimationId, CharacterAnimationState, CharacterAnimations, CharacterAnimationsRon,
 };
 use super::components::{ArticulatedCharacter, CharacterFacing, PartDefinition, PartState};
-use crate::components::{GroundedState, LogicalPosition, Player, Velocity};
-use crate::core::events::ShotEvent;
+use crate::components::{GroundedState, LogicalPosition, Player, ShotState, Velocity};
+use crate::core::events::{ShotEvent, SwingIntentEvent};
+use crate::presentation::WORLD_SCALE;
 use crate::resource::FixedDeltaTime;
 use crate::resource::GameConfig;
 
@@ -78,7 +79,8 @@ pub fn sync_part_transforms_system(
                 } else {
                     0.0 // 中央パーツ（Head, Torso）は変更なし
                 };
-                let local_z = (definition.base_offset.z + state.local_position.z + z_priority) * 0.01;
+                let local_z =
+                    (definition.base_offset.z + state.local_position.z + z_priority) * 0.01;
 
                 // Transformを更新（親の座標系内でのローカル位置）
                 transform.translation.x = local_x;
@@ -167,6 +169,11 @@ pub fn trigger_shot_animation_system(
     mut query: Query<(&Player, &mut CharacterAnimationState), With<ArticulatedCharacter>>,
 ) {
     for event in shot_events.read() {
+        // 通常ショットは SwingIntentEvent で開始し、接触時の ShotEvent では再生しない
+        if !event.is_serve {
+            continue;
+        }
+
         for (player, mut anim_state) in query.iter_mut() {
             if player.id == event.player_id {
                 // ショットアニメーションを開始（ループなし）
@@ -174,6 +181,74 @@ pub fn trigger_shot_animation_system(
                     .get(AnimationId::Shot)
                     .is_some_and(|data| data.looping);
                 anim_state.play(AnimationId::Shot, looping);
+            }
+        }
+    }
+}
+
+/// SwingIntentEventを受け取ってショットアニメーションをトリガーするシステム
+/// @spec 30606_racket_contact_spec.md
+pub fn trigger_swing_animation_system(
+    animations: Res<CharacterAnimations>,
+    mut swing_events: MessageReader<SwingIntentEvent>,
+    mut query: Query<(&Player, &mut CharacterAnimationState), With<ArticulatedCharacter>>,
+) {
+    for event in swing_events.read() {
+        for (player, mut anim_state) in query.iter_mut() {
+            if player.id == event.player_id {
+                let looping = animations
+                    .get(AnimationId::Shot)
+                    .is_some_and(|data| data.looping);
+                anim_state.play(AnimationId::Shot, looping);
+            }
+        }
+    }
+}
+
+/// ラケットパーツをスイング軌道で上書きするシステム
+/// @spec 31003_racket_trajectory_spec.md#req-31003-001
+#[allow(clippy::type_complexity)]
+pub fn override_racket_swing_pose_system(
+    parent_query: Query<
+        (&LogicalPosition, &CharacterFacing, &ShotState, &Children),
+        With<ArticulatedCharacter>,
+    >,
+    mut part_query: Query<(&PartDefinition, &mut PartState)>,
+) {
+    for (logical_pos, facing, shot_state, children) in parent_query.iter() {
+        let swing = &shot_state.racket_swing;
+        if !swing.is_active {
+            continue;
+        }
+
+        let mirror = facing.mirror();
+        let logical_base = logical_pos.value;
+        let current = swing.current_racket_position;
+        let previous = swing.previous_racket_position;
+
+        for child in children.iter() {
+            let Ok((definition, mut part_state)) = part_query.get_mut(child) else {
+                continue;
+            };
+            if definition.kind != super::components::PartKind::Racket {
+                continue;
+            }
+
+            // 論理座標差分を表示座標へ射影し、既存Transform式に合わせて逆算する
+            let display_dx = (current.x - logical_base.x) * WORLD_SCALE;
+            let display_dy =
+                ((current.z - logical_base.z) + (current.y - logical_base.y)) * WORLD_SCALE;
+
+            part_state.local_position.x = (display_dx / mirror) - definition.base_offset.x;
+            part_state.local_position.y = display_dy - definition.base_offset.y;
+
+            let velocity = current - previous;
+            if velocity.length_squared() > f32::EPSILON {
+                let display_dir = Vec2::new(velocity.x, velocity.z + velocity.y);
+                if display_dir.length_squared() > f32::EPSILON {
+                    let world_angle = display_dir.y.atan2(display_dir.x).to_degrees();
+                    part_state.local_rotation = world_angle * mirror;
+                }
             }
         }
     }

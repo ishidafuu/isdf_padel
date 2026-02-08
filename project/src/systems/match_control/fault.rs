@@ -362,6 +362,7 @@ mod tests {
                 normal_shot_angle: 45.0,
                 jump_shot_angle: 30.0,
                 jump_threshold: 0.5,
+                racket_swing: crate::resource::config::RacketSwingConfig::default(),
             },
             scoring: crate::resource::config::ScoringConfig {
                 point_values: vec![0, 15, 30, 40],

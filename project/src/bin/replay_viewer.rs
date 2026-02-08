@@ -37,7 +37,8 @@ impl Deref for SharedReplayData {
 }
 use padel_game::core::{
     BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent,
-    ShotAttributesCalculatedEvent, ShotEvent, ShotExecutedEvent,
+    RacketContactEvent, ShotAttributesCalculatedEvent, ShotEvent, ShotExecutedEvent,
+    SwingIntentEvent,
 };
 use padel_game::presentation::{
     ball_spin_color_system, despawn_ball_shadow_system, player_hold_visual_system,
@@ -53,15 +54,19 @@ use padel_game::simulation::AnomalyDetectorPlugin;
 use padel_game::systems::{
     ai_movement_system, ai_shot_system, ceiling_collision_system, gravity_system, jump_system,
     knockback_movement_system, knockback_start_system, knockback_timer_system, landing_system,
-    movement_system, shot_cooldown_system, shot_direction_system, shot_input_system,
-    vertical_movement_system, AiServePlugin, BallCollisionPlugin, BallTrajectoryPlugin,
-    BoundaryPlugin, FaultJudgmentPlugin, GameSystemSet, MatchFlowPlugin, PointJudgmentPlugin,
-    ScoringPlugin,
+    movement_system, plan_racket_swing_system, shot_cooldown_system, shot_direction_system,
+    shot_input_system, update_racket_swing_system, vertical_movement_system, AiServePlugin,
+    BallCollisionPlugin, BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin, GameSystemSet,
+    MatchFlowPlugin, PointJudgmentPlugin, ScoringPlugin,
 };
 
 /// Replay Viewer for Padel Game
 #[derive(Parser, Debug)]
-#[command(author, version, about = "Replay viewer with visual playback for Padel Game")]
+#[command(
+    author,
+    version,
+    about = "Replay viewer with visual playback for Padel Game"
+)]
 struct Args {
     /// Path to the replay file
     replay_file: String,
@@ -125,16 +130,14 @@ fn main() {
     let mut app = App::new();
 
     // DefaultPlugins（ウィンドウ表示付き）
-    app.add_plugins(
-        DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Padel Game - Replay Viewer".into(),
-                resolution: (1280, 720).into(),
-                ..default()
-            }),
+    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(Window {
+            title: "Padel Game - Replay Viewer".into(),
+            resolution: (1280, 720).into(),
             ..default()
         }),
-    );
+        ..default()
+    }));
 
     // StatesPlugin（State管理用、DefaultPluginsに含まれている可能性があるがredundantでも問題なし）
     // 念のため追加しない（DefaultPluginsに含まれている）
@@ -197,20 +200,22 @@ impl Plugin for ReplayViewerPlugins {
             .add_message::<BallHitEvent>()
             .add_message::<PlayerKnockbackEvent>()
             .add_message::<ShotEvent>()
+            .add_message::<SwingIntentEvent>()
+            .add_message::<RacketContactEvent>()
             .add_message::<ShotExecutedEvent>()
             .add_message::<ShotAttributesCalculatedEvent>();
 
         // SystemSet の順序を設定
-        app.configure_sets(Update, GameSystemSet::Input.before(GameSystemSet::GameLogic));
+        app.configure_sets(
+            Update,
+            GameSystemSet::Input.before(GameSystemSet::GameLogic),
+        );
 
         // セットアップシステム
         app.add_systems(Startup, setup_replay_viewer);
 
         // 入力システム（Human プレイヤーの入力注入）
-        app.add_systems(
-            Update,
-            replay_input_system.in_set(GameSystemSet::Input),
-        );
+        app.add_systems(Update, replay_input_system.in_set(GameSystemSet::Input));
 
         // ゲームロジックシステム（AI による再シミュレーション）
         app.add_systems(
@@ -228,6 +233,8 @@ impl Plugin for ReplayViewerPlugins {
                 shot_input_system.run_if(in_state(MatchFlowState::Rally)),
                 // AIショット処理（Rally状態でのみ）
                 ai_shot_system.run_if(in_state(MatchFlowState::Rally)),
+                // ラケット接触駆動ショット
+                (plan_racket_swing_system, update_racket_swing_system),
                 // 方向計算・クールダウン
                 (shot_direction_system, shot_cooldown_system),
                 // ふっとばし移動・タイマー
@@ -320,12 +327,23 @@ fn spawn_player_for_replay(
         });
         info!("Player {} (AI) spawned at {:?}", player_id, position);
     } else {
-        info!("Player {} (Human - replay input) spawned at {:?}", player_id, position);
+        info!(
+            "Player {} (Human - replay input) spawned at {:?}",
+            player_id, position
+        );
     }
 }
 
 /// スプライト（矩形）を生成するヘルパー
-fn spawn_rect(commands: &mut Commands, width: f32, height: f32, x: f32, y: f32, z: f32, color: Color) {
+fn spawn_rect(
+    commands: &mut Commands,
+    width: f32,
+    height: f32,
+    x: f32,
+    y: f32,
+    z: f32,
+    color: Color,
+) {
     commands.spawn((
         Sprite {
             color,
@@ -348,17 +366,65 @@ fn spawn_court(commands: &mut Commands, config: &GameConfig) {
     let line = 4.0;
 
     // コート背景（緑）
-    spawn_rect(commands, court_display_width, court_display_height, 0.0, 0.0, -1.0, Color::srgb(0.2, 0.5, 0.2));
+    spawn_rect(
+        commands,
+        court_display_width,
+        court_display_height,
+        0.0,
+        0.0,
+        -1.0,
+        Color::srgb(0.2, 0.5, 0.2),
+    );
     // ネット（白い線、中央の縦線）
     spawn_rect(commands, line, court_display_height, 0.0, 0.0, 0.0, white);
     // 境界線（左右上下）
-    spawn_rect(commands, line, court_display_height, -half_w, 0.0, 0.0, white);
-    spawn_rect(commands, line, court_display_height, half_w, 0.0, 0.0, white);
+    spawn_rect(
+        commands,
+        line,
+        court_display_height,
+        -half_w,
+        0.0,
+        0.0,
+        white,
+    );
+    spawn_rect(
+        commands,
+        line,
+        court_display_height,
+        half_w,
+        0.0,
+        0.0,
+        white,
+    );
     spawn_rect(commands, court_display_width, line, 0.0, half_h, 0.0, white);
-    spawn_rect(commands, court_display_width, line, 0.0, -half_h, 0.0, white);
+    spawn_rect(
+        commands,
+        court_display_width,
+        line,
+        0.0,
+        -half_h,
+        0.0,
+        white,
+    );
     // サービスライン
-    spawn_rect(commands, line, court_display_height, -service_x, 0.0, 0.0, white);
-    spawn_rect(commands, line, court_display_height, service_x, 0.0, 0.0, white);
+    spawn_rect(
+        commands,
+        line,
+        court_display_height,
+        -service_x,
+        0.0,
+        0.0,
+        white,
+    );
+    spawn_rect(
+        commands,
+        line,
+        court_display_height,
+        service_x,
+        0.0,
+        0.0,
+        white,
+    );
     // センターサービスライン
     spawn_rect(commands, service_x, line, -service_x / 2.0, 0.0, 0.0, white);
     spawn_rect(commands, service_x, line, service_x / 2.0, 0.0, 0.0, white);
@@ -378,11 +444,7 @@ fn check_replay_finished(
 
     // 詳細出力
     if config.verbose && (*frame_count).is_multiple_of(60) {
-        println!(
-            "Frame {}: MatchState={:?}",
-            *frame_count,
-            match_state.get(),
-        );
+        println!("Frame {}: MatchState={:?}", *frame_count, match_state.get(),);
     }
 
     // 試合終了で終了

@@ -3,5 +3,7 @@
 
 mod attributes;
 mod direction;
+mod racket_contact;
 
 pub use direction::*;
+pub use racket_contact::*;

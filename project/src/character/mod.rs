@@ -17,15 +17,14 @@ pub use animation::{
     CharacterAnimationsRon,
 };
 pub use bundle::{default_part_configs, spawn_articulated_player, PartConfig};
-pub use components::{
-    ArticulatedCharacter, CharacterFacing, PartDefinition, PartKind, PartState,
-};
+pub use components::{ArticulatedCharacter, CharacterFacing, PartDefinition, PartKind, PartState};
 pub use systems::{
-    advance_animation_system, load_character_animations_system, sync_part_transforms_system,
-    trigger_shot_animation_system, update_animation_state_system, update_character_facing_system,
-    update_part_states_system,
+    advance_animation_system, load_character_animations_system, override_racket_swing_pose_system,
+    sync_part_transforms_system, trigger_shot_animation_system, trigger_swing_animation_system,
+    update_animation_state_system, update_character_facing_system, update_part_states_system,
 };
 
+use crate::core::events::{ShotEvent, SwingIntentEvent};
 use bevy::prelude::*;
 
 /// パーツ分離キャラクターPlugin
@@ -37,7 +36,9 @@ impl Plugin for CharacterPlugin {
         // アニメーションアセットローダーを登録
         app.init_asset::<CharacterAnimationsRon>()
             .init_asset_loader::<CharacterAnimationsLoader>()
-            .init_resource::<CharacterAnimations>();
+            .init_resource::<CharacterAnimations>()
+            .add_message::<ShotEvent>()
+            .add_message::<SwingIntentEvent>();
 
         // 起動時にアニメーションデータをロード
         app.add_systems(Startup, load_character_animations_system);
@@ -48,6 +49,8 @@ impl Plugin for CharacterPlugin {
                 // ShotEventでショットアニメーションをトリガー
                 // @spec 31002_animation_spec.md#req-31002-052
                 trigger_shot_animation_system,
+                // SwingIntentEventで通常ショットのアニメーションを開始
+                trigger_swing_animation_system,
                 // 状態に基づいてアニメーションを切り替え
                 // @spec 31002_animation_spec.md#req-31002-051
                 update_animation_state_system,
@@ -60,6 +63,8 @@ impl Plugin for CharacterPlugin {
                 // キーフレーム補間でPartStateを更新
                 // @spec 31002_animation_spec.md#req-31002-007
                 update_part_states_system,
+                // ラケットスイング中は専用軌道でラケットパーツを上書き
+                override_racket_swing_pose_system,
                 // パーツTransform同期は最後に実行
                 // @spec 31001_parts_spec.md#req-31001-006
                 sync_part_transforms_system,

@@ -15,8 +15,9 @@ use character::CharacterPlugin;
 use components::HumanControlled;
 use core::{
     BallHitEvent, FaultEvent, GroundBounceEvent, PlayerJumpEvent, PlayerKnockbackEvent,
-    PlayerLandEvent, PlayerMoveEvent, PointScoredEvent, RallyEndEvent, ShotAttributesCalculatedEvent,
-    ShotEvent, ShotExecutedEvent, WallReflectionEvent,
+    PlayerLandEvent, PlayerMoveEvent, PointScoredEvent, RacketContactEvent, RallyEndEvent,
+    ShotAttributesCalculatedEvent, ShotEvent, ShotExecutedEvent, SwingIntentEvent,
+    WallReflectionEvent,
 };
 use presentation::{
     ball_spin_color_system, despawn_ball_shadow_system, player_hold_visual_system,
@@ -25,22 +26,22 @@ use presentation::{
 };
 use resource::config::{load_game_config, GameConfig, GameConfigHandle, GameConfigLoader};
 use resource::debug::LastShotDebugInfo;
-use resource::{FixedDeltaTime, GameRng};
 use resource::MatchFlowState;
+use resource::{FixedDeltaTime, GameRng};
 use systems::{
     ai_movement_system, ai_shot_system, ceiling_collision_system, debug_marker_system,
     gamepad_input_system, gravity_system, human_input_system, jump_system,
     knockback_movement_system, knockback_start_system, knockback_timer_system, landing_system,
-    movement_system, shot_cooldown_system, shot_direction_system, shot_input_system,
-    vertical_movement_system, AiServePlugin, BallCollisionPlugin, BallTrajectoryPlugin,
-    BoundaryPlugin, FaultJudgmentPlugin, GameSystemSet, MatchFlowPlugin, PointJudgmentPlugin,
-    ScoringPlugin,
+    movement_system, plan_racket_swing_system, shot_cooldown_system, shot_direction_system,
+    shot_input_system, update_racket_swing_system, vertical_movement_system, AiServePlugin,
+    BallCollisionPlugin, BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin, GameSystemSet,
+    MatchFlowPlugin, PointJudgmentPlugin, ScoringPlugin,
 };
 
 fn main() {
     // GameConfig をロード（初回起動用、アセットシステム起動前に同期的に読み込み）
-    let config = load_game_config("assets/config/game_config.ron")
-        .expect("Failed to load game config");
+    let config =
+        load_game_config("assets/config/game_config.ron").expect("Failed to load game config");
 
     let mut app = App::new();
 
@@ -56,7 +57,10 @@ fn main() {
 
     // システム登録
     app.add_systems(Startup, (setup, load_config_asset));
-    app.configure_sets(Update, GameSystemSet::Input.before(GameSystemSet::GameLogic));
+    app.configure_sets(
+        Update,
+        GameSystemSet::Input.before(GameSystemSet::GameLogic),
+    );
     app.add_systems(Update, escape_to_exit);
     add_input_systems(&mut app);
     add_game_logic_systems(&mut app);
@@ -122,6 +126,8 @@ fn add_messages(app: &mut App) {
         .add_message::<BallHitEvent>()
         .add_message::<PlayerKnockbackEvent>()
         .add_message::<ShotEvent>()
+        .add_message::<SwingIntentEvent>()
+        .add_message::<RacketContactEvent>()
         .add_message::<ShotExecutedEvent>()
         // トレース用イベント
         .add_message::<ShotAttributesCalculatedEvent>()
@@ -170,7 +176,9 @@ fn add_game_logic_systems(app: &mut App) {
             // AIショット処理（Rally状態でのみ動作）
             // @spec 30302_ai_shot_spec.md
             ai_shot_system.run_if(in_state(MatchFlowState::Rally)),
-            // 方向計算・クールダウン（常に動作 - サーブの ShotEvent も処理する）
+            // ラケット接触駆動ショット
+            (plan_racket_swing_system, update_racket_swing_system),
+            // 方向計算・クールダウン（接触時の ShotEvent とサーブ ShotEvent を処理）
             (shot_direction_system, shot_cooldown_system),
             // ふっとばし移動・タイマー
             (knockback_movement_system, knockback_timer_system),
@@ -179,10 +187,19 @@ fn add_game_logic_systems(app: &mut App) {
             // 座標変換（論理座標→表示座標）
             sync_transform_system,
             // 影システム
-            (spawn_ball_shadow_system, spawn_player_shadow_system, sync_shadow_system, despawn_ball_shadow_system),
+            (
+                spawn_ball_shadow_system,
+                spawn_player_shadow_system,
+                sync_shadow_system,
+                despawn_ball_shadow_system,
+            ),
             // 視覚フィードバック（色変化）
             // @spec 30802_visual_feedback_spec.md
-            (save_player_original_color_system, player_hold_visual_system, ball_spin_color_system),
+            (
+                save_player_original_color_system,
+                player_hold_visual_system,
+                ball_spin_color_system,
+            ),
             // デバッグマーカー（Xボタンで弾道情報をログ出力）
             debug_marker_system,
         )
@@ -200,7 +217,10 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
     // GameConfig のロード確認
     info!("GameConfig loaded successfully!");
     info!("Court size: {}x{}", config.court.width, config.court.depth);
-    info!("Player move speed: X={}, Z={}", config.player.move_speed, config.player.move_speed_z);
+    info!(
+        "Player move speed: X={}, Z={}",
+        config.player.move_speed, config.player.move_speed_z
+    );
 
     // コート境界を描画
     spawn_court(&mut commands, &config);
@@ -216,8 +236,11 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
     );
     let (r, g, b) = config.player_visual.player1_color;
     let player1_color = Color::srgb(r, g, b);
-    let player1_entity = character::spawn_articulated_player(&mut commands, 1, player1_pos, player1_color);
-    commands.entity(player1_entity).insert(HumanControlled::default());
+    let player1_entity =
+        character::spawn_articulated_player(&mut commands, 1, player1_pos, player1_color);
+    commands
+        .entity(player1_entity)
+        .insert(HumanControlled::default());
     info!("Player 1 (Human/Articulated) spawned at {:?}", player1_pos);
 
     // Player 2 をスポーン（2Pコート側: 画面右側）- AI操作
@@ -230,19 +253,28 @@ fn setup(mut commands: Commands, config: Res<GameConfig>) {
     );
     let (r, g, b) = config.player_visual.player2_color;
     let player2_color = Color::srgb(r, g, b);
-    let player2_entity = character::spawn_articulated_player(&mut commands, 2, player2_pos, player2_color);
-    commands.entity(player2_entity).insert(components::AiController {
-        home_position: player2_pos,
-        target_position: player2_pos,
-        ..Default::default()
-    });
+    let player2_entity =
+        character::spawn_articulated_player(&mut commands, 2, player2_pos, player2_color);
+    commands
+        .entity(player2_entity)
+        .insert(components::AiController {
+            home_position: player2_pos,
+            target_position: player2_pos,
+            ..Default::default()
+        });
     info!("Player 2 (AI) spawned at {:?}", player2_pos);
-
 }
 
-
 /// スプライト（矩形）を生成するヘルパー
-fn spawn_rect(commands: &mut Commands, width: f32, height: f32, x: f32, y: f32, z: f32, color: Color) {
+fn spawn_rect(
+    commands: &mut Commands,
+    width: f32,
+    height: f32,
+    x: f32,
+    y: f32,
+    z: f32,
+    color: Color,
+) {
     commands.spawn((
         Sprite {
             color,
@@ -256,7 +288,7 @@ fn spawn_rect(commands: &mut Commands, width: f32, height: f32, x: f32, y: f32, 
 /// コートの境界線とネットを描画（横向き：左右の打ち合い）
 fn spawn_court(commands: &mut Commands, config: &GameConfig) {
     // 直接マッピング：論理X（depth/打ち合い方向）→ 画面X、論理Z（width/コート幅）→ 画面Y
-    let court_display_width = config.court.depth * WORLD_SCALE;  // 画面X方向（打ち合い方向）
+    let court_display_width = config.court.depth * WORLD_SCALE; // 画面X方向（打ち合い方向）
     let court_display_height = config.court.width * WORLD_SCALE; // 画面Y方向（コート幅）
     let half_w = court_display_width / 2.0;
     let half_h = court_display_height / 2.0;
@@ -267,22 +299,73 @@ fn spawn_court(commands: &mut Commands, config: &GameConfig) {
     let line = 4.0;
 
     // コート背景（緑）
-    spawn_rect(commands, court_display_width, court_display_height, 0.0, 0.0, -1.0, Color::srgb(0.2, 0.5, 0.2));
+    spawn_rect(
+        commands,
+        court_display_width,
+        court_display_height,
+        0.0,
+        0.0,
+        -1.0,
+        Color::srgb(0.2, 0.5, 0.2),
+    );
     // ネット（白い線、中央の縦線）
     spawn_rect(commands, line, court_display_height, 0.0, 0.0, 0.0, white);
     // 境界線（左右上下）
-    spawn_rect(commands, line, court_display_height, -half_w, 0.0, 0.0, white); // 左（1P側）
-    spawn_rect(commands, line, court_display_height, half_w, 0.0, 0.0, white);  // 右（2P側）
-    spawn_rect(commands, court_display_width, line, 0.0, half_h, 0.0, white);   // 上
-    spawn_rect(commands, court_display_width, line, 0.0, -half_h, 0.0, white);  // 下
-    // サービスライン（縦線）
-    spawn_rect(commands, line, court_display_height, -service_x, 0.0, 0.0, white); // 1P側
-    spawn_rect(commands, line, court_display_height, service_x, 0.0, 0.0, white);  // 2P側
-    // センターサービスライン（ネットからサービスラインまでの中央線）
+    spawn_rect(
+        commands,
+        line,
+        court_display_height,
+        -half_w,
+        0.0,
+        0.0,
+        white,
+    ); // 左（1P側）
+    spawn_rect(
+        commands,
+        line,
+        court_display_height,
+        half_w,
+        0.0,
+        0.0,
+        white,
+    ); // 右（2P側）
+    spawn_rect(commands, court_display_width, line, 0.0, half_h, 0.0, white); // 上
+    spawn_rect(
+        commands,
+        court_display_width,
+        line,
+        0.0,
+        -half_h,
+        0.0,
+        white,
+    ); // 下
+       // サービスライン（縦線）
+    spawn_rect(
+        commands,
+        line,
+        court_display_height,
+        -service_x,
+        0.0,
+        0.0,
+        white,
+    ); // 1P側
+    spawn_rect(
+        commands,
+        line,
+        court_display_height,
+        service_x,
+        0.0,
+        0.0,
+        white,
+    ); // 2P側
+       // センターサービスライン（ネットからサービスラインまでの中央線）
     spawn_rect(commands, service_x, line, -service_x / 2.0, 0.0, 0.0, white); // 1P側
-    spawn_rect(commands, service_x, line, service_x / 2.0, 0.0, 0.0, white);  // 2P側
+    spawn_rect(commands, service_x, line, service_x / 2.0, 0.0, 0.0, white); // 2P側
 
-    info!("Court spawned: {}x{} pixels (直接マッピング)", court_display_width, court_display_height);
+    info!(
+        "Court spawned: {}x{} pixels (直接マッピング)",
+        court_display_width, court_display_height
+    );
 }
 
 // ============================================================================

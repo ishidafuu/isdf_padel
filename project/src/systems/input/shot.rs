@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use crate::components::{
     Ball, BounceCount, InputState, KnockbackState, LastShooter, LogicalPosition, Player, ShotState,
 };
-use crate::core::events::ShotEvent;
+use crate::core::events::SwingIntentEvent;
 use crate::resource::config::GameConfig;
 use crate::resource::FixedDeltaTime;
 use crate::resource::{MatchScore, RallyPhase, RallyState};
@@ -32,7 +32,7 @@ pub fn shot_input_system(
         &InputState,
     )>,
     ball_query: Query<(&LogicalPosition, &LastShooter, &BounceCount), With<Ball>>,
-    mut event_writer: MessageWriter<ShotEvent>,
+    mut event_writer: MessageWriter<SwingIntentEvent>,
 ) {
     // ボールの位置とLastShooterとBounceCountを取得（存在しない場合はショット不可）
     let (ball_logical_pos, last_shooter, bounce_count) = match ball_query.iter().next() {
@@ -86,6 +86,11 @@ pub fn shot_input_system(
             continue;
         }
 
+        // ラケットスイング中は新規入力を受け付けない
+        if shot_state.is_swing_active() {
+            continue;
+        }
+
         let player_pos = player_logical_pos.value;
 
         // REQ-30601-002: 球体判定（3D距離）
@@ -108,16 +113,12 @@ pub fn shot_input_system(
         // REQ-30601-004: クールダウン開始
         shot_state.start_cooldown(config.shot.cooldown_time);
 
-        // ShotEvent を発行（通常ショット: is_serve = false）
-        // @spec 30602_shot_direction_spec.md#req-30602-032
-        event_writer.write(ShotEvent {
+        // SwingIntentEvent を発行（接触成立で ShotEvent に変換される）
+        event_writer.write(SwingIntentEvent {
             player_id: player.id,
             court_side: player.court_side,
             direction,
-            jump_height: player_pos.y,
-            is_serve: false,
-            hit_position: None,
-            serve_toss_velocity_y: None,
+            hold_time_ms: input_state.hold_time,
         });
 
         info!(

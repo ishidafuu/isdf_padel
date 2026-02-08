@@ -214,6 +214,39 @@ pub struct ShotEvent {
     pub serve_toss_velocity_y: Option<f32>,
 }
 
+/// スイング意図イベント
+/// @spec 30606_racket_contact_spec.md#req-30606-001
+#[derive(Event, Message, Debug, Clone)]
+pub struct SwingIntentEvent {
+    /// プレイヤーID
+    pub player_id: u8,
+    /// プレイヤーの所属コートサイド
+    #[allow(dead_code)]
+    pub court_side: super::court::CourtSide,
+    /// 入力方向（十字キー、正規化済み）
+    pub direction: Vec2,
+    /// ホールド時間（ミリ秒）
+    pub hold_time_ms: f32,
+}
+
+/// ラケット接触イベント
+/// @spec 30606_racket_contact_spec.md#req-30606-004
+#[derive(Event, Message, Debug, Clone)]
+pub struct RacketContactEvent {
+    /// プレイヤーID
+    #[allow(dead_code)]
+    pub player_id: u8,
+    /// プレイヤーの所属コートサイド
+    #[allow(dead_code)]
+    pub court_side: super::court::CourtSide,
+    /// 接触点（論理座標）
+    #[allow(dead_code)]
+    pub contact_point: Vec3,
+    /// 接触時のラケット速度（論理座標）
+    #[allow(dead_code)]
+    pub racket_velocity: Vec3,
+}
+
 /// ショット実行完了イベント
 /// @spec 30602_shot_direction_spec.md#req-30602-007
 #[derive(Event, Message, Debug, Clone)]

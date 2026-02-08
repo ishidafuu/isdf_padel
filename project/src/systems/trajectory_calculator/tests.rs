@@ -66,6 +66,7 @@ fn make_test_config() -> GameConfig {
             normal_shot_angle: 45.0,
             jump_shot_angle: 30.0,
             jump_threshold: 0.5,
+            racket_swing: RacketSwingConfig::default(),
         },
         scoring: ScoringConfig {
             point_values: vec![0, 15, 30, 40],

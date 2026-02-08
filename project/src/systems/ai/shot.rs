@@ -8,7 +8,7 @@ use crate::components::{
     AiController, Ball, BounceCount, KnockbackState, LastShooter, LogicalPosition, Player,
     ShotState, TacticsType,
 };
-use crate::core::events::ShotEvent;
+use crate::core::events::SwingIntentEvent;
 use crate::resource::config::GameConfig;
 use crate::resource::{GameRng, MatchScore, RallyPhase, RallyState};
 use crate::simulation::DebugLogger;
@@ -170,7 +170,7 @@ pub fn ai_shot_system(
         &KnockbackState,
         &mut AiController,
     )>,
-    mut event_writer: MessageWriter<ShotEvent>,
+    mut event_writer: MessageWriter<SwingIntentEvent>,
 ) {
     // ボール位置、LastShooter、BounceCountを取得（存在しなければ何もしない）
     let Some((ball_logical_pos, last_shooter, bounce_count)) = ball_query.iter().next() else {
@@ -197,6 +197,11 @@ pub fn ai_shot_system(
             continue;
         }
 
+        // ラケットスイング中は新規入力を受け付けない
+        if shot_state.is_swing_active() {
+            continue;
+        }
+
         // REQ-30303-010, REQ-30303-011: 戦術を選択
         let tactics = select_tactics(
             distance_3d,
@@ -218,19 +223,12 @@ pub fn ai_shot_system(
         // REQ-30302-004: クールダウン開始
         shot_state.start_cooldown(config.ai.shot_cooldown);
 
-        // REQ-30302-005: ジャンプショット禁止（MVP）- jumpHeight = 0
-        let jump_height = 0.0;
-
-        // ShotEvent を発行（通常ショット: is_serve = false）
-        // @spec 30602_shot_direction_spec.md#req-30602-032
-        event_writer.write(ShotEvent {
+        // SwingIntentEvent を発行（接触成立で ShotEvent に変換される）
+        event_writer.write(SwingIntentEvent {
             player_id: player.id,
             court_side: player.court_side,
             direction,
-            jump_height,
-            is_serve: false,
-            hit_position: None,
-            serve_toss_velocity_y: None,
+            hold_time_ms: 0.0,
         });
 
         // AIショットログ出力（戦術情報を追加）

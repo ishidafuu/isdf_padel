@@ -7,21 +7,22 @@
 use bevy::prelude::*;
 
 use crate::character::CharacterPlugin;
-use crate::replay::ReplayRecordPlugin;
 use crate::core::{
     BallHitEvent, FaultEvent, GroundBounceEvent, PlayerJumpEvent, PlayerKnockbackEvent,
-    PlayerLandEvent, PlayerMoveEvent, PointScoredEvent, RallyEndEvent, ShotAttributesCalculatedEvent,
-    ShotEvent, ShotExecutedEvent, WallReflectionEvent,
+    PlayerLandEvent, PlayerMoveEvent, PointScoredEvent, RacketContactEvent, RallyEndEvent,
+    ShotAttributesCalculatedEvent, ShotEvent, ShotExecutedEvent, SwingIntentEvent,
+    WallReflectionEvent,
 };
+use crate::replay::ReplayRecordPlugin;
 use crate::resource::debug::LastShotDebugInfo;
 use crate::resource::MatchFlowState;
 use crate::systems::{
-    ai_movement_system, ai_shot_system, ceiling_collision_system, gravity_system,
-    jump_system, knockback_movement_system, knockback_start_system, knockback_timer_system,
-    landing_system, movement_system, shot_cooldown_system, shot_direction_system,
-    shot_input_system, vertical_movement_system, AiServePlugin, BallCollisionPlugin,
-    BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin, GameSystemSet, MatchFlowPlugin,
-    PointJudgmentPlugin, ScoringPlugin,
+    ai_movement_system, ai_shot_system, ceiling_collision_system, gravity_system, jump_system,
+    knockback_movement_system, knockback_start_system, knockback_timer_system, landing_system,
+    movement_system, plan_racket_swing_system, shot_cooldown_system, shot_direction_system,
+    shot_input_system, update_racket_swing_system, vertical_movement_system, AiServePlugin,
+    BallCollisionPlugin, BallTrajectoryPlugin, BoundaryPlugin, FaultJudgmentPlugin, GameSystemSet,
+    MatchFlowPlugin, PointJudgmentPlugin, ScoringPlugin,
 };
 
 use super::AnomalyDetectorPlugin;
@@ -57,6 +58,8 @@ impl Plugin for HeadlessPlugins {
             .add_message::<BallHitEvent>()
             .add_message::<PlayerKnockbackEvent>()
             .add_message::<ShotEvent>()
+            .add_message::<SwingIntentEvent>()
+            .add_message::<RacketContactEvent>()
             .add_message::<ShotExecutedEvent>()
             // トレース用イベント
             .add_message::<ShotAttributesCalculatedEvent>()
@@ -67,7 +70,10 @@ impl Plugin for HeadlessPlugins {
             .add_message::<FaultEvent>();
 
         // SystemSet の順序を設定
-        app.configure_sets(Update, GameSystemSet::Input.before(GameSystemSet::GameLogic));
+        app.configure_sets(
+            Update,
+            GameSystemSet::Input.before(GameSystemSet::GameLogic),
+        );
 
         // ゲームロジックシステム（入力は AI が担当するため human_input_system は不要）
         app.add_systems(
@@ -85,6 +91,8 @@ impl Plugin for HeadlessPlugins {
                 shot_input_system.run_if(in_state(MatchFlowState::Rally)),
                 // AIショット
                 ai_shot_system.run_if(in_state(MatchFlowState::Rally)),
+                // ラケット接触駆動ショット
+                (plan_racket_swing_system, update_racket_swing_system),
                 // 方向計算・クールダウン
                 (shot_direction_system, shot_cooldown_system),
                 // ふっとばし移動・タイマー
@@ -97,4 +105,3 @@ impl Plugin for HeadlessPlugins {
         );
     }
 }
-

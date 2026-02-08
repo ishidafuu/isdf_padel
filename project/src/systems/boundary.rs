@@ -9,7 +9,6 @@ use crate::resource::GameConfig;
 
 use super::court_factory::{create_court_bounds, create_net_info};
 
-
 /// 境界システムプラグイン
 pub struct BoundaryPlugin;
 
@@ -86,7 +85,6 @@ pub fn player_boundary_system(
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -146,6 +144,7 @@ mod tests {
                 normal_shot_angle: 45.0,
                 jump_shot_angle: 30.0,
                 jump_threshold: 0.5,
+                racket_swing: RacketSwingConfig::default(),
             },
             scoring: ScoringConfig {
                 point_values: vec![0, 15, 30, 40],

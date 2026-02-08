@@ -13,8 +13,14 @@ pub struct DebugUiPlugin;
 
 impl Plugin for DebugUiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_debug_ui)
-            .add_systems(Update, (update_debug_ui, draw_hit_range_gizmos));
+        app.add_systems(Startup, setup_debug_ui).add_systems(
+            Update,
+            (
+                update_debug_ui,
+                draw_hit_range_gizmos,
+                draw_racket_swing_gizmos,
+            ),
+        );
     }
 }
 
@@ -42,7 +48,6 @@ fn setup_debug_ui(mut commands: Commands) {
     ));
 }
 
-
 /// スコア表示テキストを生成
 fn format_score_text(match_score: &MatchScore, point_values: &[u32]) -> String {
     let p1_point = match_score.get_point_display(CourtSide::Left, point_values);
@@ -51,9 +56,7 @@ fn format_score_text(match_score: &MatchScore, point_values: &[u32]) -> String {
     let p2_score = match_score.get_score(CourtSide::Right);
     format!(
         "Score: {} - {} (G: {}-{}, S: {}-{})",
-        p1_point, p2_point,
-        p1_score.games, p2_score.games,
-        p1_score.sets, p2_score.sets,
+        p1_point, p2_point, p1_score.games, p2_score.games, p1_score.sets, p2_score.sets,
     )
 }
 
@@ -69,7 +72,10 @@ fn format_phase_info(rally_state: &RallyState) -> String {
         CourtSide::Left => "P1",
         CourtSide::Right => "P2",
     };
-    format!("Phase: {} | Server: {} | Fault: {}", phase, server, rally_state.fault_count)
+    format!(
+        "Phase: {} | Server: {} | Fault: {}",
+        phase, server, rally_state.fault_count
+    )
 }
 
 /// バウンス情報テキストを生成
@@ -102,7 +108,10 @@ fn format_player_states(player_query: &Query<(&Player, &KnockbackState, &ShotSta
         } else {
             "READY".to_string()
         };
-        states.push(format!("P{}: {} | Shot: {}", player.id, knockback_icon, shot_icon));
+        states.push(format!(
+            "P{}: {} | Shot: {}",
+            player.id, knockback_icon, shot_icon
+        ));
     }
     states.join("\n")
 }
@@ -125,7 +134,10 @@ fn update_debug_ui(
     let bounce_info = format_bounce_info(&ball_query);
     let player_states = format_player_states(&player_query);
 
-    **text = format!("{}\n{}\n{}\n{}", score_text, phase_info, bounce_info, player_states);
+    **text = format!(
+        "{}\n{}\n{}\n{}",
+        score_text, phase_info, bounce_info, player_states
+    );
 }
 
 /// 当たり判定（球体）をGizmosで描画
@@ -164,4 +176,38 @@ fn draw_hit_range_gizmos(
             Color::srgba(1.0, 1.0, 0.0, 0.8), // 黄色
         );
     }
+}
+
+/// ラケットスイングの可視化を描画
+/// @spec 31003_racket_trajectory_spec.md#req-31003-003
+fn draw_racket_swing_gizmos(mut gizmos: Gizmos, player_query: Query<(&Player, &ShotState)>) {
+    for (player, shot_state) in player_query.iter() {
+        let swing = &shot_state.racket_swing;
+        if !swing.is_active {
+            continue;
+        }
+
+        let color = if player.id == 1 {
+            Color::srgba(1.0, 0.2, 0.2, 0.9)
+        } else {
+            Color::srgba(0.2, 0.8, 1.0, 0.9)
+        };
+
+        let prev = logical_to_display_2d(swing.previous_racket_position);
+        let curr = logical_to_display_2d(swing.current_racket_position);
+        let hit = logical_to_display_2d(swing.planned_hit_position);
+
+        gizmos.line_2d(prev, curr, color);
+        gizmos.circle_2d(Isometry2d::from_translation(curr), 6.0, color);
+        gizmos.circle_2d(
+            Isometry2d::from_translation(hit),
+            4.0,
+            Color::srgba(1.0, 1.0, 1.0, 0.9),
+        );
+    }
+}
+
+#[inline]
+fn logical_to_display_2d(pos: Vec3) -> Vec2 {
+    Vec2::new(pos.x * WORLD_SCALE, (pos.z + pos.y) * WORLD_SCALE)
 }

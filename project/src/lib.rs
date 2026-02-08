@@ -21,7 +21,7 @@ pub use character::CharacterPlugin;
 pub use components::{AiController, HumanControlled};
 pub use core::{
     BallHitEvent, PlayerJumpEvent, PlayerKnockbackEvent, PlayerLandEvent, PlayerMoveEvent,
-    ShotEvent, ShotExecutedEvent,
+    RacketContactEvent, ShotEvent, ShotExecutedEvent, SwingIntentEvent,
 };
 pub use resource::config::{load_game_config, GameConfig, GameConfigHandle, GameConfigLoader};
 pub use resource::MatchFlowState;

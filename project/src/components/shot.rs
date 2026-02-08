@@ -4,6 +4,65 @@
 
 use bevy::prelude::*;
 
+/// ラケットスイング状態
+/// @spec 30606_racket_contact_spec.md
+#[derive(Debug, Clone, Copy)]
+pub struct RacketSwingState {
+    /// スイング進行中かどうか
+    pub is_active: bool,
+    /// 接触済みかどうか
+    pub contact_done: bool,
+    /// 経過時間（秒）
+    pub elapsed_seconds: f32,
+    /// スイング全体時間（秒）
+    pub duration_seconds: f32,
+    /// 接触目標時刻（秒）
+    pub contact_time_seconds: f32,
+    /// 入力方向（ショット方向制御）
+    pub input_direction: Vec2,
+    /// ホールド時間（ミリ秒）
+    pub hold_time_ms: f32,
+    /// 予測接触点（論理座標）
+    pub planned_hit_position: Vec3,
+    /// スイング軌道制御点（論理座標）
+    pub start_position: Vec3,
+    pub pre_contact_position: Vec3,
+    pub post_contact_position: Vec3,
+    pub end_position: Vec3,
+    /// ラケット中心位置（論理座標）
+    pub previous_racket_position: Vec3,
+    pub current_racket_position: Vec3,
+}
+
+impl Default for RacketSwingState {
+    fn default() -> Self {
+        Self {
+            is_active: false,
+            contact_done: false,
+            elapsed_seconds: 0.0,
+            duration_seconds: 0.0,
+            contact_time_seconds: 0.0,
+            input_direction: Vec2::ZERO,
+            hold_time_ms: 0.0,
+            planned_hit_position: Vec3::ZERO,
+            start_position: Vec3::ZERO,
+            pre_contact_position: Vec3::ZERO,
+            post_contact_position: Vec3::ZERO,
+            end_position: Vec3::ZERO,
+            previous_racket_position: Vec3::ZERO,
+            current_racket_position: Vec3::ZERO,
+        }
+    }
+}
+
+impl RacketSwingState {
+    /// スイング状態をリセット
+    #[inline]
+    pub fn clear(&mut self) {
+        *self = Self::default();
+    }
+}
+
 /// ショット状態コンポーネント
 /// @spec 30601_shot_input_spec.md
 #[derive(Component, Debug, Clone, Copy, Default)]
@@ -11,6 +70,9 @@ pub struct ShotState {
     /// クールダウン残り時間（秒）
     /// @spec 30601_shot_input_spec.md#req-30601-004
     pub cooldown_timer: f32,
+    /// ラケット接触駆動スイング状態
+    /// @spec 30606_racket_contact_spec.md
+    pub racket_swing: RacketSwingState,
 }
 
 impl ShotState {
@@ -19,6 +81,12 @@ impl ShotState {
     #[inline]
     pub fn is_on_cooldown(&self) -> bool {
         self.cooldown_timer > 0.0
+    }
+
+    /// スイング進行中かどうか
+    #[inline]
+    pub fn is_swing_active(&self) -> bool {
+        self.racket_swing.is_active
     }
 
     /// クールダウンを開始

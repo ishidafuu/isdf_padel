@@ -14,6 +14,7 @@
 |----|---------|------|
 | 31001 | [31001_parts_spec.md](31001_parts_spec.md) | パーツ構成・Component設計 |
 | 31002 | [31002_animation_spec.md](31002_animation_spec.md) | アニメーションシステム |
+| 31003 | [31003_racket_trajectory_spec.md](31003_racket_trajectory_spec.md) | ラケット軌道可視化 |
 
 ## アーキテクチャ
 
