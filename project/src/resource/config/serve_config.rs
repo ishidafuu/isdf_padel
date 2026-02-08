@@ -39,6 +39,8 @@ pub struct ServeConfig {
     pub toss_depth_shift: f32,
     /// トス高さによる発射角ボーナス上限（度）
     pub toss_launch_angle_bonus_deg: f32,
+    /// サーブ練習モード（true のとき着地後に常に再サーブ）
+    pub practice_infinite_mode: bool,
     /// トス失敗までの時間（秒）
     /// @spec 30102_serve_spec.md#req-30102-084
     pub toss_timeout: f32,
@@ -77,6 +79,7 @@ impl Default for ServeConfig {
             toss_hold_max_secs: 0.5,
             toss_depth_shift: 0.45,
             toss_launch_angle_bonus_deg: 6.0,
+            practice_infinite_mode: false,
             toss_timeout: 3.0,
             hit_height_min: 1.8,
             hit_height_max: 2.7,

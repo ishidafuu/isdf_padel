@@ -148,8 +148,32 @@ pub fn serve_landing_judgment_system(
 
         // サービスボックスを取得
         let service_box = get_service_box(rally_state.server, rally_state.serve_side, &config);
+        let outcome = judge_serve_landing(&service_box, ball_pos, rally_state.serve_touched_net);
 
-        match judge_serve_landing(&service_box, ball_pos, rally_state.serve_touched_net) {
+        // サーブ練習モード: 着地結果に関係なく即座に再サーブ
+        if config.serve.practice_infinite_mode {
+            match outcome {
+                ServeLandingOutcome::Fault => info!(
+                    "Serve practice: fault landing at ({:.2}, {:.2}) -> re-serve",
+                    ball_pos.x, ball_pos.z
+                ),
+                ServeLandingOutcome::Let => info!(
+                    "Serve practice: let landing at ({:.2}, {:.2}) -> re-serve",
+                    ball_pos.x, ball_pos.z
+                ),
+                ServeLandingOutcome::Valid => info!(
+                    "Serve practice: valid landing at ({:.2}, {:.2}) -> re-serve",
+                    ball_pos.x, ball_pos.z
+                ),
+            }
+
+            commands.entity(event.ball).despawn();
+            rally_state.next_serve();
+            next_state.set(MatchFlowState::Serve);
+            return;
+        }
+
+        match outcome {
             // @spec 30902_fault_spec.md#req-30902-001: サービスボックス外
             ServeLandingOutcome::Fault => {
                 let new_fault_count = rally_state.fault_count + 1;

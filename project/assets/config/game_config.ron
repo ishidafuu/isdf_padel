@@ -87,6 +87,7 @@ GameConfig(
         toss_hold_max_secs: 0.5,        // 長押し最大として扱う秒数
         toss_depth_shift: 0.45,         // 高トスほど奥を狙う深さ補正量 m
         toss_launch_angle_bonus_deg: 6.0, // 高トス時の高弾道ボーナス上限 度
+        practice_infinite_mode: true,   // サーブ着地後に常に再サーブ（手触り確認用）
         toss_timeout: 3.0,              // トス失敗までの時間（秒）
         hit_height_min: 1.8,            // ヒット可能最低高さ（m）
         hit_height_max: 2.7,            // ヒット可能最高高さ（m）
