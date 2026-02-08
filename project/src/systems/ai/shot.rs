@@ -181,6 +181,10 @@ pub fn ai_shot_system(
     for (player, ai_pos, mut shot_state, knockback, mut ai_controller) in ai_query.iter_mut() {
         let ai_position = ai_pos.value;
         let distance_3d = (ai_position - ball_pos).length();
+        let ai_swing_trigger_distance = config
+            .shot
+            .max_distance
+            .max(config.shot.racket_swing.reach_distance + config.ball.radius + 0.35);
 
         // ショット可能条件をチェック
         if !can_ai_shoot(
@@ -192,7 +196,7 @@ pub fn ai_shot_system(
             last_shooter,
             &shot_state,
             distance_3d,
-            config.shot.max_distance,
+            ai_swing_trigger_distance,
         ) {
             continue;
         }

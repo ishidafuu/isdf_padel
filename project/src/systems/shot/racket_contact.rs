@@ -55,6 +55,14 @@ pub fn plan_racket_swing_system(
             let front_sign = front_sign(player.court_side);
             let lateral_sign = if intent.direction.y >= 0.0 { 1.0 } else { -1.0 };
             let is_slice_like = is_slice_like_hit(ball_vel, planned_hit, player_pos.value);
+            let horizontal_distance = Vec2::new(
+                planned_hit.x - player_pos.value.x,
+                planned_hit.z - player_pos.value.z,
+            )
+            .length();
+            let needs_direct_assist =
+                hit_time < 0.20 || horizontal_distance > swing_cfg.reach_distance * 0.85;
+            let use_direct_style = is_volley || is_slice_like || needs_direct_assist;
 
             swing.is_active = true;
             swing.contact_done = false;
@@ -65,7 +73,7 @@ pub fn plan_racket_swing_system(
                 .clamp(0.01, swing.duration_seconds - 0.01);
             swing.input_direction = intent.direction;
             swing.hold_time_ms = intent.hold_time_ms;
-            if is_volley || is_slice_like {
+            if use_direct_style {
                 // ボレー/スライスは直線寄り（面を直接合わせる）軌道
                 swing.planned_hit_position = planned_hit;
                 swing.start_position =
@@ -91,7 +99,7 @@ pub fn plan_racket_swing_system(
                 let travel = -behind;
 
                 swing.planned_hit_position =
-                    planned_hit + behind * 0.18 + Vec3::new(0.0, -0.04, 0.0);
+                    planned_hit + behind * 0.10 + Vec3::new(0.0, -0.02, 0.0);
                 swing.planned_hit_position.y = swing.planned_hit_position.y.max(0.25);
                 swing.planned_hit_position = clamp_hit_to_reach(
                     player_pos.value,
@@ -101,17 +109,17 @@ pub fn plan_racket_swing_system(
                 );
 
                 swing.start_position =
-                    player_pos.value + behind * 0.85 + side * 0.45 + Vec3::new(0.0, 1.35, 0.0);
+                    player_pos.value + behind * 0.75 + side * 0.35 + Vec3::new(0.0, 1.25, 0.0);
                 swing.pre_contact_position =
-                    player_pos.value + behind * 0.55 + side * 0.95 + Vec3::new(0.0, 1.75, 0.0);
+                    player_pos.value + behind * 0.45 + side * 0.75 + Vec3::new(0.0, 1.55, 0.0);
                 swing.post_contact_position = swing.planned_hit_position
-                    + side * 0.55
-                    + travel * 0.30
-                    + Vec3::new(0.0, 0.28, 0.0);
-                swing.end_position = swing.planned_hit_position + travel * 0.58 - side * 0.18
+                    + side * 0.45
+                    + travel * 0.25
+                    + Vec3::new(0.0, 0.22, 0.0);
+                swing.end_position = swing.planned_hit_position + travel * 0.48 - side * 0.14
                     + Vec3::new(0.0, 0.12, 0.0);
                 swing.follow_through_control_position =
-                    swing.end_position + travel * 0.22 - side * 0.12 + Vec3::new(0.0, -0.10, 0.0);
+                    swing.end_position + travel * 0.18 - side * 0.08 + Vec3::new(0.0, -0.08, 0.0);
             }
 
             swing.previous_racket_position = swing.start_position;
@@ -120,11 +128,7 @@ pub fn plan_racket_swing_system(
             info!(
                 "Swing planned: player={}, style={}, hit_time={:.3}, hit=({:.2},{:.2},{:.2})",
                 player.id,
-                if is_volley || is_slice_like {
-                    "direct"
-                } else {
-                    "whip"
-                },
+                if use_direct_style { "direct" } else { "whip" },
                 hit_time,
                 swing.planned_hit_position.x,
                 swing.planned_hit_position.y,

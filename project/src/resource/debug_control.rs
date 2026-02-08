@@ -56,6 +56,15 @@ pub const SUPPORTED_OVERRIDE_KEYS: &[&str] = &[
     "shot.max_distance",
     "shot.cooldown_time",
     "shot.jump_threshold",
+    "shot.racket_swing.duration_seconds",
+    "shot.racket_swing.contact_time_seconds",
+    "shot.racket_swing.contact_window_seconds",
+    "shot.racket_swing.min_prediction_time",
+    "shot.racket_swing.max_prediction_time",
+    "shot.racket_swing.prediction_step",
+    "shot.racket_swing.reach_distance",
+    "shot.racket_swing.max_hit_height_diff",
+    "shot.racket_swing.contact_radius",
     "ai.move_speed",
     "ai.shot_cooldown",
     "ai.prediction_accuracy",
@@ -127,6 +136,15 @@ pub struct DebugRuntimeOverrides {
     pub shot_max_distance: Option<f32>,
     pub shot_cooldown_time: Option<f32>,
     pub shot_jump_threshold: Option<f32>,
+    pub shot_racket_swing_duration_seconds: Option<f32>,
+    pub shot_racket_swing_contact_time_seconds: Option<f32>,
+    pub shot_racket_swing_contact_window_seconds: Option<f32>,
+    pub shot_racket_swing_min_prediction_time: Option<f32>,
+    pub shot_racket_swing_max_prediction_time: Option<f32>,
+    pub shot_racket_swing_prediction_step: Option<f32>,
+    pub shot_racket_swing_reach_distance: Option<f32>,
+    pub shot_racket_swing_max_hit_height_diff: Option<f32>,
+    pub shot_racket_swing_contact_radius: Option<f32>,
 
     // === ai ===
     pub ai_move_speed: Option<f32>,
@@ -172,6 +190,15 @@ impl Default for DebugRuntimeOverrides {
             shot_max_distance: None,
             shot_cooldown_time: None,
             shot_jump_threshold: None,
+            shot_racket_swing_duration_seconds: None,
+            shot_racket_swing_contact_time_seconds: None,
+            shot_racket_swing_contact_window_seconds: None,
+            shot_racket_swing_min_prediction_time: None,
+            shot_racket_swing_max_prediction_time: None,
+            shot_racket_swing_prediction_step: None,
+            shot_racket_swing_reach_distance: None,
+            shot_racket_swing_max_hit_height_diff: None,
+            shot_racket_swing_contact_radius: None,
             ai_move_speed: None,
             ai_shot_cooldown: None,
             ai_prediction_accuracy: None,
@@ -259,6 +286,15 @@ pub fn override_field_type(key: &str) -> Option<DebugOverrideType> {
         | "shot.max_distance"
         | "shot.cooldown_time"
         | "shot.jump_threshold"
+        | "shot.racket_swing.duration_seconds"
+        | "shot.racket_swing.contact_time_seconds"
+        | "shot.racket_swing.contact_window_seconds"
+        | "shot.racket_swing.min_prediction_time"
+        | "shot.racket_swing.max_prediction_time"
+        | "shot.racket_swing.prediction_step"
+        | "shot.racket_swing.reach_distance"
+        | "shot.racket_swing.max_hit_height_diff"
+        | "shot.racket_swing.contact_radius"
         | "ai.move_speed"
         | "ai.shot_cooldown"
         | "ai.prediction_accuracy"
@@ -319,6 +355,33 @@ pub fn get_override_value(
         "shot.max_distance" => overrides.shot_max_distance.map(DebugOverrideValue::Float),
         "shot.cooldown_time" => overrides.shot_cooldown_time.map(DebugOverrideValue::Float),
         "shot.jump_threshold" => overrides.shot_jump_threshold.map(DebugOverrideValue::Float),
+        "shot.racket_swing.duration_seconds" => overrides
+            .shot_racket_swing_duration_seconds
+            .map(DebugOverrideValue::Float),
+        "shot.racket_swing.contact_time_seconds" => overrides
+            .shot_racket_swing_contact_time_seconds
+            .map(DebugOverrideValue::Float),
+        "shot.racket_swing.contact_window_seconds" => overrides
+            .shot_racket_swing_contact_window_seconds
+            .map(DebugOverrideValue::Float),
+        "shot.racket_swing.min_prediction_time" => overrides
+            .shot_racket_swing_min_prediction_time
+            .map(DebugOverrideValue::Float),
+        "shot.racket_swing.max_prediction_time" => overrides
+            .shot_racket_swing_max_prediction_time
+            .map(DebugOverrideValue::Float),
+        "shot.racket_swing.prediction_step" => overrides
+            .shot_racket_swing_prediction_step
+            .map(DebugOverrideValue::Float),
+        "shot.racket_swing.reach_distance" => overrides
+            .shot_racket_swing_reach_distance
+            .map(DebugOverrideValue::Float),
+        "shot.racket_swing.max_hit_height_diff" => overrides
+            .shot_racket_swing_max_hit_height_diff
+            .map(DebugOverrideValue::Float),
+        "shot.racket_swing.contact_radius" => overrides
+            .shot_racket_swing_contact_radius
+            .map(DebugOverrideValue::Float),
         "ai.move_speed" => overrides.ai_move_speed.map(DebugOverrideValue::Float),
         "ai.shot_cooldown" => overrides.ai_shot_cooldown.map(DebugOverrideValue::Float),
         "ai.prediction_accuracy" => overrides
@@ -463,6 +526,60 @@ pub fn set_override_value(
             overrides.shot_jump_threshold = Some(v)
         }
         ("shot.jump_threshold", None) => overrides.shot_jump_threshold = None,
+        ("shot.racket_swing.duration_seconds", Some(DebugOverrideValue::Float(v))) => {
+            overrides.shot_racket_swing_duration_seconds = Some(v)
+        }
+        ("shot.racket_swing.duration_seconds", None) => {
+            overrides.shot_racket_swing_duration_seconds = None
+        }
+        ("shot.racket_swing.contact_time_seconds", Some(DebugOverrideValue::Float(v))) => {
+            overrides.shot_racket_swing_contact_time_seconds = Some(v)
+        }
+        ("shot.racket_swing.contact_time_seconds", None) => {
+            overrides.shot_racket_swing_contact_time_seconds = None
+        }
+        ("shot.racket_swing.contact_window_seconds", Some(DebugOverrideValue::Float(v))) => {
+            overrides.shot_racket_swing_contact_window_seconds = Some(v)
+        }
+        ("shot.racket_swing.contact_window_seconds", None) => {
+            overrides.shot_racket_swing_contact_window_seconds = None
+        }
+        ("shot.racket_swing.min_prediction_time", Some(DebugOverrideValue::Float(v))) => {
+            overrides.shot_racket_swing_min_prediction_time = Some(v)
+        }
+        ("shot.racket_swing.min_prediction_time", None) => {
+            overrides.shot_racket_swing_min_prediction_time = None
+        }
+        ("shot.racket_swing.max_prediction_time", Some(DebugOverrideValue::Float(v))) => {
+            overrides.shot_racket_swing_max_prediction_time = Some(v)
+        }
+        ("shot.racket_swing.max_prediction_time", None) => {
+            overrides.shot_racket_swing_max_prediction_time = None
+        }
+        ("shot.racket_swing.prediction_step", Some(DebugOverrideValue::Float(v))) => {
+            overrides.shot_racket_swing_prediction_step = Some(v)
+        }
+        ("shot.racket_swing.prediction_step", None) => {
+            overrides.shot_racket_swing_prediction_step = None
+        }
+        ("shot.racket_swing.reach_distance", Some(DebugOverrideValue::Float(v))) => {
+            overrides.shot_racket_swing_reach_distance = Some(v)
+        }
+        ("shot.racket_swing.reach_distance", None) => {
+            overrides.shot_racket_swing_reach_distance = None
+        }
+        ("shot.racket_swing.max_hit_height_diff", Some(DebugOverrideValue::Float(v))) => {
+            overrides.shot_racket_swing_max_hit_height_diff = Some(v)
+        }
+        ("shot.racket_swing.max_hit_height_diff", None) => {
+            overrides.shot_racket_swing_max_hit_height_diff = None
+        }
+        ("shot.racket_swing.contact_radius", Some(DebugOverrideValue::Float(v))) => {
+            overrides.shot_racket_swing_contact_radius = Some(v)
+        }
+        ("shot.racket_swing.contact_radius", None) => {
+            overrides.shot_racket_swing_contact_radius = None
+        }
 
         ("ai.move_speed", Some(DebugOverrideValue::Float(v))) => overrides.ai_move_speed = Some(v),
         ("ai.move_speed", None) => overrides.ai_move_speed = None,
@@ -555,6 +672,33 @@ pub fn get_config_value(config: &GameConfig, key: &str) -> Option<DebugOverrideV
         "shot.max_distance" => Some(DebugOverrideValue::Float(config.shot.max_distance)),
         "shot.cooldown_time" => Some(DebugOverrideValue::Float(config.shot.cooldown_time)),
         "shot.jump_threshold" => Some(DebugOverrideValue::Float(config.shot.jump_threshold)),
+        "shot.racket_swing.duration_seconds" => Some(DebugOverrideValue::Float(
+            config.shot.racket_swing.duration_seconds,
+        )),
+        "shot.racket_swing.contact_time_seconds" => Some(DebugOverrideValue::Float(
+            config.shot.racket_swing.contact_time_seconds,
+        )),
+        "shot.racket_swing.contact_window_seconds" => Some(DebugOverrideValue::Float(
+            config.shot.racket_swing.contact_window_seconds,
+        )),
+        "shot.racket_swing.min_prediction_time" => Some(DebugOverrideValue::Float(
+            config.shot.racket_swing.min_prediction_time,
+        )),
+        "shot.racket_swing.max_prediction_time" => Some(DebugOverrideValue::Float(
+            config.shot.racket_swing.max_prediction_time,
+        )),
+        "shot.racket_swing.prediction_step" => Some(DebugOverrideValue::Float(
+            config.shot.racket_swing.prediction_step,
+        )),
+        "shot.racket_swing.reach_distance" => Some(DebugOverrideValue::Float(
+            config.shot.racket_swing.reach_distance,
+        )),
+        "shot.racket_swing.max_hit_height_diff" => Some(DebugOverrideValue::Float(
+            config.shot.racket_swing.max_hit_height_diff,
+        )),
+        "shot.racket_swing.contact_radius" => Some(DebugOverrideValue::Float(
+            config.shot.racket_swing.contact_radius,
+        )),
         "ai.move_speed" => Some(DebugOverrideValue::Float(config.ai.move_speed)),
         "ai.shot_cooldown" => Some(DebugOverrideValue::Float(config.ai.shot_cooldown)),
         "ai.prediction_accuracy" => Some(DebugOverrideValue::Float(config.ai.prediction_accuracy)),
@@ -630,6 +774,33 @@ fn apply_override_to_config(
         ("shot.max_distance", DebugOverrideValue::Float(v)) => config.shot.max_distance = v,
         ("shot.cooldown_time", DebugOverrideValue::Float(v)) => config.shot.cooldown_time = v,
         ("shot.jump_threshold", DebugOverrideValue::Float(v)) => config.shot.jump_threshold = v,
+        ("shot.racket_swing.duration_seconds", DebugOverrideValue::Float(v)) => {
+            config.shot.racket_swing.duration_seconds = v
+        }
+        ("shot.racket_swing.contact_time_seconds", DebugOverrideValue::Float(v)) => {
+            config.shot.racket_swing.contact_time_seconds = v
+        }
+        ("shot.racket_swing.contact_window_seconds", DebugOverrideValue::Float(v)) => {
+            config.shot.racket_swing.contact_window_seconds = v
+        }
+        ("shot.racket_swing.min_prediction_time", DebugOverrideValue::Float(v)) => {
+            config.shot.racket_swing.min_prediction_time = v
+        }
+        ("shot.racket_swing.max_prediction_time", DebugOverrideValue::Float(v)) => {
+            config.shot.racket_swing.max_prediction_time = v
+        }
+        ("shot.racket_swing.prediction_step", DebugOverrideValue::Float(v)) => {
+            config.shot.racket_swing.prediction_step = v
+        }
+        ("shot.racket_swing.reach_distance", DebugOverrideValue::Float(v)) => {
+            config.shot.racket_swing.reach_distance = v
+        }
+        ("shot.racket_swing.max_hit_height_diff", DebugOverrideValue::Float(v)) => {
+            config.shot.racket_swing.max_hit_height_diff = v
+        }
+        ("shot.racket_swing.contact_radius", DebugOverrideValue::Float(v)) => {
+            config.shot.racket_swing.contact_radius = v
+        }
         ("ai.move_speed", DebugOverrideValue::Float(v)) => config.ai.move_speed = v,
         ("ai.shot_cooldown", DebugOverrideValue::Float(v)) => config.ai.shot_cooldown = v,
         ("ai.prediction_accuracy", DebugOverrideValue::Float(v)) => {
@@ -874,6 +1045,12 @@ mod tests {
             Some(DebugOverrideValue::Float(4.5)),
         )
         .expect("set float failed");
+        set_override_value(
+            &mut overrides,
+            "shot.racket_swing.reach_distance",
+            Some(DebugOverrideValue::Float(1.8)),
+        )
+        .expect("set shot swing float failed");
 
         assert_eq!(
             get_override_value(&overrides, "serve.practice_infinite_mode"),
@@ -882,6 +1059,10 @@ mod tests {
         assert_eq!(
             get_override_value(&overrides, "player.move_speed"),
             Some(DebugOverrideValue::Float(4.5))
+        );
+        assert_eq!(
+            get_override_value(&overrides, "shot.racket_swing.reach_distance"),
+            Some(DebugOverrideValue::Float(1.8))
         );
     }
 }

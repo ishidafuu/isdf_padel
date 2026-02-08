@@ -60,9 +60,9 @@ GameConfig(
             min_prediction_time: 0.04,
             max_prediction_time: 0.50,
             prediction_step: 0.016666668,
-            reach_distance: 1.55,
+            reach_distance: 1.62,
             max_hit_height_diff: 2.0,
-            contact_radius: 0.22,
+            contact_radius: 0.24,
         ),
     ),
     scoring: ScoringConfig(
