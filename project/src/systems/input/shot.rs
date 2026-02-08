@@ -117,6 +117,7 @@ pub fn shot_input_system(
             jump_height: player_pos.y,
             is_serve: false,
             hit_position: None,
+            serve_toss_velocity_y: None,
         });
 
         info!(
@@ -128,14 +129,16 @@ pub fn shot_input_system(
 
 /// クールダウンタイマー更新システム
 /// @spec 30601_shot_input_spec.md#req-30601-004
-pub fn shot_cooldown_system(fixed_dt: Res<FixedDeltaTime>, mut query: Query<&mut ShotState, With<Player>>) {
+pub fn shot_cooldown_system(
+    fixed_dt: Res<FixedDeltaTime>,
+    mut query: Query<&mut ShotState, With<Player>>,
+) {
     let delta = fixed_dt.delta_secs();
 
     for mut shot_state in query.iter_mut() {
         shot_state.update_cooldown(delta);
     }
 }
-
 
 #[cfg(test)]
 mod tests {

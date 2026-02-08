@@ -51,4 +51,6 @@ pub struct ServeTrajectoryContext {
     pub hit_position: Vec3,
     /// 基準初速
     pub base_speed: f32,
+    /// サーブトスの上向き初速度
+    pub toss_velocity_y: f32,
 }

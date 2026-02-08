@@ -44,6 +44,9 @@ pub(super) fn handle_serve_shot(
         serve_side,
         hit_position,
         base_speed: config.serve.serve_speed,
+        toss_velocity_y: event
+            .serve_toss_velocity_y
+            .unwrap_or(config.serve.toss_velocity_y),
     };
 
     let trajectory_result = calculate_serve_trajectory(&serve_ctx, config);

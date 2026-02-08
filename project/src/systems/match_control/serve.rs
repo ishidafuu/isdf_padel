@@ -12,11 +12,11 @@ use bevy::prelude::*;
 use crate::components::{
     AiController, Ball, InputState, LogicalPosition, Player, TossBall, TossBallBundle, Velocity,
 };
-use crate::systems::ai::AiServeTimer;
 use crate::core::{CourtSide, ShotEvent};
-use crate::resource::config::ServeSide;
+use crate::resource::config::{ServeConfig, ServeSide};
 use crate::resource::scoring::{MatchFlowState, ServeState, ServeSubPhase};
 use crate::resource::{FixedDeltaTime, GameConfig, MatchScore};
+use crate::systems::ai::AiServeTimer;
 
 /// サーバーを検索するヘルパー関数
 /// @spec 30102_serve_spec.md
@@ -25,6 +25,27 @@ fn find_server<'a>(
     server_side: CourtSide,
 ) -> Option<(&'a Player, &'a LogicalPosition, &'a InputState)> {
     player_query.find(|(p, _, _)| p.court_side == server_side)
+}
+
+#[inline]
+fn calculate_toss_velocity_by_hold(
+    input_hold_time_ms: f32,
+    serve_config: &ServeConfig,
+) -> (f32, f32) {
+    let hold_secs = (input_hold_time_ms / 1000.0).max(0.0);
+    let hold_t = if serve_config.toss_hold_max_secs <= 0.0 {
+        1.0
+    } else {
+        (hold_secs / serve_config.toss_hold_max_secs).clamp(0.0, 1.0)
+    };
+    let min_v = serve_config
+        .toss_velocity_min_y
+        .min(serve_config.toss_velocity_max_y);
+    let max_v = serve_config
+        .toss_velocity_min_y
+        .max(serve_config.toss_velocity_max_y);
+    let toss_velocity = min_v + (max_v - min_v) * hold_t;
+    (toss_velocity, hold_secs)
 }
 
 /// ServeState リソースの初期化/リセットシステム
@@ -64,10 +85,10 @@ pub fn serve_position_system(
     // Right側: デュース = -Z、アド = +Z
     let base_z = config.court.width / 4.0; // 3.0 (コート幅12の1/4)
     let serve_z = match (match_score.server, serve_side) {
-        (CourtSide::Left, ServeSide::Deuce) => base_z,   // Left: デュース = +Z
-        (CourtSide::Left, ServeSide::Ad) => -base_z,     // Left: アド = -Z
+        (CourtSide::Left, ServeSide::Deuce) => base_z, // Left: デュース = +Z
+        (CourtSide::Left, ServeSide::Ad) => -base_z,   // Left: アド = -Z
         (CourtSide::Right, ServeSide::Deuce) => -base_z, // Right: デュース = -Z（対向）
-        (CourtSide::Right, ServeSide::Ad) => base_z,     // Right: アド = +Z（対向）
+        (CourtSide::Right, ServeSide::Ad) => base_z,   // Right: アド = +Z（対向）
     };
 
     for (player, mut pos, ai_controller) in player_query.iter_mut() {
@@ -75,9 +96,9 @@ pub fn serve_position_system(
 
         // サーバーとレシーバーは対角線上（クロス）に配置
         let target_z = if is_server {
-            serve_z  // サーバーはサーブサイドに
+            serve_z // サーバーはサーブサイドに
         } else {
-            -serve_z  // レシーバーは対角線上（逆サイド）に
+            -serve_z // レシーバーは対角線上（逆サイド）に
         };
 
         // X位置: サーバーはベースライン外に配置
@@ -128,19 +149,29 @@ pub fn serve_toss_input_system(
         return;
     }
 
-    // サーバーを特定し、ショット入力をチェック
+    // サーバーを特定
     let Some((player, logical_pos, input_state)) =
         find_server(player_query.iter(), match_score.server)
     else {
         return;
     };
-    if !input_state.shot_pressed {
+
+    // 1回目ボタンは「押して離す」でトス開始
+    // 押下中はチャージ状態のみ保持し、離した瞬間にトスする。
+    if input_state.holding {
+        serve_state.toss_charge_started = true;
+        return;
+    }
+    if !serve_state.toss_charge_started {
         return;
     }
 
+    let (toss_velocity_y, hold_secs) =
+        calculate_toss_velocity_by_hold(input_state.hold_time, &config.serve);
+
     // @spec 30102_serve_spec.md#req-30102-080: トスボール生成
     let toss_pos = logical_pos.value + Vec3::new(0.0, config.serve.toss_start_offset_y, 0.0);
-    let toss_vel = Vec3::new(0.0, config.serve.toss_velocity_y, 0.0);
+    let toss_vel = Vec3::new(0.0, toss_velocity_y, 0.0);
 
     // 描画リソースがあればBundleで、なければヘッドレスで生成
     if let (Some(ref mut m), Some(ref mut mat)) = (&mut meshes, &mut materials) {
@@ -150,11 +181,11 @@ pub fn serve_toss_input_system(
     }
 
     // ServeState更新
-    serve_state.start_toss(logical_pos.value);
+    serve_state.start_toss(logical_pos.value, toss_velocity_y);
 
     info!(
-        "Toss: Ball tossed at {:?} with velocity {:?} by Player{}",
-        toss_pos, toss_vel, player.id
+        "Toss: Ball tossed at {:?} with velocity {:?} by Player{} (hold={:.2}s)",
+        toss_pos, toss_vel, player.id, hold_secs
     );
 }
 
@@ -238,7 +269,8 @@ pub fn serve_hit_input_system(
     // 入力方向を正規化（ゼロベクトルの場合はそのまま）
     let direction = input_state.movement.normalize_or_zero();
 
-    // ServeState更新
+    // ServeState更新前にトス初速を保持（on_hit_successでリセットされるため）
+    let toss_velocity_y = serve_state.toss_velocity_y;
     serve_state.on_hit_success();
 
     // 注: 状態遷移は serve_landing_judgment_system で行う
@@ -252,6 +284,7 @@ pub fn serve_hit_input_system(
         jump_height: player_pos.value.y,
         is_serve: true,
         hit_position: Some(hit_pos),
+        serve_toss_velocity_y: Some(toss_velocity_y),
     });
 
     info!(
@@ -298,7 +331,11 @@ pub fn serve_toss_timeout_system(
     ai_serve_timer.toss_timer = None;
     ai_serve_timer.hit_executed = false;
 
-    let reason = if is_timeout { "timeout" } else { "ball too low" };
+    let reason = if is_timeout {
+        "timeout"
+    } else {
+        "ball too low"
+    };
     info!("Serve let: {} (retry without fault)", reason);
 }
 
@@ -314,7 +351,7 @@ mod tests {
         assert_eq!(serve_state.phase, ServeSubPhase::Waiting);
 
         let origin = Vec3::new(0.0, 0.0, -5.0);
-        serve_state.start_toss(origin);
+        serve_state.start_toss(origin, 3.5);
 
         assert_eq!(serve_state.phase, ServeSubPhase::Tossing);
         assert_eq!(serve_state.toss_origin, Some(origin));
@@ -326,7 +363,7 @@ mod tests {
     #[test]
     fn test_req_30102_084_toss_timeout() {
         let mut serve_state = ServeState::new();
-        serve_state.start_toss(Vec3::ZERO);
+        serve_state.start_toss(Vec3::ZERO, 3.5);
 
         // タイムアウト前
         serve_state.update_toss_time(2.9);
@@ -376,5 +413,27 @@ mod tests {
         let ball_height = 3.0;
         let can_hit = ball_height >= hit_min && ball_height <= hit_max;
         assert!(!can_hit);
+    }
+
+    #[test]
+    fn test_toss_velocity_changes_with_hold_time() {
+        let serve_config = ServeConfig::default();
+
+        let (v_short, _) = calculate_toss_velocity_by_hold(0.0, &serve_config);
+        let (v_mid, _) = calculate_toss_velocity_by_hold(250.0, &serve_config);
+        let (v_long, _) = calculate_toss_velocity_by_hold(1000.0, &serve_config);
+
+        assert!(
+            v_short < v_mid && v_mid < v_long,
+            "Expected toss velocity to increase with hold time: short={}, mid={}, long={}",
+            v_short,
+            v_mid,
+            v_long
+        );
+        assert!(
+            (v_long - serve_config.toss_velocity_max_y).abs() < 0.001,
+            "Expected long hold to clamp to max toss velocity: {}",
+            v_long
+        );
     }
 }

@@ -82,6 +82,11 @@ GameConfig(
         // トス→ヒット方式パラメータ
         toss_start_offset_y: 1.0,       // トスボール生成高さ（手元）
         toss_velocity_y: 3.5,           // トス上向き初速度 m/s
+        toss_velocity_min_y: 2.8,       // 長押し最小時のトス初速 m/s
+        toss_velocity_max_y: 4.8,       // 長押し最大時のトス初速 m/s
+        toss_hold_max_secs: 0.5,        // 長押し最大として扱う秒数
+        toss_depth_shift: 0.45,         // 高トスほど奥を狙う深さ補正量 m
+        toss_launch_angle_bonus_deg: 6.0, // 高トス時の高弾道ボーナス上限 度
         toss_timeout: 3.0,              // トス失敗までの時間（秒）
         hit_height_min: 1.8,            // ヒット可能最低高さ（m）
         hit_height_max: 2.7,            // ヒット可能最高高さ（m）

@@ -10,8 +10,8 @@ use crate::systems::match_control::get_service_box;
 use super::landing_position::{apply_landing_deviation, calculate_landing_position};
 use super::launch_angle::calculate_launch_angle;
 use super::physics_utils::{calculate_effective_gravity, calculate_speed_factors};
-use super::serve_trajectory::calculate_serve_landing_position;
-use super::types::TrajectoryContext;
+use super::serve_trajectory::{calculate_serve_landing_position, calculate_serve_trajectory};
+use super::types::{ServeTrajectoryContext, TrajectoryContext};
 
 fn make_test_config() -> GameConfig {
     // テスト用の最小限の設定
@@ -243,6 +243,42 @@ fn test_serve_landing_position_stays_inside_service_box_z() {
         right_course.z,
         service_box.z_min,
         service_box.z_max
+    );
+}
+
+/// 高トスほど奥 + 高弾道になることを確認
+#[test]
+fn test_serve_trajectory_high_toss_goes_deeper_and_higher() {
+    let config = make_test_config();
+    let hit_position = Vec3::new(-6.5, 2.2, 3.0);
+
+    let low_toss_ctx = ServeTrajectoryContext {
+        input: Vec2::ZERO,
+        server: CourtSide::Left,
+        serve_side: ServeSide::Deuce,
+        hit_position,
+        base_speed: config.serve.serve_speed,
+        toss_velocity_y: config.serve.toss_velocity_min_y,
+    };
+    let high_toss_ctx = ServeTrajectoryContext {
+        toss_velocity_y: config.serve.toss_velocity_max_y,
+        ..low_toss_ctx.clone()
+    };
+
+    let low_result = calculate_serve_trajectory(&low_toss_ctx, &config);
+    let high_result = calculate_serve_trajectory(&high_toss_ctx, &config);
+
+    assert!(
+        high_result.landing_position.x > low_result.landing_position.x,
+        "Expected higher toss to land deeper. low_x={}, high_x={}",
+        low_result.landing_position.x,
+        high_result.landing_position.x
+    );
+    assert!(
+        high_result.launch_angle > low_result.launch_angle,
+        "Expected higher toss to have higher launch angle. low_angle={}, high_angle={}",
+        low_result.launch_angle,
+        high_result.launch_angle
     );
 }
 

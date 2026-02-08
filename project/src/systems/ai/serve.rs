@@ -10,7 +10,9 @@
 
 use bevy::prelude::*;
 
-use crate::components::{AiController, Ball, LogicalPosition, Player, TacticsType, TossBall, TossBallBundle};
+use crate::components::{
+    AiController, Ball, LogicalPosition, Player, TacticsType, TossBall, TossBallBundle,
+};
 use crate::core::ShotEvent;
 use crate::resource::scoring::{ServeState, ServeSubPhase};
 use crate::resource::{FixedDeltaTime, GameConfig, GameRng, MatchFlowState, MatchScore};
@@ -102,7 +104,11 @@ pub fn ai_serve_timer_init_system(
             // direction は制御値なので、端を狙う場合は大きな値
             let target = config.ai.serve_direction_variance - config.ai.serve_offensive_margin;
             // 左右ランダム選択
-            if game_rng.random_range(0..=1) == 0 { target } else { -target }
+            if game_rng.random_range(0..=1) == 0 {
+                target
+            } else {
+                -target
+            }
         }
     };
 
@@ -190,7 +196,7 @@ pub fn ai_serve_toss_system(
     }
 
     // ServeState更新
-    serve_state.start_toss(logical_pos.value);
+    serve_state.start_toss(logical_pos.value, config.serve.toss_velocity_y);
 
     // AIトスログ出力
     if let Some(ref mut logger) = debug_logger {
@@ -273,7 +279,8 @@ pub fn ai_serve_hit_system(
     // @spec 30102_serve_spec.md#req-30102-071
     let direction = Vec2::new(0.0, ai_serve_timer.direction_z_offset);
 
-    // ServeState更新
+    // ServeState更新前にトス初速を保持（on_hit_successでリセットされるため）
+    let toss_velocity_y = serve_state.toss_velocity_y;
     serve_state.on_hit_success();
 
     // 注: 状態遷移は serve_landing_judgment_system で行う
@@ -287,6 +294,7 @@ pub fn ai_serve_hit_system(
         jump_height: player_pos.value.y,
         is_serve: true,
         hit_position: Some(hit_pos),
+        serve_toss_velocity_y: Some(toss_velocity_y),
     });
 
     // ヒット済みフラグを設定

@@ -248,6 +248,10 @@ pub struct ServeState {
     pub toss_origin: Option<Vec3>,
     /// フォルト回数（0 or 1、2でダブルフォルト）
     pub fault_count: u8,
+    /// 現在のトス上向き初速度（m/s）
+    pub toss_velocity_y: f32,
+    /// Waiting状態でトスボタン長押しが開始されたか
+    pub toss_charge_started: bool,
 }
 
 impl Default for ServeState {
@@ -257,6 +261,8 @@ impl Default for ServeState {
             toss_time: 0.0,
             toss_origin: None,
             fault_count: 0,
+            toss_velocity_y: 0.0,
+            toss_charge_started: false,
         }
     }
 }
@@ -269,10 +275,12 @@ impl ServeState {
 
     /// トスを開始
     /// @spec 30102_serve_spec.md#req-30102-080
-    pub fn start_toss(&mut self, origin: Vec3) {
+    pub fn start_toss(&mut self, origin: Vec3, toss_velocity_y: f32) {
         self.phase = ServeSubPhase::Tossing;
         self.toss_time = 0.0;
         self.toss_origin = Some(origin);
+        self.toss_velocity_y = toss_velocity_y;
+        self.toss_charge_started = false;
     }
 
     /// トス時間を更新
@@ -286,9 +294,7 @@ impl ServeState {
     #[allow(dead_code)]
     pub fn record_fault(&mut self) {
         self.fault_count += 1;
-        self.phase = ServeSubPhase::Waiting;
-        self.toss_time = 0.0;
-        self.toss_origin = None;
+        self.reset_toss_state();
     }
 
     /// ダブルフォルト判定
@@ -305,6 +311,8 @@ impl ServeState {
         self.phase = ServeSubPhase::Waiting;
         self.toss_time = 0.0;
         self.toss_origin = None;
+        self.toss_velocity_y = 0.0;
+        self.toss_charge_started = false;
     }
 
     /// ヒット成功時のリセット（Rallyへ遷移するため）

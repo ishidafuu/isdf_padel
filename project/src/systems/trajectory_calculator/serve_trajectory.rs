@@ -9,9 +9,24 @@ use crate::systems::match_control::get_service_box;
 
 use super::launch_angle::calculate_launch_angle;
 use super::physics_utils::{
-    calculate_direction_vector, calculate_effective_gravity, lerp, CourtSideExt,
+    calculate_direction_vector, calculate_effective_gravity, calculate_speed_for_target, lerp,
+    CourtSideExt,
 };
 use super::types::{ServeTrajectoryContext, TrajectoryResult};
+
+#[inline]
+fn calculate_toss_factor(toss_velocity_y: f32, config: &GameConfig) -> f32 {
+    let min_v = config
+        .serve
+        .toss_velocity_min_y
+        .min(config.serve.toss_velocity_max_y);
+    let max_v = config
+        .serve
+        .toss_velocity_min_y
+        .max(config.serve.toss_velocity_max_y);
+    let range = (max_v - min_v).max(0.001);
+    ((toss_velocity_y - min_v) / range).clamp(0.0, 1.0)
+}
 
 /// サーブ用着地地点を計算
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-050
@@ -59,14 +74,28 @@ pub fn calculate_serve_trajectory(
     let court_config = &config.court;
 
     // 1. サービスボックス内の着地地点を決定
-    let landing_position =
+    let mut landing_position =
         calculate_serve_landing_position(ctx.input, ctx.server, ctx.serve_side, config);
+    let toss_factor = calculate_toss_factor(ctx.toss_velocity_y, config);
+
+    // 高トスほど奥、低トスほど手前に寄せる（サービスボックス内にクランプ）
+    let service_box = get_service_box(ctx.server, ctx.serve_side, config);
+    let margin = config.trajectory.landing_margin;
+    let x_low = service_box.x_min.min(service_box.x_max) + margin;
+    let x_high = service_box.x_min.max(service_box.x_max) - margin;
+    let depth_shift = lerp(
+        -config.serve.toss_depth_shift,
+        config.serve.toss_depth_shift,
+        toss_factor,
+    );
+    landing_position.x =
+        (landing_position.x + depth_shift * ctx.server.sign()).clamp(x_low, x_high);
 
     // 2. 有効重力を計算（サーブはフラット: spin = 0）
     let effective_gravity = calculate_effective_gravity(0.0, ctx.hit_position.y, config);
 
     // 3. 発射角度と調整後初速を計算（サーブは着地点調整なし）
-    let (launch_angle, adjusted_speed, adjusted_landing) = calculate_launch_angle(
+    let (mut launch_angle, mut adjusted_speed, adjusted_landing) = calculate_launch_angle(
         ctx.hit_position,
         landing_position,
         ctx.base_speed,
@@ -75,6 +104,25 @@ pub fn calculate_serve_trajectory(
         court_config.net_x,
         court_config.net_height,
     );
+
+    // 高トス時は発射角を上げて高弾道化する
+    let launch_angle_bonus = toss_factor * config.serve.toss_launch_angle_bonus_deg;
+    if launch_angle_bonus > 0.01 {
+        let boosted_angle =
+            (launch_angle + launch_angle_bonus).min(trajectory_config.max_launch_angle);
+        if (boosted_angle - launch_angle).abs() > 0.01 {
+            let dx = adjusted_landing.x - ctx.hit_position.x;
+            let dz = adjusted_landing.z - ctx.hit_position.z;
+            let distance = (dx * dx + dz * dz).sqrt();
+            let height_diff = adjusted_landing.y - ctx.hit_position.y;
+            let boosted_speed =
+                calculate_speed_for_target(boosted_angle, distance, effective_gravity, height_diff);
+            if boosted_speed > 0.0 {
+                launch_angle = boosted_angle;
+                adjusted_speed = boosted_speed;
+            }
+        }
+    }
 
     // 4. 方向ベクトルを計算
     let direction = calculate_direction_vector(ctx.hit_position, adjusted_landing, launch_angle);

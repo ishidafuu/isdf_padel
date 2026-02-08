@@ -110,11 +110,11 @@ impl WallType {
     #[inline]
     pub fn normal(&self) -> Vec3 {
         match self {
-            WallType::LeftWall => Vec3::Z,       // +Z方向（Z負側の壁）
-            WallType::RightWall => Vec3::NEG_Z,  // -Z方向（Z正側の壁）
-            WallType::BackWallLeft => Vec3::X,     // +X方向（X負側の壁、Leftバックライン）
+            WallType::LeftWall => Vec3::Z,          // +Z方向（Z負側の壁）
+            WallType::RightWall => Vec3::NEG_Z,     // -Z方向（Z正側の壁）
+            WallType::BackWallLeft => Vec3::X,      // +X方向（X負側の壁、Leftバックライン）
             WallType::BackWallRight => Vec3::NEG_X, // -X方向（X正側の壁、Rightバックライン）
-            WallType::Ceiling => Vec3::NEG_Y,    // -Y方向（天井）
+            WallType::Ceiling => Vec3::NEG_Y,       // -Y方向（天井）
         }
     }
 
@@ -210,6 +210,8 @@ pub struct ShotEvent {
     /// 打点位置（サーブ時のみ使用）
     /// @spec 30605_trajectory_calculation_spec.md#req-30605-053
     pub hit_position: Option<Vec3>,
+    /// サーブトス上向き初速度（サーブ時のみ使用）
+    pub serve_toss_velocity_y: Option<f32>,
 }
 
 /// ショット実行完了イベント

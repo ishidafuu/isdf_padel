@@ -29,6 +29,16 @@ pub struct ServeConfig {
     /// トス上向き初速度（m/s）
     /// @spec 30102_serve_spec.md#req-30102-080
     pub toss_velocity_y: f32,
+    /// 長押し最小時のトス上向き初速度（m/s）
+    pub toss_velocity_min_y: f32,
+    /// 長押し最大時のトス上向き初速度（m/s）
+    pub toss_velocity_max_y: f32,
+    /// 長押し最大として扱う時間（秒）
+    pub toss_hold_max_secs: f32,
+    /// トス高さによる着地点深さシフト量（m）
+    pub toss_depth_shift: f32,
+    /// トス高さによる発射角ボーナス上限（度）
+    pub toss_launch_angle_bonus_deg: f32,
     /// トス失敗までの時間（秒）
     /// @spec 30102_serve_spec.md#req-30102-084
     pub toss_timeout: f32,
@@ -62,6 +72,11 @@ impl Default for ServeConfig {
             p2_default_direction_x: -1.0,
             toss_start_offset_y: 1.0,
             toss_velocity_y: 3.5,
+            toss_velocity_min_y: 2.8,
+            toss_velocity_max_y: 4.8,
+            toss_hold_max_secs: 0.5,
+            toss_depth_shift: 0.45,
+            toss_launch_angle_bonus_deg: 6.0,
             toss_timeout: 3.0,
             hit_height_min: 1.8,
             hit_height_max: 2.7,

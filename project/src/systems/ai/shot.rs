@@ -5,7 +5,8 @@
 use bevy::prelude::*;
 
 use crate::components::{
-    AiController, Ball, BounceCount, KnockbackState, LastShooter, LogicalPosition, Player, ShotState, TacticsType,
+    AiController, Ball, BounceCount, KnockbackState, LastShooter, LogicalPosition, Player,
+    ShotState, TacticsType,
 };
 use crate::core::events::ShotEvent;
 use crate::resource::config::GameConfig;
@@ -111,7 +112,7 @@ fn calculate_shot_direction(
     let (base_depth, base_lateral) = match tactics {
         // REQ-30303-020: 守り → コート中央狙い
         TacticsType::Defensive => {
-            (0.3_f32, 0.0_f32)  // やや浅め、中央
+            (0.3_f32, 0.0_f32) // やや浅め、中央
         }
         // REQ-30303-021: 攻め → ライン際狙い
         TacticsType::Offensive => {
@@ -162,15 +163,13 @@ pub fn ai_shot_system(
     match_score: Res<MatchScore>,
     mut debug_logger: Option<ResMut<DebugLogger>>,
     ball_query: Query<(&LogicalPosition, &LastShooter, &BounceCount), With<Ball>>,
-    mut ai_query: Query<
-        (
-            &Player,
-            &LogicalPosition,
-            &mut ShotState,
-            &KnockbackState,
-            &mut AiController,
-        ),
-    >,
+    mut ai_query: Query<(
+        &Player,
+        &LogicalPosition,
+        &mut ShotState,
+        &KnockbackState,
+        &mut AiController,
+    )>,
     mut event_writer: MessageWriter<ShotEvent>,
 ) {
     // ボール位置、LastShooter、BounceCountを取得（存在しなければ何もしない）
@@ -231,6 +230,7 @@ pub fn ai_shot_system(
             jump_height,
             is_serve: false,
             hit_position: None,
+            serve_toss_velocity_y: None,
         });
 
         // AIショットログ出力（戦術情報を追加）
@@ -248,7 +248,6 @@ pub fn ai_shot_system(
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -265,7 +264,10 @@ mod tests {
         let direction = (opponent_court_center - ai_position).normalize();
 
         // AIは Left側にいるので、相手コートは +X方向
-        assert!(direction.x > 0.0, "Should aim towards +X (opponent's court)");
+        assert!(
+            direction.x > 0.0,
+            "Should aim towards +X (opponent's court)"
+        );
         // 中央に打つのでZ方向は小さい
         assert!(direction.z.abs() < 0.001, "Z should be near zero");
     }
@@ -318,7 +320,10 @@ mod tests {
             &mut rng,
             0.0, // ブレなし
         );
-        assert!((dir.y - 0.0).abs() < 0.001, "Defensive should aim center (y ≈ 0)");
+        assert!(
+            (dir.y - 0.0).abs() < 0.001,
+            "Defensive should aim center (y ≈ 0)"
+        );
         assert!((dir.x - 0.3).abs() < 0.001, "Defensive depth should be 0.3");
     }
 
@@ -340,7 +345,10 @@ mod tests {
             &mut rng,
             0.0, // ブレなし
         );
-        assert!(dir.y.abs() > 0.8, "Offensive should aim sideline (|y| > 0.8)");
+        assert!(
+            dir.y.abs() > 0.8,
+            "Offensive should aim sideline (|y| > 0.8)"
+        );
         assert!((dir.x - 0.8).abs() < 0.001, "Offensive depth should be 0.8");
     }
 
