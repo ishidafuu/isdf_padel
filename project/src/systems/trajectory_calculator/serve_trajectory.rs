@@ -57,9 +57,9 @@ pub fn calculate_serve_landing_position(
         depth_t,
     );
 
-    // REQ-30605-052: 左右入力によるコース調整
-    // input.x: -1.0=左端, 0.0=中央, +1.0=右端
-    let width_t = (input.x + 1.0) / 2.0; // -1..1 → 0..1
+    // REQ-30605-052: 上下入力によるコース調整（横向きカメラ）
+    // input.y: -1.0=片側, 0.0=中央, +1.0=反対側
+    let width_t = (input.y + 1.0) / 2.0; // -1..1 → 0..1
     let target_z = lerp(
         service_box.z_min + margin,
         service_box.z_max - margin,

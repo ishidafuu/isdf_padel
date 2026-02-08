@@ -216,15 +216,15 @@ fn test_serve_landing_position_stays_inside_service_box_z() {
     let config = make_test_config();
     let service_box = get_service_box(CourtSide::Left, ServeSide::Deuce, &config);
 
-    // 左右端入力のどちらでもサービスボックス内に収まること
+    // 上下端入力のどちらでもサービスボックス内に収まること
     let left_course = calculate_serve_landing_position(
-        Vec2::new(-1.0, 0.0),
+        Vec2::new(0.0, -1.0),
         CourtSide::Left,
         ServeSide::Deuce,
         &config,
     );
     let right_course = calculate_serve_landing_position(
-        Vec2::new(1.0, 0.0),
+        Vec2::new(0.0, 1.0),
         CourtSide::Left,
         ServeSide::Deuce,
         &config,
