@@ -13,71 +13,38 @@ use crate::simulation::DebugLogger;
 
 /// レット判定システム
 /// @spec 30901_point_judgment_spec.md#req-30901-003
-/// サーブ時にネットに触れて相手コートに入った場合はレット（再サーブ）
-#[allow(clippy::type_complexity)]
+/// サーブ時にネット接触を記録し、着地判定時にレット（再サーブ）へ分岐する。
 pub fn let_judgment_system(
-    mut commands: Commands,
     mut net_events: MessageReader<NetHitEvent>,
     mut rally_state: ResMut<RallyState>,
-    config: Res<GameConfig>,
     mut debug_logger: Option<ResMut<DebugLogger>>,
-    query: Query<(Entity, &LogicalPosition), (With<Ball>, Without<PointEnded>)>,
-    mut rally_events: MessageWriter<RallyEndEvent>,
 ) {
-    // サーブ中でなければスキップ
+    // サーブ中でなければイベントを破棄
     if rally_state.phase != RallyPhase::Serving {
+        net_events.read().count();
         return;
     }
 
-    // 同一フレームで既にイベント発行済みならスキップ
-    if rally_state.rally_end_event_sent_this_frame {
+    // 既にネット接触済みなら追加イベントは破棄
+    if rally_state.serve_touched_net {
+        net_events.read().count();
         return;
     }
 
-    // 新座標系: X=打ち合い方向（ネット位置で判定）
-    let net_x = config.court.net_x;
-
-    for event in net_events.read() {
-        // ネットに触れた後のボール位置を確認
-        if let Ok((entity, logical_pos)) = query.get(event.ball) {
-            let ball_x = logical_pos.value.x;
-
-            // @spec 30901_point_judgment_spec.md#req-30901-003
-            // サーブ側からネットを超えて相手コートに入ったかを判定
-            let server_side = rally_state.server;
-            let in_opponent_court = match server_side {
-                CourtSide::Left => ball_x > net_x, // 1Pサーブ → 2P側（+X）に入った
-                CourtSide::Right => ball_x < net_x, // 2Pサーブ → 1P側（-X）に入った
-            };
-
-            if in_opponent_court {
-                // レットログ出力
-                if let Some(ref mut logger) = debug_logger {
-                    logger.log_scoring(&format!(
-                        "LET server={:?} (re-serve)",
-                        server_side
-                    ));
-                }
-
-                // レット（再サーブ）
-                info!(
-                    "Let! Ball touched net and landed in opponent's court. Server: {:?}",
-                    server_side
-                );
-
-                // レット時は NetFault を使用（再サーブ処理は scoring システムで行う）
-                rally_events.write(RallyEndEvent {
-                    winner: server_side, // レットなので失点なし、サーバーは次のサーブへ
-                    reason: RallyEndReason::NetFault,
-                });
-
-                // 重複発行防止フラグを設定
-                rally_state.rally_end_event_sent_this_frame = true;
-
-                // 他のポイント判定システムからの重複発行を防止
-                commands.entity(entity).insert(PointEnded);
-            }
+    // サーブ中にネット接触した事実だけを記録し、
+    // 着地判定側で「サービスボックス内 + ネット接触」をレットとして処理する。
+    if net_events.read().next().is_some() {
+        rally_state.serve_touched_net = true;
+        if let Some(ref mut logger) = debug_logger {
+            logger.log_scoring(&format!(
+                "LET_PENDING server={:?} (waiting bounce judgment)",
+                rally_state.server
+            ));
         }
+        info!(
+            "Serve net touch detected. Waiting bounce judgment for let. Server: {:?}",
+            rally_state.server
+        );
     }
 }
 

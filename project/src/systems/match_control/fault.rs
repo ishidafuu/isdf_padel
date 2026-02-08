@@ -55,6 +55,28 @@ impl ServiceBox {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ServeLandingOutcome {
+    Fault,
+    Let,
+    Valid,
+}
+
+#[inline]
+fn judge_serve_landing(
+    service_box: &ServiceBox,
+    bounce_point: Vec3,
+    serve_touched_net: bool,
+) -> ServeLandingOutcome {
+    if !service_box.contains(bounce_point.x, bounce_point.z) {
+        ServeLandingOutcome::Fault
+    } else if serve_touched_net {
+        ServeLandingOutcome::Let
+    } else {
+        ServeLandingOutcome::Valid
+    }
+}
+
 /// サーバー側とサーブサイドからサービスボックスを取得
 /// @spec 30902_fault_spec.md#req-30902-001
 ///
@@ -85,8 +107,7 @@ pub fn get_service_box(
     // Z座標: クロスサーブの法則
     // (Left, Deuce) と (Right, Ad) → Z < 0 側
     // (Left, Ad) と (Right, Deuce) → Z > 0 側
-    let is_negative_z_side =
-        (server == CourtSide::Left) == (serve_side == ServeSide::Deuce);
+    let is_negative_z_side = (server == CourtSide::Left) == (serve_side == ServeSide::Deuce);
 
     let (z_min, z_max) = if is_negative_z_side {
         (-half_width, 0.0)
@@ -109,6 +130,7 @@ pub fn get_service_box(
 /// サービスボックス外であればフォールトイベントを発行する。
 /// サービスボックス内であればラリーフェーズに遷移する。
 pub fn serve_landing_judgment_system(
+    mut commands: Commands,
     mut bounce_events: MessageReader<GroundBounceEvent>,
     mut rally_state: ResMut<RallyState>,
     mut next_state: ResMut<NextState<crate::resource::MatchFlowState>>,
@@ -127,36 +149,51 @@ pub fn serve_landing_judgment_system(
         // サービスボックスを取得
         let service_box = get_service_box(rally_state.server, rally_state.serve_side, &config);
 
-        // @spec 30902_fault_spec.md#req-30902-001: サービスボックス判定
-        if !service_box.contains(ball_pos.x, ball_pos.z) {
-            // サービスボックス外 → フォールト
-            let new_fault_count = rally_state.fault_count + 1;
+        match judge_serve_landing(&service_box, ball_pos, rally_state.serve_touched_net) {
+            // @spec 30902_fault_spec.md#req-30902-001: サービスボックス外
+            ServeLandingOutcome::Fault => {
+                let new_fault_count = rally_state.fault_count + 1;
 
-            info!(
-                "Fault! Ball landed at ({:.2}, {:.2}) outside service box. Fault count: {}",
-                ball_pos.x, ball_pos.z, new_fault_count
-            );
+                info!(
+                    "Fault! Ball landed at ({:.2}, {:.2}) outside service box. Fault count: {}",
+                    ball_pos.x, ball_pos.z, new_fault_count
+                );
 
-            fault_events.write(FaultEvent {
-                server: rally_state.server,
-                fault_count: new_fault_count,
-                reason: FaultReason::OutOfServiceBox,
-            });
+                fault_events.write(FaultEvent {
+                    server: rally_state.server,
+                    fault_count: new_fault_count,
+                    reason: FaultReason::OutOfServiceBox,
+                });
 
-            // フォルト発行後は追加のバウンス判定を防ぐ
-            // (fault_countをリセットしないようにend_point()は呼ばない)
-            rally_state.phase = RallyPhase::PointEnded;
-            return;
-        } else {
+                // フォルト発行後は追加のバウンス判定を防ぐ
+                // (fault_countをリセットしないようにend_point()は呼ばない)
+                rally_state.phase = RallyPhase::PointEnded;
+                return;
+            }
+            // サービスボックス内 + ネット接触済みはレット（再サーブ）
+            ServeLandingOutcome::Let => {
+                info!(
+                    "Let! Serve touched net and landed in service box at ({:.2}, {:.2}). Re-serve.",
+                    ball_pos.x, ball_pos.z
+                );
+
+                // 現在のサーブを破棄して同一点を再サーブ
+                commands.entity(event.ball).despawn();
+                rally_state.next_serve();
+                next_state.set(crate::resource::MatchFlowState::Serve);
+                return;
+            }
             // サービスボックス内 → 有効なサーブ（ラリー開始）
-            info!(
-                "Valid serve! Ball landed at ({:.2}, {:.2}) inside service box. Starting rally.",
-                ball_pos.x, ball_pos.z
-            );
+            ServeLandingOutcome::Valid => {
+                info!(
+                    "Valid serve! Ball landed at ({:.2}, {:.2}) inside service box. Starting rally.",
+                    ball_pos.x, ball_pos.z
+                );
 
-            // @spec 30101_flow_spec.md#req-30101-002: ラリーフェーズに遷移
-            rally_state.start_rally();
-            next_state.set(crate::resource::MatchFlowState::Rally);
+                // @spec 30101_flow_spec.md#req-30101-002: ラリーフェーズに遷移
+                rally_state.start_rally();
+                next_state.set(crate::resource::MatchFlowState::Rally);
+            }
         }
     }
 }
@@ -226,10 +263,7 @@ pub fn double_fault_processing_system(
         // @spec 30902_fault_spec.md#req-30902-002: レシーバーがポイントを獲得
         let winner = event.server.opponent();
 
-        info!(
-            "Double fault! {:?} wins the point.",
-            winner
-        );
+        info!("Double fault! {:?} wins the point.", winner);
 
         // ポイント終了処理
         rally_state.end_point();
@@ -341,10 +375,10 @@ mod tests {
 
         // 1Pがサーブ、デュースサイド（Z>0）→ クロスで2Pコート左半分（X>0, Z<0）
         let service_box = get_service_box(CourtSide::Left, ServeSide::Deuce, &config);
-        assert_eq!(service_box.x_min, 0.0);    // ネット位置
-        assert_eq!(service_box.x_max, 1.5);    // サービスライン位置
-        assert_eq!(service_box.z_min, -5.0);   // コート左側（-Z）クロス
-        assert_eq!(service_box.z_max, 0.0);    // コート中央
+        assert_eq!(service_box.x_min, 0.0); // ネット位置
+        assert_eq!(service_box.x_max, 1.5); // サービスライン位置
+        assert_eq!(service_box.z_min, -5.0); // コート左側（-Z）クロス
+        assert_eq!(service_box.z_max, 0.0); // コート中央
 
         // サービスボックス内（X=0.75, Z=-2.5）
         assert!(service_box.contains(0.75, -2.5));
@@ -364,10 +398,10 @@ mod tests {
 
         // 1Pがサーブ、アドサイド（Z<0）→ クロスで2Pコート右半分（X>0, Z>0）
         let service_box = get_service_box(CourtSide::Left, ServeSide::Ad, &config);
-        assert_eq!(service_box.x_min, 0.0);    // ネット位置
-        assert_eq!(service_box.x_max, 1.5);    // サービスライン位置
-        assert_eq!(service_box.z_min, 0.0);    // コート中央
-        assert_eq!(service_box.z_max, 5.0);    // コート右側（+Z）クロス
+        assert_eq!(service_box.x_min, 0.0); // ネット位置
+        assert_eq!(service_box.x_max, 1.5); // サービスライン位置
+        assert_eq!(service_box.z_min, 0.0); // コート中央
+        assert_eq!(service_box.z_max, 5.0); // コート右側（+Z）クロス
 
         // サービスボックス内（X=0.75, Z=2.5）
         assert!(service_box.contains(0.75, 2.5));
@@ -385,10 +419,10 @@ mod tests {
 
         // 2Pがサーブ、デュースサイド（Z<0）→ クロスで1Pコート右半分（X<0, Z>0）
         let service_box = get_service_box(CourtSide::Right, ServeSide::Deuce, &config);
-        assert_eq!(service_box.x_min, -1.5);   // サービスライン位置
-        assert_eq!(service_box.x_max, 0.0);    // ネット位置
-        assert_eq!(service_box.z_min, 0.0);    // コート中央
-        assert_eq!(service_box.z_max, 5.0);    // コート右側（+Z）クロス
+        assert_eq!(service_box.x_min, -1.5); // サービスライン位置
+        assert_eq!(service_box.x_max, 0.0); // ネット位置
+        assert_eq!(service_box.z_min, 0.0); // コート中央
+        assert_eq!(service_box.z_max, 5.0); // コート右側（+Z）クロス
 
         // サービスボックス内（X=-0.75, Z=2.5）
         assert!(service_box.contains(-0.75, 2.5));
@@ -433,5 +467,37 @@ mod tests {
         // ポイント終了でリセット
         rally_state.end_point();
         assert_eq!(rally_state.fault_count, 0);
+    }
+
+    #[test]
+    fn test_judge_serve_landing_outcomes() {
+        let service_box = ServiceBox {
+            x_min: 0.0,
+            x_max: 1.5,
+            z_min: -5.0,
+            z_max: 0.0,
+        };
+
+        // サービスボックス外はネット接触の有無に関わらずフォールト
+        assert_eq!(
+            judge_serve_landing(&service_box, Vec3::new(2.0, 0.0, -2.5), false),
+            ServeLandingOutcome::Fault
+        );
+        assert_eq!(
+            judge_serve_landing(&service_box, Vec3::new(2.0, 0.0, -2.5), true),
+            ServeLandingOutcome::Fault
+        );
+
+        // サービスボックス内 + ネット接触ありはレット
+        assert_eq!(
+            judge_serve_landing(&service_box, Vec3::new(0.8, 0.0, -2.0), true),
+            ServeLandingOutcome::Let
+        );
+
+        // サービスボックス内 + ネット接触なしは有効サーブ
+        assert_eq!(
+            judge_serve_landing(&service_box, Vec3::new(0.8, 0.0, -2.0), false),
+            ServeLandingOutcome::Valid
+        );
     }
 }

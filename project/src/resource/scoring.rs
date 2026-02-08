@@ -369,6 +369,8 @@ pub struct RallyState {
     /// このポイントでスコアが既に加算済みかどうか
     /// フレームをまたいだ重複加算を防止する
     pub point_scored_this_rally: bool,
+    /// サーブ中にネット接触したかどうか（レット判定用）
+    pub serve_touched_net: bool,
 }
 
 impl Default for RallyState {
@@ -380,6 +382,7 @@ impl Default for RallyState {
             fault_count: 0,
             rally_end_event_sent_this_frame: false,
             point_scored_this_rally: false,
+            serve_touched_net: false,
         }
     }
 }
@@ -395,6 +398,7 @@ impl RallyState {
             fault_count: 0,
             rally_end_event_sent_this_frame: false,
             point_scored_this_rally: false,
+            serve_touched_net: false,
         }
     }
 
@@ -410,17 +414,20 @@ impl RallyState {
         self.phase = RallyPhase::Serving;
         // 新しいサーブ開始時にスコア加算フラグをリセット
         self.point_scored_this_rally = false;
+        self.serve_touched_net = false;
     }
 
     /// ラリー開始（サーブが有効に入った）
     pub fn start_rally(&mut self) {
         self.phase = RallyPhase::Rally;
+        self.serve_touched_net = false;
     }
 
     /// ポイント終了
     pub fn end_point(&mut self) {
         self.phase = RallyPhase::PointEnded;
         self.fault_count = 0;
+        self.serve_touched_net = false;
     }
 
     /// 次のサーブへ（サーバー変更なし）
@@ -428,6 +435,7 @@ impl RallyState {
         self.phase = RallyPhase::WaitingServe;
         // 次のポイントに向けてスコア加算フラグをリセット
         self.point_scored_this_rally = false;
+        self.serve_touched_net = false;
     }
 
     /// ファウル記録
@@ -520,5 +528,22 @@ mod tests {
         // サーバー3ポイント: 3-1 → デュース（合計4）
         rally_state.update_serve_side(3, 1);
         assert_eq!(rally_state.serve_side, ServeSide::Deuce);
+    }
+
+    #[test]
+    fn test_serve_net_touch_flag_is_reset_on_serve_transitions() {
+        let mut rally_state = RallyState::new(CourtSide::Left);
+
+        rally_state.serve_touched_net = true;
+        rally_state.start_serve();
+        assert!(!rally_state.serve_touched_net);
+
+        rally_state.serve_touched_net = true;
+        rally_state.start_rally();
+        assert!(!rally_state.serve_touched_net);
+
+        rally_state.serve_touched_net = true;
+        rally_state.next_serve();
+        assert!(!rally_state.serve_touched_net);
     }
 }

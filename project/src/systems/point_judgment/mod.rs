@@ -34,6 +34,8 @@ impl Plugin for PointJudgmentPlugin {
                 (
                     // 最初にフラグをリセット
                     reset_rally_end_event_flag_system,
+                    // サーブ中のネット接触検知（レット判定用フラグ）
+                    let_judgment_system,
                     update_last_shooter_system,
                     bounce_count_update_system,
                 )
@@ -49,7 +51,6 @@ impl Plugin for PointJudgmentPlugin {
                     double_bounce_judgment_system,
                     out_of_bounds_judgment_system,
                     wall_hit_judgment_system,
-                    let_judgment_system,
                     net_fault_judgment_system,
                     own_court_hit_judgment_system,
                 )

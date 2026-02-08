@@ -5,10 +5,12 @@ use bevy::prelude::*;
 
 use crate::core::CourtSide;
 use crate::resource::config::*;
+use crate::systems::match_control::get_service_box;
 
 use super::landing_position::{apply_landing_deviation, calculate_landing_position};
 use super::launch_angle::calculate_launch_angle;
 use super::physics_utils::{calculate_effective_gravity, calculate_speed_factors};
+use super::serve_trajectory::calculate_serve_landing_position;
 use super::types::TrajectoryContext;
 
 fn make_test_config() -> GameConfig {
@@ -138,11 +140,7 @@ fn test_forward_landing_position() {
     let landing = calculate_landing_position(&ctx, &config.court, &config.trajectory);
 
     // ネット際: X = net_x + margin = 0 + 0.5 = 0.5
-    assert!(
-        landing.x < 2.0,
-        "Expected X near net, got {}",
-        landing.x
-    );
+    assert!(landing.x < 2.0, "Expected X near net, got {}", landing.x);
 }
 
 /// TST-30605-003: 後入力（ベースライン際）着地テスト
@@ -211,6 +209,43 @@ fn test_side_landing_position() {
     );
 }
 
+/// TST-30605-050: サーブ着地Z座標がサービスボックス内に収まること
+/// @spec 30605_trajectory_calculation_spec.md#req-30605-052
+#[test]
+fn test_serve_landing_position_stays_inside_service_box_z() {
+    let config = make_test_config();
+    let service_box = get_service_box(CourtSide::Left, ServeSide::Deuce, &config);
+
+    // 左右端入力のどちらでもサービスボックス内に収まること
+    let left_course = calculate_serve_landing_position(
+        Vec2::new(-1.0, 0.0),
+        CourtSide::Left,
+        ServeSide::Deuce,
+        &config,
+    );
+    let right_course = calculate_serve_landing_position(
+        Vec2::new(1.0, 0.0),
+        CourtSide::Left,
+        ServeSide::Deuce,
+        &config,
+    );
+
+    assert!(
+        left_course.z >= service_box.z_min && left_course.z <= service_box.z_max,
+        "Left course z={} is outside [{}, {}]",
+        left_course.z,
+        service_box.z_min,
+        service_box.z_max
+    );
+    assert!(
+        right_course.z >= service_box.z_min && right_course.z <= service_box.z_max,
+        "Right course z={} is outside [{}, {}]",
+        right_course.z,
+        service_box.z_min,
+        service_box.z_max
+    );
+}
+
 /// TST-30605-005: Right側の着地計算テスト
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-013
 #[test]
@@ -257,11 +292,15 @@ fn test_launch_angle_calculation() {
     let base_speed = 15.0;
     let effective_gravity = 9.8;
 
-    let (angle, _speed, _landing) =
-        calculate_launch_angle(
-            start, target, base_speed, effective_gravity, trajectory_config,
-            court_config.net_x, court_config.net_height,
-        );
+    let (angle, _speed, _landing) = calculate_launch_angle(
+        start,
+        target,
+        base_speed,
+        effective_gravity,
+        trajectory_config,
+        court_config.net_x,
+        court_config.net_height,
+    );
 
     // 角度が有効範囲内
     assert!(
@@ -397,16 +436,20 @@ fn test_net_clearance_with_adjusted_speed() {
     let court_config = &config.court;
 
     // 低い打点からの打球（ネットを超えにくい条件）
-    let start = Vec3::new(-6.0, 0.5, 0.0);  // 打点が低い
-    let target = Vec3::new(5.0, 0.0, 0.0);  // 遠い着地点
-    let base_speed = 12.0;  // 中程度の速度
+    let start = Vec3::new(-6.0, 0.5, 0.0); // 打点が低い
+    let target = Vec3::new(5.0, 0.0, 0.0); // 遠い着地点
+    let base_speed = 12.0; // 中程度の速度
     let effective_gravity = 9.8;
 
-    let (angle, speed, _landing) =
-        calculate_launch_angle(
-            start, target, base_speed, effective_gravity, trajectory_config,
-            court_config.net_x, court_config.net_height,
-        );
+    let (angle, speed, _landing) = calculate_launch_angle(
+        start,
+        target,
+        base_speed,
+        effective_gravity,
+        trajectory_config,
+        court_config.net_x,
+        court_config.net_height,
+    );
 
     // ネット通過時の高さを計算して検証
     let dist_to_net = (court_config.net_x - start.x).abs();
@@ -416,8 +459,8 @@ fn test_net_clearance_with_adjusted_speed() {
 
     if cos_a.abs() > 0.001 {
         let t_net = dist_to_net / (speed * cos_a);
-        let height_at_net = start.y + speed * sin_a * t_net
-            - 0.5 * effective_gravity * t_net * t_net;
+        let height_at_net =
+            start.y + speed * sin_a * t_net - 0.5 * effective_gravity * t_net * t_net;
 
         // ネット高さ（1.0m）を超えていること
         assert!(
@@ -438,15 +481,19 @@ fn test_net_clearance_with_far_target() {
 
     // ベースライン付近から相手ベースライン付近への打球
     let start = Vec3::new(-7.0, 1.0, 0.0);
-    let target = Vec3::new(7.0, 0.0, 0.0);  // 非常に遠い
+    let target = Vec3::new(7.0, 0.0, 0.0); // 非常に遠い
     let base_speed = 15.0;
     let effective_gravity = 9.8;
 
-    let (angle, speed, _landing) =
-        calculate_launch_angle(
-            start, target, base_speed, effective_gravity, trajectory_config,
-            court_config.net_x, court_config.net_height,
-        );
+    let (angle, speed, _landing) = calculate_launch_angle(
+        start,
+        target,
+        base_speed,
+        effective_gravity,
+        trajectory_config,
+        court_config.net_x,
+        court_config.net_height,
+    );
 
     // 角度が有効範囲内
     assert!(
@@ -466,8 +513,8 @@ fn test_net_clearance_with_far_target() {
 
     if cos_a.abs() > 0.001 {
         let t_net = dist_to_net / (speed * cos_a);
-        let height_at_net = start.y + speed * sin_a * t_net
-            - 0.5 * effective_gravity * t_net * t_net;
+        let height_at_net =
+            start.y + speed * sin_a * t_net - 0.5 * effective_gravity * t_net * t_net;
 
         assert!(
             height_at_net > court_config.net_height,

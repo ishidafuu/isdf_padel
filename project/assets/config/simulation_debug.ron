@@ -20,6 +20,7 @@
         velocity: true,
         events: true,
         interval_frames: 10,
+        shot_attributes: true,
     ),
     anomaly_thresholds: (
         bounds_margin: 50.0,

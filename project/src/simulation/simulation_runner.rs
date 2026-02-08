@@ -14,11 +14,11 @@ use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 
 use crate::components::AiController;
-use crate::core::CourtSide;
+use crate::core::{CourtSide, RallyEndEvent};
 use crate::resource::config::GameConfig;
 use crate::resource::scoring::{GameState, MatchScore};
-use crate::resource::{FixedDeltaTime, GameRng};
 use crate::resource::MatchFlowState;
+use crate::resource::{FixedDeltaTime, GameRng};
 
 use super::{
     AnomalyDetectorResource, AnomalyThresholdsResource, DebugLogger, EventTracer, HeadlessPlugins,
@@ -212,6 +212,7 @@ impl SimulationRunner {
         app.add_systems(
             Update,
             (
+                count_rally_end_system,
                 check_match_end_system,
                 check_timeout_system,
                 debug_simulation_state,
@@ -334,6 +335,15 @@ fn simulation_setup_system(mut commands: Commands, config: Res<GameConfig>) {
     });
 }
 
+/// ラリー終了イベント数を集計
+fn count_rally_end_system(
+    mut sim_state: ResMut<SimulationStateResource>,
+    mut rally_events: MessageReader<RallyEndEvent>,
+) {
+    let rally_count = rally_events.read().count() as u32;
+    sim_state.rally_count += rally_count;
+}
+
 /// 試合終了検出システム
 fn check_match_end_system(
     mut sim_state: ResMut<SimulationStateResource>,
@@ -359,7 +369,10 @@ fn check_match_end_system(
 }
 
 /// タイムアウト検出システム
-fn check_timeout_system(mut sim_state: ResMut<SimulationStateResource>, fixed_dt: Res<FixedDeltaTime>) {
+fn check_timeout_system(
+    mut sim_state: ResMut<SimulationStateResource>,
+    fixed_dt: Res<FixedDeltaTime>,
+) {
     sim_state.elapsed_secs += fixed_dt.delta_secs();
 
     if sim_state.elapsed_secs >= sim_state.timeout_secs {

@@ -8,7 +8,9 @@ use crate::resource::config::{GameConfig, ServeSide};
 use crate::systems::match_control::get_service_box;
 
 use super::launch_angle::calculate_launch_angle;
-use super::physics_utils::{calculate_direction_vector, calculate_effective_gravity, lerp, CourtSideExt};
+use super::physics_utils::{
+    calculate_direction_vector, calculate_effective_gravity, lerp, CourtSideExt,
+};
 use super::types::{ServeTrajectoryContext, TrajectoryResult};
 
 /// サーブ用着地地点を計算
@@ -38,7 +40,7 @@ pub fn calculate_serve_landing_position(
     let width_t = (input.x + 1.0) / 2.0; // -1..1 → 0..1
     let target_z = lerp(
         service_box.z_min + margin,
-        service_box.z_max + margin,
+        service_box.z_max - margin,
         width_t,
     );
 
@@ -49,17 +51,16 @@ pub fn calculate_serve_landing_position(
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-050
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-053
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-054
-pub fn calculate_serve_trajectory(ctx: &ServeTrajectoryContext, config: &GameConfig) -> TrajectoryResult {
+pub fn calculate_serve_trajectory(
+    ctx: &ServeTrajectoryContext,
+    config: &GameConfig,
+) -> TrajectoryResult {
     let trajectory_config = &config.trajectory;
     let court_config = &config.court;
 
     // 1. サービスボックス内の着地地点を決定
-    let landing_position = calculate_serve_landing_position(
-        ctx.input,
-        ctx.server,
-        ctx.serve_side,
-        config,
-    );
+    let landing_position =
+        calculate_serve_landing_position(ctx.input, ctx.server, ctx.serve_side, config);
 
     // 2. 有効重力を計算（サーブはフラット: spin = 0）
     let effective_gravity = calculate_effective_gravity(0.0, ctx.hit_position.y, config);
