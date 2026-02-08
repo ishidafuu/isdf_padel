@@ -408,6 +408,12 @@ impl DebugControlGuiApp {
             if ui.button("実行中上書きを保存").clicked() {
                 self.save_runtime();
             }
+            if ui.button("選択中タブをリセット").clicked() {
+                self.reset_runtime_current_section();
+            }
+            if ui.button("実行中上書きを全リセット").clicked() {
+                self.reset_runtime_all();
+            }
             if ui.button("実行中上書きファイルを開く").clicked() {
                 match Self::open_file_default(DEBUG_RUNTIME_CONFIG_PATH) {
                     Ok(path) => {
@@ -429,17 +435,25 @@ impl DebugControlGuiApp {
 
         self.ensure_runtime_section_index();
 
-        let section_tabs: Vec<(usize, String, usize)> = self
+        let section_tabs: Vec<(usize, String, usize, usize)> = self
             .catalog
             .sections
             .iter()
             .enumerate()
-            .map(|(index, section)| (index, section.title.clone(), section.fields.len()))
+            .map(|(index, section)| {
+                (
+                    index,
+                    section.title.clone(),
+                    section.fields.len(),
+                    self.runtime_section_enabled_count(section),
+                )
+            })
             .collect();
         ui.horizontal_wrapped(|ui| {
-            for (index, title, field_count) in &section_tabs {
+            for (index, title, field_count, enabled_count) in &section_tabs {
                 let selected = *index == self.runtime_section_index;
-                let label = format!("{} ({})", title, field_count);
+                let marker = if *enabled_count > 0 { "●" } else { "○" };
+                let label = format!("{} {} {}/{}", marker, title, enabled_count, field_count);
                 if ui.selectable_label(selected, label).clicked() {
                     self.runtime_section_index = *index;
                 }
@@ -516,6 +530,9 @@ impl DebugControlGuiApp {
         ui.horizontal(|ui| {
             if ui.button("起動時環境変数を保存").clicked() {
                 self.save_env();
+            }
+            if ui.button("このタブをリセット").clicked() {
+                self.reset_env_tab();
             }
             if ui.button("起動時環境変数ファイルを開く").clicked() {
                 match Self::open_file_default(DEBUG_ENV_CONFIG_PATH) {
@@ -616,11 +633,137 @@ impl DebugControlGuiApp {
         ui.horizontal_wrapped(|ui| {
             for tab in [MainTab::Runtime, MainTab::Env, MainTab::Effective] {
                 let selected = self.active_tab == tab;
-                if ui.selectable_label(selected, tab.title()).clicked() {
+                let label = self.main_tab_label(tab);
+                if ui.selectable_label(selected, label).clicked() {
                     self.active_tab = tab;
                 }
             }
         });
+    }
+
+    fn main_tab_label(&self, tab: MainTab) -> String {
+        match tab {
+            MainTab::Runtime => {
+                let enabled = self.runtime_enabled_total_count();
+                if enabled > 0 {
+                    format!("{} ●{}", tab.title(), enabled)
+                } else {
+                    tab.title().to_string()
+                }
+            }
+            MainTab::Env => {
+                let count = self.env_active_count();
+                if count > 0 {
+                    format!("{} ●{}", tab.title(), count)
+                } else {
+                    tab.title().to_string()
+                }
+            }
+            MainTab::Effective => tab.title().to_string(),
+        }
+    }
+
+    fn is_field_enabled(&self, field: &DebugFieldDef) -> bool {
+        if field.is_flag() {
+            return self.flag_states.get(field.key()).copied().unwrap_or(false);
+        }
+        if field.is_float() {
+            return self
+                .float_states
+                .get(field.key())
+                .map(|state| state.enabled)
+                .unwrap_or(false);
+        }
+        false
+    }
+
+    fn runtime_section_enabled_count(&self, section: &DebugFieldSection) -> usize {
+        section
+            .fields
+            .iter()
+            .filter(|field| self.is_field_enabled(field))
+            .count()
+    }
+
+    fn runtime_enabled_total_count(&self) -> usize {
+        self.catalog
+            .sections
+            .iter()
+            .map(|section| self.runtime_section_enabled_count(section))
+            .sum()
+    }
+
+    fn env_active_count(&self) -> usize {
+        self.env_rows
+            .iter()
+            .filter(|row| !row.key.trim().is_empty())
+            .count()
+    }
+
+    fn reset_runtime_current_section(&mut self) {
+        let section = self
+            .catalog
+            .sections
+            .get(self.runtime_section_index)
+            .cloned();
+        let Some(section) = section else {
+            self.status_message = "リセット対象のタブがありません".to_string();
+            return;
+        };
+        for field in &section.fields {
+            self.reset_runtime_field(field);
+        }
+        if self.runtime_enabled_total_count() == 0 {
+            self.runtime_enabled = false;
+        }
+        self.status_message = format!("タブ「{}」をリセットしました", section.title);
+    }
+
+    fn reset_runtime_all(&mut self) {
+        let sections = self.catalog.sections.clone();
+        for section in &sections {
+            for field in &section.fields {
+                self.reset_runtime_field(field);
+            }
+        }
+        self.runtime_enabled = false;
+        self.status_message = "実行中上書きを全リセットしました".to_string();
+    }
+
+    fn reset_runtime_field(&mut self, field: &DebugFieldDef) {
+        if field.is_flag() {
+            self.flag_states.insert(field.key.clone(), false);
+            return;
+        }
+        if field.is_float() {
+            let base_value = self
+                .base_config
+                .as_ref()
+                .and_then(|base| match get_config_value(base, field.key()) {
+                    Some(DebugOverrideValue::Float(v)) => Some(v),
+                    _ => None,
+                })
+                .unwrap_or_else(|| {
+                    self.float_states
+                        .get(field.key())
+                        .map(|state| state.value)
+                        .unwrap_or(0.0)
+                });
+            self.float_states.insert(
+                field.key.clone(),
+                FloatState {
+                    enabled: false,
+                    value: base_value,
+                },
+            );
+        }
+    }
+
+    fn reset_env_tab(&mut self) {
+        self.env_rows.clear();
+        self.new_env_key.clear();
+        self.new_env_value.clear();
+        self.status_message = "起動時環境変数タブをリセットしました".to_string();
     }
 }
 
