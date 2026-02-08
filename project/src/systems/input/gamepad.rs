@@ -80,14 +80,16 @@ pub fn gamepad_input_system(
             // human_input_system が先に実行され、キーボード入力に基づいて holding/hold_time を設定済み
             // ゲームパッドでホールド中ならその状態を上書き/継続
             if gamepad_shot_pressed {
-                input_state.holding = true;
-                if !gamepad_shot_just_pressed {
+                if !input_state.holding {
+                    // gamepad-only(device_id=0)のケースでは human_input_system 側で
+                    // holding=false になっているため、ここで新規ホールドとして初期化する。
+                    input_state.holding = true;
+                    input_state.hold_time = 0.0;
+                } else if !gamepad_shot_just_pressed {
                     // ゲームパッドでホールド継続（2フレーム目以降）
                     input_state.hold_time += delta_ms;
                 }
-                // gamepad_shot_just_pressed の場合:
-                // - hold_time == 0.0 → 新規ホールド開始（そのまま）
-                // - hold_time > 0.0 → キーボードでホールド中だった（hold_timeを維持）
+                // キーボード側で既にホールド中のときは、hold_time を維持してOR入力として扱う。
             }
             // ゲームパッドが離されている場合:
             // - キーボードでホールド中 → holding = true のまま（human_input_system で設定済み）
