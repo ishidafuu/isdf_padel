@@ -184,7 +184,18 @@ project/
 ## 制限事項
 
 - シード指定による完全な再現性は未保証（Phase 1.4で対応予定）
-- トレース出力機能は未実装（Phase 2で対応予定）
+- マッチ終了条件のバランス次第で `timeout_secs` 到達が起こり得る（KPIで監視）
+
+## QA運用
+
+標準実行は `project/scripts/qa_cycle.sh` を使用する。
+
+```bash
+cd project
+./scripts/qa_cycle.sh -c debug
+```
+
+詳細は `project/docs/7_tools/71_simulation/77300_qa_cycle_runbook.md` を参照。
 
 ## 関連ファイル
 
