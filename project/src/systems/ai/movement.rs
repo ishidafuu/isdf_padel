@@ -65,8 +65,6 @@ fn calculate_landing_position(ball_pos: Vec3, ball_vel: Vec3, gravity: f32) -> O
     ))
 }
 
-
-
 /// 軌道ライン上のZ座標を計算
 /// @spec 30301_ai_movement_spec.md#req-30301-v08-002
 ///
@@ -97,12 +95,7 @@ fn calculate_trajectory_line_z(
 /// @spec 30301_ai_movement_spec.md#req-30301-v07-002
 ///
 /// ボールがAIのX座標に到達する前に着地するかを判定
-fn is_short_ball(
-    ai_x: f32,
-    ball_pos: Vec3,
-    ball_vel: Vec3,
-    gravity: f32,
-) -> bool {
+fn is_short_ball(ai_x: f32, ball_pos: Vec3, ball_vel: Vec3, gravity: f32) -> bool {
     // インターセプト時間を計算
     if ball_vel.x.abs() < 0.001 {
         return true; // X方向に動いていない = 短いボールとみなす
@@ -147,11 +140,7 @@ fn apply_z_error(z: f32, config: &GameConfig, game_rng: &mut GameRng) -> f32 {
 /// @spec 30301_ai_movement_spec.md#req-30301-v05
 ///
 /// ボール位置に応じた動的な待機位置を計算
-fn calculate_idle_position(
-    ball_pos: Vec3,
-    court_side: CourtSide,
-    config: &GameConfig,
-) -> Vec3 {
+fn calculate_idle_position(ball_pos: Vec3, court_side: CourtSide, config: &GameConfig) -> Vec3 {
     let depth = config.ai.optimal_depth;
     let bias_factor = config.ai.coverage_bias_factor;
     let max_z_offset = config.ai.max_z_offset;
@@ -177,10 +166,7 @@ fn update_reaction_timer(
     delta: f32,
 ) {
     // 反応遅延はボールが初めて向かってきた時のみ設定
-    if ball_coming_to_me
-        && ai.movement_state == AiMovementState::Idle
-        && ai.reaction_timer <= 0.0
-    {
+    if ball_coming_to_me && ai.movement_state == AiMovementState::Idle && ai.reaction_timer <= 0.0 {
         ai.reaction_timer = reaction_delay;
     }
 
@@ -318,7 +304,14 @@ fn determine_ai_target(
             (AiMovementState::Idle, ai_pos)
         } else {
             let target = calculate_tracking_target(
-                ai, ai_pos, ball_pos, ball_vel, gravity, state_changed, config, game_rng,
+                ai,
+                ai_pos,
+                ball_pos,
+                ball_vel,
+                gravity,
+                state_changed,
+                config,
+                game_rng,
             );
             (AiMovementState::Tracking, target)
         }
@@ -346,9 +339,13 @@ fn log_ai_movement_debug(
         logger.log_ai(&format!(
             "P{} target=({:.2},{:.2},{:.2}) state={} ball_pos=({:.2},{:.2},{:.2})",
             player_id,
-            target_pos.x, target_pos.y, target_pos.z,
+            target_pos.x,
+            target_pos.y,
+            target_pos.z,
             reason,
-            ball_pos.x, ball_pos.y, ball_pos.z
+            ball_pos.x,
+            ball_pos.y,
+            ball_pos.z
         ));
     }
 }
@@ -378,7 +375,13 @@ fn execute_ai_movement(
         velocity.value.x = 0.0;
         velocity.value.z = 0.0;
     } else {
-        move_towards_target(logical_pos, velocity, target_pos, config.ai.move_speed, delta);
+        move_towards_target(
+            logical_pos,
+            velocity,
+            target_pos,
+            config.ai.move_speed,
+            delta,
+        );
     }
 }
 
@@ -408,7 +411,10 @@ pub fn ai_movement_system(
 ) {
     let delta = fixed_dt.delta_secs();
     let gravity = config.physics.gravity;
-    let ball_info = ball_query.iter().next().map(|(pos, vel)| (pos.value, vel.value));
+    let ball_info = ball_query
+        .iter()
+        .next()
+        .map(|(pos, vel)| (pos.value, vel.value));
 
     for (player, mut ai, mut logical_pos, mut velocity, knockback) in ai_query.iter_mut() {
         if knockback.is_knockback_active() {
@@ -419,7 +425,13 @@ pub fn ai_movement_system(
 
         // ボール不在時はホームポジションへ
         let Some((ball_pos, ball_vel)) = ball_info else {
-            handle_no_ball_state(&mut ai, &mut logical_pos, &mut velocity, config.ai.move_speed, delta);
+            handle_no_ball_state(
+                &mut ai,
+                &mut logical_pos,
+                &mut velocity,
+                config.ai.move_speed,
+                delta,
+            );
             continue;
         };
 
@@ -436,20 +448,44 @@ pub fn ai_movement_system(
 
         let prev_state = ai.movement_state;
         let (new_state, target_pos) = determine_ai_target(
-            &mut ai, ai_pos, ball_pos, ball_vel, gravity,
-            ball_coming_to_me, idle_pos, state_changed, &config, &mut game_rng,
+            &mut ai,
+            ai_pos,
+            ball_pos,
+            ball_vel,
+            gravity,
+            ball_coming_to_me,
+            idle_pos,
+            state_changed,
+            &config,
+            &mut game_rng,
         );
 
         ai.movement_state = new_state;
         ai.target_position = target_pos;
 
         if let Some(ref mut logger) = debug_logger {
-            log_ai_movement_debug(logger, player.id, target_pos, ball_pos, new_state, prev_state, state_changed);
+            log_ai_movement_debug(
+                logger,
+                player.id,
+                target_pos,
+                ball_pos,
+                new_state,
+                prev_state,
+                state_changed,
+            );
         }
 
         execute_ai_movement(
-            &mut logical_pos, &mut velocity, ai_pos, target_pos,
-            ball_pos, ball_vel, gravity, new_state, &config, delta,
+            &mut logical_pos,
+            &mut velocity,
+            ai_pos,
+            target_pos,
+            ball_pos,
+            ball_vel,
+            gravity,
+            new_state,
+            &config,
+            delta,
         );
     }
 }

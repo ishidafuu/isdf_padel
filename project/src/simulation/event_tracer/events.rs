@@ -9,34 +9,20 @@ use crate::core::CourtSide;
 #[derive(Debug, Clone)]
 pub enum GameEvent {
     /// ショット実行
-    BallHit {
-        player: u8,
-        shot_type: String,
-    },
+    BallHit { player: u8, shot_type: String },
     /// 地面バウンス
     Bounce {
         position: Vec3,
         court_side: CourtSide,
     },
     /// 壁反射
-    WallReflect {
-        position: Vec3,
-        wall_type: String,
-    },
+    WallReflect { position: Vec3, wall_type: String },
     /// ポイント獲得
-    Point {
-        winner: u8,
-        reason: String,
-    },
+    Point { winner: u8, reason: String },
     /// フォールト
-    Fault {
-        fault_type: String,
-    },
+    Fault { fault_type: String },
     /// 状態遷移
-    StateChange {
-        from: String,
-        to: String,
-    },
+    StateChange { from: String, to: String },
     /// ショット属性計算詳細
     ShotAttributesCalculated {
         player_id: u8,

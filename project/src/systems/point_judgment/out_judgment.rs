@@ -4,7 +4,9 @@
 use bevy::prelude::*;
 
 use crate::components::{Ball, LastShooter, PointEnded};
-use crate::core::events::{BallOutOfBoundsEvent, RallyEndEvent, RallyEndReason, WallReflectionEvent};
+use crate::core::events::{
+    BallOutOfBoundsEvent, RallyEndEvent, RallyEndReason, WallReflectionEvent,
+};
 use crate::core::CourtSide;
 use crate::resource::{GameState, MatchScore, RallyState};
 use crate::simulation::DebugLogger;
@@ -47,7 +49,11 @@ pub fn out_of_bounds_judgment_system(
                 if let Some(ref mut logger) = debug_logger {
                     logger.log_scoring(&format!(
                         "POINT winner={:?} reason=Out pos=({:.2},{:.2},{:.2}) shooter={:?}",
-                        winner, event.final_position.x, event.final_position.y, event.final_position.z, shooter
+                        winner,
+                        event.final_position.x,
+                        event.final_position.y,
+                        event.final_position.z,
+                        shooter
                     ));
                 }
 

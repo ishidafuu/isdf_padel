@@ -24,10 +24,10 @@ use crate::resource::CourtConfig;
 #[inline]
 pub fn create_court_bounds(config: &CourtConfig) -> CourtBounds {
     CourtBounds::new(
-        -config.width / 2.0,  // left (Z方向、コート幅)
-        config.width / 2.0,   // right (Z方向)
-        -config.depth / 2.0,  // back_left (X方向、1Pバックライン)
-        config.depth / 2.0,   // back_right (X方向、2Pバックライン)
+        -config.width / 2.0, // left (Z方向、コート幅)
+        config.width / 2.0,  // right (Z方向)
+        -config.depth / 2.0, // back_left (X方向、1Pバックライン)
+        config.depth / 2.0,  // back_right (X方向、2Pバックライン)
         0.0,
         config.ceiling_height,
     )
@@ -66,12 +66,12 @@ mod tests {
 
     fn test_config() -> CourtConfig {
         CourtConfig {
-            width: 10.0,   // Z方向（コート幅）
-            depth: 6.0,    // X方向（打ち合い方向）
+            width: 10.0, // Z方向（コート幅）
+            depth: 6.0,  // X方向（打ち合い方向）
             ceiling_height: 5.0,
             max_jump_height: 5.0,
             net_height: 1.0,
-            net_x: 0.0,    // ネットのX座標
+            net_x: 0.0, // ネットのX座標
             service_box_depth: 1.5,
             outer_wall_z: 8.0,  // 外壁（Z方向）
             outer_wall_x: 10.0, // 外壁（X方向）

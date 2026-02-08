@@ -11,9 +11,13 @@ mod tests;
 
 use bevy::prelude::*;
 
-pub use bounce::{ball_ground_bounce_system, ball_out_of_bounds_system, ball_wall_reflection_system};
+pub use bounce::{
+    ball_ground_bounce_system, ball_out_of_bounds_system, ball_wall_reflection_system,
+};
 pub use net_collision::ball_net_collision_system;
-pub use physics::{ball_air_drag_system, ball_gravity_system, ball_position_update_system, ball_spin_decay_system};
+pub use physics::{
+    ball_air_drag_system, ball_gravity_system, ball_position_update_system, ball_spin_decay_system,
+};
 
 /// ボール軌道プラグイン
 /// @spec 30401_trajectory_spec.md
@@ -21,7 +25,9 @@ pub struct BallTrajectoryPlugin;
 
 impl Plugin for BallTrajectoryPlugin {
     fn build(&self, app: &mut App) {
-        use crate::core::events::{BallOutOfBoundsEvent, GroundBounceEvent, NetHitEvent, WallReflectionEvent};
+        use crate::core::events::{
+            BallOutOfBoundsEvent, GroundBounceEvent, NetHitEvent, WallReflectionEvent,
+        };
 
         app.add_message::<BallOutOfBoundsEvent>()
             .add_message::<GroundBounceEvent>()

@@ -4,7 +4,9 @@
 
 use bevy::prelude::*;
 
-use crate::components::{GroundedState, InputState, KnockbackState, LogicalPosition, Player, Velocity};
+use crate::components::{
+    GroundedState, InputState, KnockbackState, LogicalPosition, Player, Velocity,
+};
 use crate::core::events::{PlayerJumpEvent, PlayerLandEvent};
 use crate::resource::config::GameConfig;
 use crate::resource::FixedDeltaTime;
@@ -17,7 +19,13 @@ use crate::resource::FixedDeltaTime;
 /// @spec 20006_input_system.md - InputState 対応
 pub fn jump_system(
     config: Res<GameConfig>,
-    mut query: Query<(&Player, &mut Velocity, &mut GroundedState, &KnockbackState, &InputState)>,
+    mut query: Query<(
+        &Player,
+        &mut Velocity,
+        &mut GroundedState,
+        &KnockbackState,
+        &InputState,
+    )>,
     mut event_writer: MessageWriter<PlayerJumpEvent>,
 ) {
     for (player, mut velocity, mut grounded, knockback, input_state) in query.iter_mut() {
@@ -99,7 +107,12 @@ pub fn vertical_movement_system(
 /// @spec 30202_jump_spec.md#req-30202-003
 /// @spec 30202_jump_spec.md#req-30202-008
 pub fn landing_system(
-    mut query: Query<(&Player, &mut LogicalPosition, &mut Velocity, &mut GroundedState)>,
+    mut query: Query<(
+        &Player,
+        &mut LogicalPosition,
+        &mut Velocity,
+        &mut GroundedState,
+    )>,
     mut event_writer: MessageWriter<PlayerLandEvent>,
 ) {
     for (player, mut logical_pos, mut velocity, mut grounded) in query.iter_mut() {

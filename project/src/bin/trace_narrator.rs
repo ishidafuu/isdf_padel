@@ -17,14 +17,14 @@
 //! ```
 
 // モジュール名の衝突を避けるためにpathアトリビュートを使用
-#[path = "trace_narrator/types.rs"]
-mod types;
-#[path = "trace_narrator/parser.rs"]
-mod parser;
 #[path = "trace_narrator/analyzer.rs"]
 mod analyzer;
 #[path = "trace_narrator/formatter.rs"]
 mod formatter;
+#[path = "trace_narrator/parser.rs"]
+mod parser;
+#[path = "trace_narrator/types.rs"]
+mod types;
 
 use std::fs;
 use std::io::{self, Write};
@@ -39,7 +39,11 @@ use parser::parse_trace_file;
 /// Trace Narrator - テレメトリログ変換ツール
 /// @spec REQ-77201-007, REQ-77201-008
 #[derive(Parser, Debug)]
-#[command(author, version, about = "Convert telemetry logs to narrative markdown format")]
+#[command(
+    author,
+    version,
+    about = "Convert telemetry logs to narrative markdown format"
+)]
 struct Args {
     /// 入力JSONLファイル
     input: PathBuf,

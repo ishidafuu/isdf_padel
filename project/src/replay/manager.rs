@@ -84,7 +84,8 @@ impl ReplayManager {
         // バイナリ形式で書き込み
         self.write_binary_replay(&filepath, data)?;
 
-        info!("Replay saved: {:?} ({} frames, {} bytes)",
+        info!(
+            "Replay saved: {:?} ({} frames, {} bytes)",
             filepath,
             data.frames.len(),
             fs::metadata(&filepath).map(|m| m.len()).unwrap_or(0)
@@ -94,8 +95,7 @@ impl ReplayManager {
 
     /// バイナリ形式でリプレイを書き込み
     fn write_binary_replay(&self, path: &Path, data: &ReplayData) -> Result<(), String> {
-        let file = File::create(path)
-            .map_err(|e| format!("Failed to create file: {}", e))?;
+        let file = File::create(path).map_err(|e| format!("Failed to create file: {}", e))?;
         let mut writer = BufWriter::new(file);
 
         // メタデータをbincodeでシリアライズ
@@ -104,25 +104,31 @@ impl ReplayManager {
 
         // ヘッダー書き込み（16バイト）
         // Magic (4 bytes)
-        writer.write_all(REPLAY_MAGIC)
+        writer
+            .write_all(REPLAY_MAGIC)
             .map_err(|e| format!("Failed to write magic: {}", e))?;
         // Version (2 bytes, little endian)
-        writer.write_all(&REPLAY_VERSION.to_le_bytes())
+        writer
+            .write_all(&REPLAY_VERSION.to_le_bytes())
             .map_err(|e| format!("Failed to write version: {}", e))?;
         // Reserved (2 bytes)
-        writer.write_all(&[0u8; 2])
+        writer
+            .write_all(&[0u8; 2])
             .map_err(|e| format!("Failed to write reserved: {}", e))?;
         // Frame count (4 bytes, little endian)
         let frame_count = data.frames.len() as u32;
-        writer.write_all(&frame_count.to_le_bytes())
+        writer
+            .write_all(&frame_count.to_le_bytes())
             .map_err(|e| format!("Failed to write frame count: {}", e))?;
         // Metadata size (4 bytes, little endian)
         let metadata_size = metadata_bytes.len() as u32;
-        writer.write_all(&metadata_size.to_le_bytes())
+        writer
+            .write_all(&metadata_size.to_le_bytes())
             .map_err(|e| format!("Failed to write metadata size: {}", e))?;
 
         // メタデータ書き込み
-        writer.write_all(&metadata_bytes)
+        writer
+            .write_all(&metadata_bytes)
             .map_err(|e| format!("Failed to write metadata: {}", e))?;
 
         // フレームデータ書き込み（各6バイト）
@@ -130,11 +136,13 @@ impl ReplayManager {
         for frame in &data.frames {
             let binary_frame = BinaryFrameInput::from_frame_input(frame);
             binary_frame.write_to(&mut frame_buf);
-            writer.write_all(&frame_buf)
+            writer
+                .write_all(&frame_buf)
                 .map_err(|e| format!("Failed to write frame: {}", e))?;
         }
 
-        writer.flush()
+        writer
+            .flush()
             .map_err(|e| format!("Failed to flush: {}", e))?;
 
         Ok(())
@@ -209,9 +217,11 @@ impl ReplayManager {
         }
 
         // フレーム数
-        let frame_count = u32::from_le_bytes([header[8], header[9], header[10], header[11]]) as usize;
+        let frame_count =
+            u32::from_le_bytes([header[8], header[9], header[10], header[11]]) as usize;
         // メタデータサイズ
-        let metadata_size = u32::from_le_bytes([header[12], header[13], header[14], header[15]]) as usize;
+        let metadata_size =
+            u32::from_le_bytes([header[12], header[13], header[14], header[15]]) as usize;
 
         // メタデータ読み込み
         let mut metadata_bytes = vec![0u8; metadata_size];

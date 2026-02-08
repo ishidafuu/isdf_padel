@@ -16,7 +16,15 @@ use crate::systems::court_factory::create_outer_wall_bounds;
 /// @spec 30402_reflection_spec.md#req-30402-100
 pub fn ball_ground_bounce_system(
     config: Res<GameConfig>,
-    mut query: Query<(Entity, &mut Velocity, &mut LogicalPosition, Option<&BallSpin>), With<Ball>>,
+    mut query: Query<
+        (
+            Entity,
+            &mut Velocity,
+            &mut LogicalPosition,
+            Option<&BallSpin>,
+        ),
+        With<Ball>,
+    >,
     mut event_writer: MessageWriter<GroundBounceEvent>,
     mut debug_info: ResMut<LastShotDebugInfo>,
 ) {

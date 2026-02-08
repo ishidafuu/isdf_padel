@@ -3,15 +3,17 @@
 
 use bevy::prelude::*;
 
+use crate::components::InputMode;
 use crate::components::{
     Ball, BallSpin, BounceCount, BounceState, InputState, LastShooter, LogicalPosition, Player,
     Velocity,
 };
-use crate::components::InputMode;
 use crate::core::events::{ShotAttributesCalculatedEvent, ShotEvent, ShotExecutedEvent};
 use crate::resource::config::GameConfig;
 use crate::resource::debug::LastShotDebugInfo;
-use crate::systems::shot::attributes::{build_shot_context_from_input_state, calculate_shot_attributes_detail};
+use crate::systems::shot::attributes::{
+    build_shot_context_from_input_state, calculate_shot_attributes_detail,
+};
 use crate::systems::trajectory_calculator::{calculate_trajectory, TrajectoryContext};
 
 use super::utils::{calculate_stability_power_factor, get_player_info, update_shot_debug_info};
@@ -41,8 +43,15 @@ pub(super) fn handle_normal_shot(
     debug_info: &mut LastShotDebugInfo,
 ) {
     // ボールを取得
-    let Ok((_, mut ball_velocity, mut bounce_count, mut last_shooter, ball_pos, bounce_state, mut ball_spin)) =
-        ball_query.single_mut()
+    let Ok((
+        _,
+        mut ball_velocity,
+        mut bounce_count,
+        mut last_shooter,
+        ball_pos,
+        bounce_state,
+        mut ball_spin,
+    )) = ball_query.single_mut()
     else {
         warn!("No ball found for shot direction calculation");
         return;
@@ -157,11 +166,13 @@ fn calculate_normal_shot(ctx: &NormalShotContext, config: &GameConfig) -> Normal
         &ctx.bounce_state,
         &config.shot_attributes,
     );
-    let shot_attrs_detail = calculate_shot_attributes_detail(&shot_context, &config.shot_attributes);
+    let shot_attrs_detail =
+        calculate_shot_attributes_detail(&shot_context, &config.shot_attributes);
     let shot_attrs = &shot_attrs_detail.attributes;
 
     // 安定性による威力減衰
-    let stability_factor = calculate_stability_power_factor(shot_attrs.stability, &config.shot_attributes);
+    let stability_factor =
+        calculate_stability_power_factor(shot_attrs.stability, &config.shot_attributes);
     let effective_power = shot_attrs.power * stability_factor;
 
     // 弾道計算

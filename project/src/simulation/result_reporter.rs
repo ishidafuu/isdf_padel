@@ -131,10 +131,7 @@ impl SimulationReporter {
                 if !result.anomalies.is_empty() {
                     println!("  Match {}: {} anomalies", i + 1, result.anomalies.len());
                     for anomaly in &result.anomalies {
-                        println!(
-                            "    - Frame {}: {:?}",
-                            anomaly.frame, anomaly.anomaly_type
-                        );
+                        println!("    - Frame {}: {:?}", anomaly.frame, anomaly.anomaly_type);
                     }
                 }
             }
@@ -143,8 +140,7 @@ impl SimulationReporter {
 
     /// JSONファイルに出力
     pub fn save_to_file(&self, path: &str, report: &SimulationReport) -> std::io::Result<()> {
-        let json = serde_json::to_string_pretty(report)
-            .map_err(std::io::Error::other)?;
+        let json = serde_json::to_string_pretty(report).map_err(std::io::Error::other)?;
 
         let mut file = File::create(path)?;
         file.write_all(json.as_bytes())?;

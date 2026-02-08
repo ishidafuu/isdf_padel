@@ -94,10 +94,7 @@ impl AnomalyDetector {
             frame: self.frame_count,
             timestamp_secs: self.elapsed_secs,
         };
-        eprintln!(
-            "[ANOMALY] Frame {}: {:?}",
-            self.frame_count, anomaly_type
-        );
+        eprintln!("[ANOMALY] Frame {}: {:?}", self.frame_count, anomaly_type);
         self.anomalies.push(report);
     }
 }
@@ -119,14 +116,18 @@ impl Plugin for AnomalyDetectorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<AnomalyDetectorResource>()
             .init_resource::<AnomalyThresholdsResource>()
-            .add_systems(Update, (
-                detect_nan_positions,
-                detect_out_of_bounds,
-                detect_state_stuck,
-                detect_infinite_rally,
-                detect_physics_anomaly,
-                update_detector_state,
-            ).chain());
+            .add_systems(
+                Update,
+                (
+                    detect_nan_positions,
+                    detect_out_of_bounds,
+                    detect_state_stuck,
+                    detect_infinite_rally,
+                    detect_physics_anomaly,
+                    update_detector_state,
+                )
+                    .chain(),
+            );
     }
 }
 
@@ -166,7 +167,11 @@ fn detect_out_of_bounds(
 
     for pos in players.iter() {
         let p = pos.value;
-        if p.x.abs() > x_limit || p.z.abs() > z_limit || p.y > thresholds.0.height_limit || p.y < thresholds.0.height_floor {
+        if p.x.abs() > x_limit
+            || p.z.abs() > z_limit
+            || p.y > thresholds.0.height_limit
+            || p.y < thresholds.0.height_floor
+        {
             detector.detector.record_anomaly(AnomalyType::OutOfBounds {
                 entity_type: "Player".to_string(),
                 position: p,
@@ -176,7 +181,11 @@ fn detect_out_of_bounds(
 
     for pos in balls.iter() {
         let p = pos.value;
-        if p.x.abs() > x_limit || p.z.abs() > z_limit || p.y > thresholds.0.height_limit || p.y < thresholds.0.height_floor {
+        if p.x.abs() > x_limit
+            || p.z.abs() > z_limit
+            || p.y > thresholds.0.height_limit
+            || p.y < thresholds.0.height_floor
+        {
             detector.detector.record_anomaly(AnomalyType::OutOfBounds {
                 entity_type: "Ball".to_string(),
                 position: p,
@@ -228,9 +237,11 @@ fn detect_infinite_rally(
 
         if detector.detector.rally_duration > thresholds.0.infinite_rally_secs {
             let duration = detector.detector.rally_duration;
-            detector.detector.record_anomaly(AnomalyType::InfiniteRally {
-                duration_secs: duration,
-            });
+            detector
+                .detector
+                .record_anomaly(AnomalyType::InfiniteRally {
+                    duration_secs: duration,
+                });
             // 一度記録したらリセット
             detector.detector.rally_duration = 0.0;
         }
@@ -249,9 +260,11 @@ fn detect_physics_anomaly(
         let v = vel.value;
         let speed = v.length();
         if speed > thresholds.0.max_velocity {
-            detector.detector.record_anomaly(AnomalyType::PhysicsAnomaly {
-                description: format!("Velocity too high: {}", speed),
-            });
+            detector
+                .detector
+                .record_anomaly(AnomalyType::PhysicsAnomaly {
+                    description: format!("Velocity too high: {}", speed),
+                });
         }
         if v.x.is_nan() || v.y.is_nan() || v.z.is_nan() {
             detector.detector.record_anomaly(AnomalyType::NanVelocity {

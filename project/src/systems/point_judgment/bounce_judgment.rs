@@ -26,8 +26,11 @@ pub fn bounce_count_update_system(
             if let Some(ref mut logger) = debug_logger {
                 logger.log_physics(&format!(
                     "BOUNCE court={:?} count={} pos=({:.2},{:.2},{:.2})",
-                    event.court_side, bounce_count.count,
-                    event.bounce_point.x, event.bounce_point.y, event.bounce_point.z
+                    event.court_side,
+                    bounce_count.count,
+                    event.bounce_point.x,
+                    event.bounce_point.y,
+                    event.bounce_point.z
                 ));
             }
 

@@ -150,7 +150,13 @@ impl CurrentRallyState {
     }
 
     /// ラリー終了時の処理（Rallyを生成し、状態をリセット）
-    fn finalize_rally(&mut self, end_frame: u64, end_time: f32, winner: u8, reason: String) -> Rally {
+    fn finalize_rally(
+        &mut self,
+        end_frame: u64,
+        end_time: f32,
+        winner: u8,
+        reason: String,
+    ) -> Rally {
         self.rally_number += 1;
         let stats = calculate_rally_stats(&self.shots);
 
@@ -253,7 +259,12 @@ pub fn analyze_rallies(frames: &[FrameTrace], anomaly_threshold: f32) -> Analysi
                     }
                 }
                 GameEvent::Point { winner, reason } => {
-                    rallies.push(state.finalize_rally(frame.frame, frame.timestamp, *winner, reason.clone()));
+                    rallies.push(state.finalize_rally(
+                        frame.frame,
+                        frame.timestamp,
+                        *winner,
+                        reason.clone(),
+                    ));
                 }
                 _ => {}
             }
@@ -306,7 +317,8 @@ fn calculate_std(values: &[f32], mean: f32) -> f32 {
     if values.len() < 2 {
         return 0.0;
     }
-    let variance: f32 = values.iter().map(|v| (v - mean).powi(2)).sum::<f32>() / values.len() as f32;
+    let variance: f32 =
+        values.iter().map(|v| (v - mean).powi(2)).sum::<f32>() / values.len() as f32;
     variance.sqrt()
 }
 

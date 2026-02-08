@@ -46,8 +46,8 @@ impl WallReflection {
     #[inline]
     pub fn reflect_side_wall(velocity: Vec3, bounce_factor: f32) -> Vec3 {
         Vec3::new(
-            velocity.x,  // 維持
-            velocity.y,  // 維持
+            velocity.x, // 維持
+            velocity.y, // 維持
             -velocity.z * bounce_factor,
         )
     }
@@ -65,8 +65,8 @@ impl WallReflection {
     pub fn reflect_back_wall(velocity: Vec3, bounce_factor: f32) -> Vec3 {
         Vec3::new(
             -velocity.x * bounce_factor,
-            velocity.y,  // 維持
-            velocity.z,  // 維持
+            velocity.y, // 維持
+            velocity.z, // 維持
         )
     }
 
@@ -82,9 +82,9 @@ impl WallReflection {
     #[inline]
     pub fn reflect_ceiling(velocity: Vec3, bounce_factor: f32) -> Vec3 {
         Vec3::new(
-            velocity.x,  // 維持
+            velocity.x, // 維持
             -velocity.y * bounce_factor,
-            velocity.z,  // 維持
+            velocity.z, // 維持
         )
     }
 
@@ -202,8 +202,8 @@ mod tests {
         let reflected = WallReflection::reflect_side_wall(velocity, bounce_factor);
 
         // Z成分のみ反転・減衰、他成分は維持
-        assert_eq!(reflected.x, 10.0);  // 維持
-        assert_eq!(reflected.y, 5.0);   // 維持
+        assert_eq!(reflected.x, 10.0); // 維持
+        assert_eq!(reflected.y, 5.0); // 維持
         assert_eq!(reflected.z, -3.0 * 0.8);
     }
 
@@ -217,8 +217,8 @@ mod tests {
 
         // X成分のみ反転・減衰、他成分は維持
         assert_eq!(reflected.x, -10.0 * 0.8);
-        assert_eq!(reflected.y, 5.0);   // 維持
-        assert_eq!(reflected.z, 3.0);   // 維持
+        assert_eq!(reflected.y, 5.0); // 維持
+        assert_eq!(reflected.z, 3.0); // 維持
     }
 
     /// TST-30504-009: 天井の反射
@@ -230,9 +230,9 @@ mod tests {
         let reflected = WallReflection::reflect_ceiling(velocity, bounce_factor);
 
         // Y成分のみ反転・減衰、他成分は維持
-        assert_eq!(reflected.x, 10.0);  // 維持
+        assert_eq!(reflected.x, 10.0); // 維持
         assert_eq!(reflected.y, -5.0 * 0.8);
-        assert_eq!(reflected.z, 3.0);   // 維持
+        assert_eq!(reflected.z, 3.0); // 維持
     }
 
     /// 壁種別ごとの反射
@@ -244,7 +244,7 @@ mod tests {
         // 左壁（Z成分のみ反転・減衰、コート幅方向）
         let left = WallReflection::reflect(WallType::LeftWall, velocity, bounce_factor);
         assert_eq!(left.x, 10.0); // 維持
-        assert_eq!(left.y, 5.0);  // 維持
+        assert_eq!(left.y, 5.0); // 維持
         assert_eq!(left.z, -2.4);
 
         // 右壁（Z成分のみ反転・減衰）
@@ -254,7 +254,7 @@ mod tests {
         // 後壁（Left側）（X成分のみ反転・減衰、打ち合い方向）
         let back_left = WallReflection::reflect(WallType::BackWallLeft, velocity, bounce_factor);
         assert_eq!(back_left.x, -8.0);
-        assert_eq!(back_left.z, 3.0);  // 維持
+        assert_eq!(back_left.z, 3.0); // 維持
 
         // 後壁（Right側）（X成分のみ反転・減衰）
         let back_right = WallReflection::reflect(WallType::BackWallRight, velocity, bounce_factor);
@@ -263,7 +263,7 @@ mod tests {
         // 天井（Y成分のみ反転・減衰）
         let ceiling = WallReflection::reflect(WallType::Ceiling, velocity, bounce_factor);
         assert_eq!(ceiling.y, -4.0);
-        assert_eq!(ceiling.z, 3.0);  // 維持
+        assert_eq!(ceiling.z, 3.0); // 維持
     }
 
     /// BEH-30503-007: 壁反射の優先順位
@@ -282,7 +282,8 @@ mod tests {
         // 右壁に接触（Z方向正側）
         let pos_right = Vec3::new(0.0, 2.5, 5.0);
         let vel_right = Vec3::new(0.0, 0.0, 10.0);
-        let result = WallReflection::check_and_reflect(pos_right, vel_right, &bounds, bounce_factor);
+        let result =
+            WallReflection::check_and_reflect(pos_right, vel_right, &bounds, bounce_factor);
         assert!(result.is_some());
         assert_eq!(result.unwrap().wall_type, WallType::RightWall);
 
@@ -297,8 +298,12 @@ mod tests {
         // 後壁Right側に接触（X方向正側）
         let pos_back_right = Vec3::new(3.0, 2.5, 0.0);
         let vel_back_right = Vec3::new(10.0, 0.0, 0.0);
-        let result =
-            WallReflection::check_and_reflect(pos_back_right, vel_back_right, &bounds, bounce_factor);
+        let result = WallReflection::check_and_reflect(
+            pos_back_right,
+            vel_back_right,
+            &bounds,
+            bounce_factor,
+        );
         assert!(result.is_some());
         assert_eq!(result.unwrap().wall_type, WallType::BackWallRight);
 

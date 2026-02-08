@@ -7,8 +7,8 @@ use bevy::prelude::*;
 use crate::components::{Ball, BounceState, InputMode, ShotAttributes, ShotContext};
 use crate::core::events::GroundBounceEvent;
 use crate::resource::config::{
-    ApproachCurvePoint, DistanceCurvePoint, HeightCurvePoint, ShotAttributesConfig,
-    SpinCurvePoint, TimingCurvePoint,
+    ApproachCurvePoint, DistanceCurvePoint, HeightCurvePoint, ShotAttributesConfig, SpinCurvePoint,
+    TimingCurvePoint,
 };
 use crate::resource::FixedDeltaTime;
 use crate::systems::trajectory_calculator::lerp;
@@ -98,13 +98,23 @@ pub fn calculate_approach_dot(player_velocity: Vec3, player_pos: Vec3, ball_pos:
 /// 打点高さから係数を取得 (power_bonus, stability_factor, angle_offset)
 /// @spec 30604_shot_attributes_spec.md#req-30604-055
 pub fn get_height_factors(height: f32, curve: &[HeightCurvePoint]) -> (f32, f32, f32) {
-    get_factors_from_curve!(curve, height, height, [power_bonus, stability_factor, angle_offset])
+    get_factors_from_curve!(
+        curve,
+        height,
+        height,
+        [power_bonus, stability_factor, angle_offset]
+    )
 }
 
 /// バウンド経過時間から係数を取得 (power_bonus, stability_factor, angle_offset)
 /// @spec 30604_shot_attributes_spec.md#req-30604-058
 pub fn get_timing_factors(elapsed: f32, curve: &[TimingCurvePoint]) -> (f32, f32, f32) {
-    get_factors_from_curve!(curve, elapsed, elapsed, [power_bonus, stability_factor, angle_offset])
+    get_factors_from_curve!(
+        curve,
+        elapsed,
+        elapsed,
+        [power_bonus, stability_factor, angle_offset]
+    )
 }
 
 /// 入り方から係数を取得 (power_bonus, angle_offset)
@@ -116,7 +126,12 @@ pub fn get_approach_factors(dot: f32, curve: &[ApproachCurvePoint]) -> (f32, f32
 /// 距離から係数を取得 (power_bonus, stability_factor, accuracy_factor)
 /// @spec 30604_shot_attributes_spec.md#req-30604-062
 pub fn get_distance_factors(distance: f32, curve: &[DistanceCurvePoint]) -> (f32, f32, f32) {
-    get_factors_from_curve!(curve, distance, distance, [power_bonus, stability_factor, accuracy_factor])
+    get_factors_from_curve!(
+        curve,
+        distance,
+        distance,
+        [power_bonus, stability_factor, accuracy_factor]
+    )
 }
 
 /// スピン係数を取得（高さ）
@@ -282,7 +297,10 @@ pub mod bounce_state_systems {
 
     /// BounceState のタイマーを更新するシステム
     /// @spec 30604_shot_attributes_spec.md#req-30604-056
-    pub fn update_timer(fixed_dt: Res<FixedDeltaTime>, mut query: Query<&mut BounceState, With<Ball>>) {
+    pub fn update_timer(
+        fixed_dt: Res<FixedDeltaTime>,
+        mut query: Query<&mut BounceState, With<Ball>>,
+    ) {
         let delta = fixed_dt.delta_secs();
 
         for mut bounce_state in query.iter_mut() {

@@ -77,7 +77,9 @@ pub fn format_markdown(
 
     // 統計的異常（full詳細度のみ）
     if options.detail_level == DetailLevel::Full && !analysis.statistical_anomalies.is_empty() {
-        output.push_str(&format_statistical_anomalies(&analysis.statistical_anomalies));
+        output.push_str(&format_statistical_anomalies(
+            &analysis.statistical_anomalies,
+        ));
     }
 
     output
@@ -126,27 +128,29 @@ fn format_summary(analysis: &AnalysisResult) -> String {
     }
 
     // プレイヤー別の集計
-    let (p1_power, p1_accuracy, p1_shots) = analysis
-        .rallies
-        .iter()
-        .fold((0.0f32, 0.0f32, 0u32), |acc, r| {
-            (
-                acc.0 + r.stats.p1_avg_power * r.stats.p1_shot_count as f32,
-                acc.1 + r.stats.p1_avg_accuracy * r.stats.p1_shot_count as f32,
-                acc.2 + r.stats.p1_shot_count,
-            )
-        });
+    let (p1_power, p1_accuracy, p1_shots) =
+        analysis
+            .rallies
+            .iter()
+            .fold((0.0f32, 0.0f32, 0u32), |acc, r| {
+                (
+                    acc.0 + r.stats.p1_avg_power * r.stats.p1_shot_count as f32,
+                    acc.1 + r.stats.p1_avg_accuracy * r.stats.p1_shot_count as f32,
+                    acc.2 + r.stats.p1_shot_count,
+                )
+            });
 
-    let (p2_power, p2_accuracy, p2_shots) = analysis
-        .rallies
-        .iter()
-        .fold((0.0f32, 0.0f32, 0u32), |acc, r| {
-            (
-                acc.0 + r.stats.p2_avg_power * r.stats.p2_shot_count as f32,
-                acc.1 + r.stats.p2_avg_accuracy * r.stats.p2_shot_count as f32,
-                acc.2 + r.stats.p2_shot_count,
-            )
-        });
+    let (p2_power, p2_accuracy, p2_shots) =
+        analysis
+            .rallies
+            .iter()
+            .fold((0.0f32, 0.0f32, 0u32), |acc, r| {
+                (
+                    acc.0 + r.stats.p2_avg_power * r.stats.p2_shot_count as f32,
+                    acc.1 + r.stats.p2_avg_accuracy * r.stats.p2_shot_count as f32,
+                    acc.2 + r.stats.p2_shot_count,
+                )
+            });
 
     let p1_avg_power = if p1_shots > 0 {
         p1_power / p1_shots as f32
@@ -172,10 +176,7 @@ fn format_summary(analysis: &AnalysisResult) -> String {
     // テーブル出力
     output.push_str("| Metric | P1 | P2 |\n");
     output.push_str("|--------|----|----|");
-    output.push_str(&format!(
-        "\n| Total Shots | {} | {} |",
-        p1_shots, p2_shots
-    ));
+    output.push_str(&format!("\n| Total Shots | {} | {} |", p1_shots, p2_shots));
     output.push_str(&format!(
         "\n| Avg Power | {:.2} | {:.2} |",
         p1_avg_power, p2_avg_power
@@ -198,7 +199,10 @@ fn format_rally(rally: &Rally, options: &FormatOptions) -> String {
     );
 
     // 基本情報
-    output.push_str(&format!("**Result**: P{} wins ({})\n", rally.winner, rally.end_reason));
+    output.push_str(&format!(
+        "**Result**: P{} wins ({})\n",
+        rally.winner, rally.end_reason
+    ));
     output.push_str(&format!("**Duration**: {:.2}s\n", rally.duration_secs));
     output.push_str(&format!("**Shots**: {}\n\n", rally.stats.shot_count));
 
@@ -245,7 +249,12 @@ fn format_rally(rally: &Rally, options: &FormatOptions) -> String {
                 for shot in &rally.shots {
                     output.push_str(&format!(
                         "| {} | P{} | {:.2} | {:.2} | {:.2} | {:.2} |\n",
-                        shot.frame, shot.player, shot.power, shot.stability, shot.accuracy, shot.spin
+                        shot.frame,
+                        shot.player,
+                        shot.power,
+                        shot.stability,
+                        shot.accuracy,
+                        shot.spin
                     ));
                 }
                 output.push('\n');

@@ -25,8 +25,5 @@ pub struct InputState {
 /// @spec 77103_replay_spec.md
 #[inline]
 pub fn quantize_movement(v: Vec2) -> Vec2 {
-    Vec2::new(
-        (v.x * 127.0).round() / 127.0,
-        (v.y * 127.0).round() / 127.0,
-    )
+    Vec2::new((v.x * 127.0).round() / 127.0, (v.y * 127.0).round() / 127.0)
 }

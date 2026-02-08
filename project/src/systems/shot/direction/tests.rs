@@ -2,8 +2,8 @@
 //! @spec 30602_shot_direction_spec.md
 //! @spec 30604_shot_attributes_spec.md
 
-use bevy::prelude::*;
 use crate::core::CourtSide;
+use bevy::prelude::*;
 
 /// 水平方向を計算（テスト用）
 /// @spec 30602_shot_direction_spec.md#req-30602-001
@@ -51,9 +51,9 @@ fn test_calculate_horizontal_direction_left_side_no_input() {
     let direction = Vec2::new(0.0, 0.0);
     let result = calculate_horizontal_direction(direction, CourtSide::Left);
 
-    assert!((result.x - 1.0).abs() < 0.001);  // +X方向（2Pコートへ）
+    assert!((result.x - 1.0).abs() < 0.001); // +X方向（2Pコートへ）
     assert!((result.y - 0.0).abs() < 0.001);
-    assert!((result.z - 0.0).abs() < 0.001);  // 横方向なし
+    assert!((result.z - 0.0).abs() < 0.001); // 横方向なし
 }
 
 /// TST-30604-007: 水平方向計算テスト（Right側コート、入力なし）
@@ -66,7 +66,7 @@ fn test_calculate_horizontal_direction_right_side_no_input() {
 
     assert!((result.x - -1.0).abs() < 0.001); // -X方向（1Pコートへ）
     assert!((result.y - 0.0).abs() < 0.001);
-    assert!((result.z - 0.0).abs() < 0.001);  // 横方向なし
+    assert!((result.z - 0.0).abs() < 0.001); // 横方向なし
 }
 
 /// TST-30604-007: 水平方向計算テスト（Left側コート、右入力）
@@ -74,13 +74,13 @@ fn test_calculate_horizontal_direction_right_side_no_input() {
 #[test]
 fn test_calculate_horizontal_direction_left_side_right() {
     // Left側コート: 右入力(+Z) -> 右前方向
-    let direction = Vec2::new(1.0, 0.0);  // X入力 → Z方向
+    let direction = Vec2::new(1.0, 0.0); // X入力 → Z方向
     let result = calculate_horizontal_direction(direction, CourtSide::Left);
 
     let expected = 1.0 / 2.0_f32.sqrt();
-    assert!((result.x - expected).abs() < 0.001);  // +X方向
+    assert!((result.x - expected).abs() < 0.001); // +X方向
     assert!((result.y - 0.0).abs() < 0.001);
-    assert!((result.z - expected).abs() < 0.001);  // +Z方向（右）
+    assert!((result.z - expected).abs() < 0.001); // +Z方向（右）
 }
 
 /// TST-30604-007: 水平方向計算テスト（Right側コート、右入力）
@@ -88,13 +88,13 @@ fn test_calculate_horizontal_direction_left_side_right() {
 #[test]
 fn test_calculate_horizontal_direction_right_side_right() {
     // Right側コート: 右入力(+Z) -> 右後方向
-    let direction = Vec2::new(1.0, 0.0);  // X入力 → Z方向
+    let direction = Vec2::new(1.0, 0.0); // X入力 → Z方向
     let result = calculate_horizontal_direction(direction, CourtSide::Right);
 
     let expected = 1.0 / 2.0_f32.sqrt();
     assert!((result.x - -expected).abs() < 0.001); // -X方向（1Pコートへ）
     assert!((result.y - 0.0).abs() < 0.001);
-    assert!((result.z - expected).abs() < 0.001);  // +Z方向（右）
+    assert!((result.z - expected).abs() < 0.001); // +Z方向（右）
 }
 
 /// TST-30604-008: 通常ショット速度テスト
@@ -254,8 +254,5 @@ fn test_calculate_direction_error_perfect_accuracy() {
 
     // 精度1.0では(1.0 - 1.0) * max_error * random = 0
     let error = calculate_direction_error(accuracy, &config);
-    assert!(
-        error.abs() < 0.001,
-        "完璧な精度ではコースブレが発生しない"
-    );
+    assert!(error.abs() < 0.001, "完璧な精度ではコースブレが発生しない");
 }

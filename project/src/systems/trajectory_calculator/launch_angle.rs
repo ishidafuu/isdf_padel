@@ -41,8 +41,16 @@ pub fn calculate_launch_angle(
     // === 解がある場合: 目標地点に到達可能 ===
     if discriminant >= 0.0 {
         return calculate_angle_when_reachable(
-            start_pos, target_pos, v, g, d, h, discriminant,
-            trajectory_config, net_x, net_height,
+            start_pos,
+            target_pos,
+            v,
+            g,
+            d,
+            h,
+            discriminant,
+            trajectory_config,
+            net_x,
+            net_height,
         );
     }
 
@@ -55,7 +63,13 @@ pub fn calculate_launch_angle(
 
     // 着地点を短縮
     let new_target = shorten_target_position(
-        start_pos, target_pos, dx, dz, horizontal_distance, max_distance, trajectory_config,
+        start_pos,
+        target_pos,
+        dx,
+        dz,
+        horizontal_distance,
+        max_distance,
+        trajectory_config,
     );
 
     // 短縮した着地点で角度を再計算
@@ -66,15 +80,30 @@ pub fn calculate_launch_angle(
 
     if new_discriminant >= 0.0 {
         return calculate_angle_when_reachable(
-            start_pos, new_target, v, g, new_d, h, new_discriminant,
-            trajectory_config, net_x, net_height,
+            start_pos,
+            new_target,
+            v,
+            g,
+            new_d,
+            h,
+            new_discriminant,
+            trajectory_config,
+            net_x,
+            net_height,
         );
     }
 
     // === フォールバック: 最大角度で打つ ===
     calculate_max_angle_fallback(
-        start_pos, target_pos, dx, dz, horizontal_distance,
-        v, g, h, trajectory_config.max_launch_angle,
+        start_pos,
+        target_pos,
+        dx,
+        dz,
+        horizontal_distance,
+        v,
+        g,
+        h,
+        trajectory_config.max_launch_angle,
     )
 }
 
@@ -109,9 +138,8 @@ fn calculate_angle_when_reachable(
     };
 
     // ネット通過に必要な最小角度を計算
-    let min_net_angle = calculate_min_angle_for_net_clearance(
-        start_pos, target_pos, v, g, net_x, net_height,
-    );
+    let min_net_angle =
+        calculate_min_angle_for_net_clearance(start_pos, target_pos, v, g, net_x, net_height);
 
     // ネット通過角度と計算角度の大きい方を採用
     let final_angle = angle.max(min_net_angle);
@@ -125,7 +153,12 @@ fn calculate_angle_when_reachable(
         if adjusted_speed > 0.0 {
             // 速度が変わったので、その速度でネット通過角度を再計算
             let min_net_angle_adjusted = calculate_min_angle_for_net_clearance(
-                start_pos, target_pos, adjusted_speed, g, net_x, net_height,
+                start_pos,
+                target_pos,
+                adjusted_speed,
+                g,
+                net_x,
+                net_height,
             );
             // 調整後の速度でネットを超えるための角度を採用
             let recalc_angle = clamped_angle.max(min_net_angle_adjusted);

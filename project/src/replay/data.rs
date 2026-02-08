@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::CourtSide;
 
-
 /// プレイヤーのコントロールタイプ
 /// @spec REQ-77103-002
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]

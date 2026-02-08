@@ -7,8 +7,8 @@ use bevy::prelude::*;
 
 use crate::components::{Ball, LogicalPosition, Player, Velocity};
 use crate::core::events::{
-    FaultEvent, GroundBounceEvent, PointScoredEvent, RallyEndEvent,
-    ShotAttributesCalculatedEvent, ShotExecutedEvent, WallReflectionEvent,
+    FaultEvent, GroundBounceEvent, PointScoredEvent, RallyEndEvent, ShotAttributesCalculatedEvent,
+    ShotExecutedEvent, WallReflectionEvent,
 };
 use crate::resource::FixedDeltaTime;
 
@@ -50,7 +50,11 @@ pub fn trace_positions_system(
             entities.push(EntityTrace {
                 entity_type,
                 position: pos.value,
-                velocity: if record_velocity { vel.value } else { Vec3::ZERO },
+                velocity: if record_velocity {
+                    vel.value
+                } else {
+                    Vec3::ZERO
+                },
             });
         }
 
@@ -59,7 +63,11 @@ pub fn trace_positions_system(
             entities.push(EntityTrace {
                 entity_type: EntityType::Ball,
                 position: pos.value,
-                velocity: if record_velocity { vel.value } else { Vec3::ZERO },
+                velocity: if record_velocity {
+                    vel.value
+                } else {
+                    Vec3::ZERO
+                },
             });
         }
     }

@@ -45,13 +45,13 @@ pub fn load_replay<P: AsRef<Path>>(path: P) -> Result<ReplayData, String> {
 
 /// バイナリ形式のリプレイを読み込む
 fn load_binary_replay(path: &Path) -> Result<ReplayData, String> {
-    let file = File::open(path)
-        .map_err(|e| format!("Failed to open file: {}", e))?;
+    let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
     let mut reader = BufReader::new(file);
 
     // ヘッダー読み込み（16バイト）
     let mut header = [0u8; 16];
-    reader.read_exact(&mut header)
+    reader
+        .read_exact(&mut header)
         .map_err(|e| format!("Failed to read header: {}", e))?;
 
     // マジックナンバー確認
@@ -66,11 +66,13 @@ fn load_binary_replay(path: &Path) -> Result<ReplayData, String> {
     let frame_count = u32::from_le_bytes([header[8], header[9], header[10], header[11]]);
 
     // メタデータサイズ
-    let metadata_size = u32::from_le_bytes([header[12], header[13], header[14], header[15]]) as usize;
+    let metadata_size =
+        u32::from_le_bytes([header[12], header[13], header[14], header[15]]) as usize;
 
     // メタデータ読み込み
     let mut metadata_bytes = vec![0u8; metadata_size];
-    reader.read_exact(&mut metadata_bytes)
+    reader
+        .read_exact(&mut metadata_bytes)
         .map_err(|e| format!("Failed to read metadata: {}", e))?;
     let metadata: ReplayMetadata = bincode::deserialize(&metadata_bytes)
         .map_err(|e| format!("Failed to deserialize metadata: {}", e))?;
@@ -80,7 +82,8 @@ fn load_binary_replay(path: &Path) -> Result<ReplayData, String> {
     let mut frame_buf = [0u8; 6];
 
     for i in 0..frame_count {
-        reader.read_exact(&mut frame_buf)
+        reader
+            .read_exact(&mut frame_buf)
             .map_err(|e| format!("Failed to read frame {}: {}", i, e))?;
         let binary_frame = BinaryFrameInput::read_from(&frame_buf);
         frames.push(binary_frame.to_frame_input(i));
@@ -91,11 +94,10 @@ fn load_binary_replay(path: &Path) -> Result<ReplayData, String> {
 
 /// RON形式のリプレイを読み込む（旧形式互換）
 fn load_ron_replay(path: &Path) -> Result<ReplayData, String> {
-    let content = fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read replay file: {}", e))?;
+    let content =
+        fs::read_to_string(path).map_err(|e| format!("Failed to read replay file: {}", e))?;
 
-    ron::from_str(&content)
-        .map_err(|e| format!("Failed to parse replay: {}", e))
+    ron::from_str(&content).map_err(|e| format!("Failed to parse replay: {}", e))
 }
 
 /// リプレイファイルを読み込む（バージョンチェックなし）

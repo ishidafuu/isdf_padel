@@ -31,7 +31,10 @@ pub fn rally_end_system(
     for event in rally_events.read() {
         // このポイントで既にスコア加算済みならスキップ（フレームをまたいだ重複防止）
         if rally_state.point_scored_this_rally {
-            warn!("Skipping duplicate RallyEndEvent (already scored this rally): {:?}", event.reason);
+            warn!(
+                "Skipping duplicate RallyEndEvent (already scored this rally): {:?}",
+                event.reason
+            );
             continue;
         }
 

@@ -46,12 +46,8 @@ pub fn ball_player_collision_system(
         let ball_vel = ball_velocity.value;
 
         // REQ-30403-006: 複数プレイヤー衝突時、最も近いプレイヤー優先
-        let closest = find_closest_collision(
-            ball_pos,
-            last_shooter,
-            &collision_params,
-            &player_query,
-        );
+        let closest =
+            find_closest_collision(ball_pos, last_shooter, &collision_params, &player_query);
 
         // 最も近いプレイヤーとの衝突を処理
         if let Some((target_entity, player_pos)) = closest {

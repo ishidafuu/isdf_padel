@@ -135,9 +135,11 @@ fn parse_jsonl_content(content: &str) -> Result<ParseResult, ParseError> {
 /// @spec REQ-77201-002: イベントを時系列で整理
 fn sort_frames(frames: &mut [FrameTrace]) {
     frames.sort_by(|a, b| {
-        a.frame
-            .cmp(&b.frame)
-            .then_with(|| a.timestamp.partial_cmp(&b.timestamp).unwrap_or(std::cmp::Ordering::Equal))
+        a.frame.cmp(&b.frame).then_with(|| {
+            a.timestamp
+                .partial_cmp(&b.timestamp)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
     });
 }
 

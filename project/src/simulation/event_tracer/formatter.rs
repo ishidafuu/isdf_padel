@@ -11,13 +11,19 @@ impl GameEvent {
             GameEvent::BallHit { player, shot_type } => {
                 format!("player={},type={}", player, shot_type)
             }
-            GameEvent::Bounce { position, court_side } => {
+            GameEvent::Bounce {
+                position,
+                court_side,
+            } => {
                 format!(
                     "pos=({:.2},{:.2},{:.2}),side={:?}",
                     position.x, position.y, position.z, court_side
                 )
             }
-            GameEvent::WallReflect { position, wall_type } => {
+            GameEvent::WallReflect {
+                position,
+                wall_type,
+            } => {
                 format!(
                     "pos=({:.2},{:.2},{:.2}),type={}",
                     position.x, position.y, position.z, wall_type
@@ -148,13 +154,19 @@ impl GameEvent {
                     player, shot_type
                 )
             }
-            GameEvent::Bounce { position, court_side } => {
+            GameEvent::Bounce {
+                position,
+                court_side,
+            } => {
                 format!(
                     "{{\"type\": \"Bounce\", \"position\": [{:.2}, {:.2}, {:.2}], \"court_side\": \"{:?}\"}}",
                     position.x, position.y, position.z, court_side
                 )
             }
-            GameEvent::WallReflect { position, wall_type } => {
+            GameEvent::WallReflect {
+                position,
+                wall_type,
+            } => {
                 format!(
                     "{{\"type\": \"WallReflect\", \"position\": [{:.2}, {:.2}, {:.2}], \"wall_type\": \"{}\"}}",
                     position.x, position.y, position.z, wall_type
@@ -167,7 +179,10 @@ impl GameEvent {
                 )
             }
             GameEvent::Fault { fault_type } => {
-                format!("{{\"type\": \"Fault\", \"fault_type\": \"{}\"}}", fault_type)
+                format!(
+                    "{{\"type\": \"Fault\", \"fault_type\": \"{}\"}}",
+                    fault_type
+                )
             }
             GameEvent::StateChange { from, to } => {
                 format!(
@@ -265,8 +280,12 @@ impl GameEvent {
                      \"position\": [{:.2}, {:.2}, {:.2}], \"velocity\": [{:.2}, {:.2}, {:.2}], \
                      \"expected_value\": {:.2}, \"actual_value\": {:.2}, \"severity\": \"{}\"}}",
                     anomaly_type,
-                    position.x, position.y, position.z,
-                    velocity.x, velocity.y, velocity.z,
+                    position.x,
+                    position.y,
+                    position.z,
+                    velocity.x,
+                    velocity.y,
+                    velocity.z,
                     expected_value,
                     actual_value,
                     severity

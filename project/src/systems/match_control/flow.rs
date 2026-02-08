@@ -7,14 +7,15 @@
 
 use bevy::prelude::*;
 
+use super::{
+    serve_hit_input_system, serve_init_system, serve_position_system, serve_toss_input_system,
+    serve_toss_physics_system, serve_toss_timeout_system,
+};
 use crate::components::{Ball, LogicalPosition, Player, TossBall};
 use crate::core::{CourtSide, MatchStartEvent, MatchWonEvent, RallyEndEvent, ShotEvent};
 use crate::resource::scoring::{PointEndTimer, ServeState};
-use crate::resource::{FixedDeltaTime, GameConfig, GameState, MatchFlowState, MatchScore, RallyState};
-use super::{
-    serve_hit_input_system, serve_init_system,
-    serve_position_system, serve_toss_input_system, serve_toss_physics_system,
-    serve_toss_timeout_system,
+use crate::resource::{
+    FixedDeltaTime, GameConfig, GameState, MatchFlowState, MatchScore, RallyState,
 };
 use crate::systems::GameSystemSet;
 
@@ -29,7 +30,10 @@ impl Plugin for MatchFlowPlugin {
             .init_resource::<PointEndTimer>()
             .add_message::<MatchStartEvent>()
             .add_systems(OnEnter(MatchFlowState::MatchStart), match_start_system)
-            .add_systems(OnEnter(MatchFlowState::Serve), (serve_init_system, serve_position_system))
+            .add_systems(
+                OnEnter(MatchFlowState::Serve),
+                (serve_init_system, serve_position_system),
+            )
             // @spec 30102_serve_spec.md: トス→ヒット方式サーブシステム（Serve状態でのみ動作）
             // GameSystemSet::GameLogic に配置し、入力読み取り後に実行されることを保証
             .add_systems(
@@ -237,7 +241,10 @@ fn point_end_to_next_system(
 
 /// 試合終了システム
 /// @spec 30101_flow_spec.md#req-30101-005
-fn match_end_system(match_score: Res<MatchScore>, mut match_end_events: MessageWriter<MatchWonEvent>) {
+fn match_end_system(
+    match_score: Res<MatchScore>,
+    mut match_end_events: MessageWriter<MatchWonEvent>,
+) {
     if let GameState::MatchWon(winner) = match_score.game_state {
         // @spec 30101_flow_spec.md#req-30101-005: MatchWonEvent を発行する
         match_end_events.write(MatchWonEvent { winner });
@@ -247,10 +254,7 @@ fn match_end_system(match_score: Res<MatchScore>, mut match_end_events: MessageW
 
 /// プレイヤーを初期位置にリセット
 /// @spec 30101_flow_spec.md#req-30101-001
-fn reset_player_positions(
-    query: &mut Query<(&Player, &mut LogicalPosition)>,
-    config: &GameConfig,
-) {
+fn reset_player_positions(query: &mut Query<(&Player, &mut LogicalPosition)>, config: &GameConfig) {
     for (player, mut logical_pos) in query.iter_mut() {
         logical_pos.value = get_initial_position(player.court_side, config);
     }

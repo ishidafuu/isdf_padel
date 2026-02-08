@@ -9,10 +9,7 @@ use crate::resource::debug::LastShotDebugInfo;
 
 /// デバッグマーカーシステム
 /// Xボタン（West）を押すと LastShotDebugInfo の内容を [MARKED] 付きでログ出力
-pub fn debug_marker_system(
-    gamepads: Query<&Gamepad>,
-    debug_info: Res<LastShotDebugInfo>,
-) {
+pub fn debug_marker_system(gamepads: Query<&Gamepad>, debug_info: Res<LastShotDebugInfo>) {
     // ゲームパッドを取得
     let Some(gamepad) = gamepads.iter().next() else {
         return;

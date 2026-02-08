@@ -22,11 +22,7 @@ impl CourtSideExt for CourtSide {
 
 /// 有効重力を計算
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-020
-pub fn calculate_effective_gravity(
-    spin: f32,
-    initial_height: f32,
-    config: &GameConfig,
-) -> f32 {
+pub fn calculate_effective_gravity(spin: f32, initial_height: f32, config: &GameConfig) -> f32 {
     let gravity = config.physics.gravity.abs();
     let spin_config = &config.spin_physics;
 
@@ -48,11 +44,7 @@ pub fn calculate_effective_gravity(
 
 /// 方向ベクトルを計算
 /// @spec 30605_trajectory_calculation_spec.md#req-30605-023
-pub fn calculate_direction_vector(
-    start_pos: Vec3,
-    target_pos: Vec3,
-    launch_angle: f32,
-) -> Vec3 {
+pub fn calculate_direction_vector(start_pos: Vec3, target_pos: Vec3, launch_angle: f32) -> Vec3 {
     let dx = target_pos.x - start_pos.x;
     let dz = target_pos.z - start_pos.z;
     let horizontal_distance = (dx * dx + dz * dz).sqrt();
@@ -100,8 +92,8 @@ pub fn calculate_speed_for_target(
         return 0.0; // その角度では到達不可能
     }
 
-    let v_squared = gravity * horizontal_distance * horizontal_distance
-        / (2.0 * cos_a * cos_a * denominator);
+    let v_squared =
+        gravity * horizontal_distance * horizontal_distance / (2.0 * cos_a * cos_a * denominator);
 
     if v_squared <= 0.0 {
         return 0.0;
@@ -113,7 +105,11 @@ pub fn calculate_speed_for_target(
 /// 与えられた初速と重力で到達可能な最大水平距離を計算
 /// 判別式 v⁴ - g(g*d² + 2h*v²) >= 0 を満たす最大の d を求める
 /// d_max = sqrt((v⁴ - 2gh*v²) / g²) = (v²/g) * sqrt(1 - 2gh/v²)
-pub fn calculate_max_reachable_distance(base_speed: f32, effective_gravity: f32, height_diff: f32) -> f32 {
+pub fn calculate_max_reachable_distance(
+    base_speed: f32,
+    effective_gravity: f32,
+    height_diff: f32,
+) -> f32 {
     let v2 = base_speed * base_speed;
     let g = effective_gravity;
     let h = height_diff;
@@ -132,7 +128,12 @@ pub fn calculate_max_reachable_distance(base_speed: f32, effective_gravity: f32,
 /// 指定した角度・初速・重力での水平飛距離を計算
 /// h: 着地高さ - 発射高さ（負の値 = 着地点が低い）
 #[allow(dead_code)]
-pub fn calculate_landing_distance_for_angle(angle_deg: f32, speed: f32, gravity: f32, h: f32) -> f32 {
+pub fn calculate_landing_distance_for_angle(
+    angle_deg: f32,
+    speed: f32,
+    gravity: f32,
+    h: f32,
+) -> f32 {
     let angle_rad = angle_deg.to_radians();
     let cos_a = angle_rad.cos();
     let sin_a = angle_rad.sin();

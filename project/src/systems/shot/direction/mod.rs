@@ -87,7 +87,15 @@ pub fn shot_direction_system(
     for event in shot_events.read() {
         // サーブ処理分岐
         if event.is_serve {
-            handle_serve_shot(&mut commands, &config, &match_score, event, &mut shot_executed_writer, &mut meshes, &mut materials);
+            handle_serve_shot(
+                &mut commands,
+                &config,
+                &match_score,
+                event,
+                &mut shot_executed_writer,
+                &mut meshes,
+                &mut materials,
+            );
             continue;
         }
 

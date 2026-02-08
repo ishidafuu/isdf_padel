@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-02-08 12:18:11",
+  "total_matches": 1,
+  "completed_matches": 0,
+  "player1_wins": 0,
+  "player2_wins": 0,
+  "total_anomalies": 0,
+  "avg_duration_secs": 60.015923,
+  "avg_rally_count": 6.0,
+  "matches": [
+    {
+      "match_index": 0,
+      "winner": null,
+      "duration_secs": 60.015923,
+      "rally_count": 6,
+      "completed": false
+    }
+  ]
+}

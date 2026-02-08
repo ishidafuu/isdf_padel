@@ -42,10 +42,7 @@ impl ReplayPlayer {
     /// リプレイデータを設定して再生開始
     /// Arc<ReplayData> を受け取ることで、clone コストを削減
     pub fn start_playback(&mut self, data: Arc<ReplayData>) {
-        info!(
-            "Starting replay playback: {} frames",
-            data.frames.len()
-        );
+        info!("Starting replay playback: {} frames", data.frames.len());
         self.data = Some(data);
         self.current_frame = 0;
         self.is_playing = true;

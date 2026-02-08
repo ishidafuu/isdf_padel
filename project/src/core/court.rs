@@ -12,7 +12,9 @@
 
 /// コート区分（Left/Rightのどちら側か）
 /// @spec 30501_court_spec.md#req-30501-006
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum CourtSide {
     /// 左コート側（X < net_x）
     #[default]
@@ -57,7 +59,14 @@ impl CourtBounds {
     /// @spec 30501_court_spec.md#req-30501-002
     /// @spec 30501_court_spec.md#req-30501-003
     /// @spec 30501_court_spec.md#req-30501-004
-    pub fn new(left: f32, right: f32, back_left: f32, back_right: f32, ground: f32, ceiling: f32) -> Self {
+    pub fn new(
+        left: f32,
+        right: f32,
+        back_left: f32,
+        back_right: f32,
+        ground: f32,
+        ceiling: f32,
+    ) -> Self {
         Self {
             left,
             right,
@@ -291,8 +300,8 @@ mod tests {
 
         // コート外
         assert!(!bounds.is_inside(-4.0, 2.5, 0.0)); // X outside
-        assert!(!bounds.is_inside(0.0, 6.0, 0.0));  // Y outside
-        assert!(!bounds.is_inside(0.0, 2.5, 6.0));  // Z outside
+        assert!(!bounds.is_inside(0.0, 6.0, 0.0)); // Y outside
+        assert!(!bounds.is_inside(0.0, 2.5, 6.0)); // Z outside
     }
 
     #[test]

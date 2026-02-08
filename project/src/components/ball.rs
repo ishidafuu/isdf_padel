@@ -151,7 +151,9 @@ impl BallBundle {
             last_shooter: LastShooter::default(),
             ball_spin: BallSpin::default(),
             mesh: Mesh2d(meshes.add(Circle::new(BALL_DISPLAY_RADIUS))),
-            material: MeshMaterial2d(materials.add(ColorMaterial::from_color(Color::srgb(0.9, 0.9, 0.2)))),
+            material: MeshMaterial2d(
+                materials.add(ColorMaterial::from_color(Color::srgb(0.9, 0.9, 0.2))),
+            ),
             transform: Transform::default(),
         }
     }
@@ -171,10 +173,14 @@ impl BallBundle {
             velocity: Velocity { value: velocity },
             bounce_count: BounceCount::default(),
             bounce_state: BounceState::default(),
-            last_shooter: LastShooter { side: Some(shooter) },
+            last_shooter: LastShooter {
+                side: Some(shooter),
+            },
             ball_spin: BallSpin::default(),
             mesh: Mesh2d(meshes.add(Circle::new(BALL_DISPLAY_RADIUS))),
-            material: MeshMaterial2d(materials.add(ColorMaterial::from_color(Color::srgb(0.9, 0.9, 0.2)))),
+            material: MeshMaterial2d(
+                materials.add(ColorMaterial::from_color(Color::srgb(0.9, 0.9, 0.2))),
+            ),
             transform: Transform::default(),
         }
     }
@@ -185,14 +191,25 @@ impl BallBundle {
         position: Vec3,
         velocity: Vec3,
         shooter: CourtSide,
-    ) -> (Ball, LogicalPosition, Velocity, BounceCount, BounceState, LastShooter, BallSpin, Transform) {
+    ) -> (
+        Ball,
+        LogicalPosition,
+        Velocity,
+        BounceCount,
+        BounceState,
+        LastShooter,
+        BallSpin,
+        Transform,
+    ) {
         (
             Ball,
             LogicalPosition { value: position },
             Velocity { value: velocity },
             BounceCount::default(),
             BounceState::default(),
-            LastShooter { side: Some(shooter) },
+            LastShooter {
+                side: Some(shooter),
+            },
             BallSpin::default(),
             Transform::default(),
         )
@@ -225,14 +242,19 @@ impl TossBallBundle {
             logical_position: LogicalPosition { value: position },
             velocity: Velocity { value: velocity },
             mesh: Mesh2d(meshes.add(Circle::new(BALL_DISPLAY_RADIUS))),
-            material: MeshMaterial2d(materials.add(ColorMaterial::from_color(Color::srgb(0.9, 0.9, 0.2)))),
+            material: MeshMaterial2d(
+                materials.add(ColorMaterial::from_color(Color::srgb(0.9, 0.9, 0.2))),
+            ),
             transform: Transform::default(),
         }
     }
 
     /// ヘッドレス用トスボール生成（描画コンポーネント無し）
     /// @spec 30102_serve_spec.md#req-30102-080
-    pub fn new_headless(position: Vec3, velocity: Vec3) -> (TossBall, LogicalPosition, Velocity, Transform) {
+    pub fn new_headless(
+        position: Vec3,
+        velocity: Vec3,
+    ) -> (TossBall, LogicalPosition, Velocity, Transform) {
         (
             TossBall,
             LogicalPosition { value: position },

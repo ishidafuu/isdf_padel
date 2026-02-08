@@ -176,9 +176,8 @@ pub fn load_simulation_config<P: AsRef<Path>>(path: P) -> Result<SimulationFileC
         return Ok(SimulationFileConfig::default());
     }
 
-    let content = fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read simulation config: {}", e))?;
+    let content =
+        fs::read_to_string(path).map_err(|e| format!("Failed to read simulation config: {}", e))?;
 
-    ron::from_str(&content)
-        .map_err(|e| format!("Failed to parse simulation config: {}", e))
+    ron::from_str(&content).map_err(|e| format!("Failed to parse simulation config: {}", e))
 }

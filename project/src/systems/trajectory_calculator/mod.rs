@@ -25,7 +25,9 @@ pub use physics_utils::{
 
 // 着地位置計算の再エクスポート（将来の拡張用に保持）
 #[allow(unused_imports)]
-pub use landing_position::{apply_landing_deviation, calculate_landing_position, shorten_target_position};
+pub use landing_position::{
+    apply_landing_deviation, calculate_landing_position, shorten_target_position,
+};
 
 // 発射角度計算の再エクスポート（将来の拡張用に保持）
 #[allow(unused_imports)]

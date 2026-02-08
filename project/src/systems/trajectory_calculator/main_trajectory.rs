@@ -18,7 +18,8 @@ pub fn calculate_trajectory(ctx: &TrajectoryContext, config: &GameConfig) -> Tra
     let raw_landing = calculate_landing_position(ctx, court_config, trajectory_config);
 
     // 2. 精度によるズレを適用
-    let landing_with_deviation = apply_landing_deviation(raw_landing, ctx.accuracy, trajectory_config);
+    let landing_with_deviation =
+        apply_landing_deviation(raw_landing, ctx.accuracy, trajectory_config);
 
     // 3. 有効重力を計算
     let effective_gravity = calculate_effective_gravity(ctx.spin, ctx.ball_position.y, config);

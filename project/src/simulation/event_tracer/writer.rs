@@ -8,11 +8,7 @@ use std::path::Path;
 use super::EventTracer;
 
 /// JSON配列の要素を書き出すヘルパー
-fn write_json_array<W: Write>(
-    writer: &mut W,
-    items: &[String],
-    indent: &str,
-) -> IoResult<()> {
+fn write_json_array<W: Write>(writer: &mut W, items: &[String], indent: &str) -> IoResult<()> {
     for (i, item) in items.iter().enumerate() {
         let comma = if i < items.len() - 1 { "," } else { "" };
         writeln!(writer, "{}{}{}", indent, item, comma)?;
@@ -81,8 +77,7 @@ impl EventTracer {
             writeln!(writer, "      \"timestamp\": {:.3},", frame.timestamp)?;
 
             // entities
-            let entities_json: Vec<String> =
-                frame.entities.iter().map(|e| e.to_json()).collect();
+            let entities_json: Vec<String> = frame.entities.iter().map(|e| e.to_json()).collect();
             writeln!(writer, "      \"entities\": [")?;
             write_json_array(&mut writer, &entities_json, "        ")?;
             writeln!(writer, "      ],")?;

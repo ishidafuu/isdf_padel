@@ -82,7 +82,10 @@ fn main() {
         println!("  position: {}", sim_file_config.trace.position);
         println!("  velocity: {}", sim_file_config.trace.velocity);
         println!("  events: {}", sim_file_config.trace.events);
-        println!("  interval_frames: {}", sim_file_config.trace.interval_frames);
+        println!(
+            "  interval_frames: {}",
+            sim_file_config.trace.interval_frames
+        );
 
         println!("\nAnomaly thresholds:");
         println!(

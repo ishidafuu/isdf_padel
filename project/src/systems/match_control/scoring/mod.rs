@@ -13,9 +13,7 @@ mod tests;
 
 use bevy::prelude::*;
 
-use crate::core::{
-    GameWonEvent, MatchWonEvent, PointScoredEvent, RallyEndEvent, SetWonEvent,
-};
+use crate::core::{GameWonEvent, MatchWonEvent, PointScoredEvent, RallyEndEvent, SetWonEvent};
 use crate::resource::MatchScore;
 
 pub use display::score_display_system;
@@ -35,12 +33,7 @@ impl Plugin for ScoringPlugin {
             .add_message::<MatchWonEvent>()
             .add_systems(
                 Update,
-                (
-                    rally_end_system,
-                    point_scored_system,
-                    score_display_system,
-                )
-                    .chain(),
+                (rally_end_system, point_scored_system, score_display_system).chain(),
             );
     }
 }

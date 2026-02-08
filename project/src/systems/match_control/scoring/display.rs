@@ -22,12 +22,7 @@ pub fn score_display_system(
 
     let score_text = format!(
         "P1: {} (G:{} S:{}) - P2: {} (G:{} S:{})",
-        p1_point,
-        p1_score.games,
-        p1_score.sets,
-        p2_point,
-        p2_score.games,
-        p2_score.sets,
+        p1_point, p1_score.games, p1_score.sets, p2_point, p2_score.games, p2_score.sets,
     );
 
     // 変更があった場合のみ表示

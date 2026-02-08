@@ -34,7 +34,10 @@ impl Plugin for ReplayRecordPlugin {
             .add_message::<StopReplayRecording>()
             .add_systems(Startup, manager::startup_cleanup_system)
             // 試合開始時にリプレイ記録を開始
-            .add_systems(OnEnter(MatchFlowState::MatchStart), start_replay_on_match_start)
+            .add_systems(
+                OnEnter(MatchFlowState::MatchStart),
+                start_replay_on_match_start,
+            )
             .add_systems(
                 Update,
                 (

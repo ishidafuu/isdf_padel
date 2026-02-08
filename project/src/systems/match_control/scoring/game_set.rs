@@ -4,9 +4,7 @@
 
 use bevy::prelude::*;
 
-use crate::core::{
-    CourtSide, GameWonEvent, MatchWonEvent, PointScoredEvent, SetWonEvent,
-};
+use crate::core::{CourtSide, GameWonEvent, MatchWonEvent, PointScoredEvent, SetWonEvent};
 use crate::resource::{GameConfig, GameState, MatchScore, RallyState, ServeSide};
 
 /// ゲーム勝利時の処理

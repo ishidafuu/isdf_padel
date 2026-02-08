@@ -38,9 +38,7 @@ pub(super) fn update_shot_debug_info(
 ) {
     // discriminant と g_eff を再計算
     let g_eff = crate::systems::trajectory_calculator::calculate_effective_gravity(
-        spin,
-        ball_pos.y,
-        config,
+        spin, ball_pos.y, config,
     );
     let dx = trajectory_result.landing_position.x - ball_pos.x;
     let dz = trajectory_result.landing_position.z - ball_pos.z;
@@ -49,7 +47,8 @@ pub(super) fn update_shot_debug_info(
     let v = trajectory_result.final_speed;
     let v2 = v * v;
     let v4 = v2 * v2;
-    let discriminant = v4 - g_eff * (g_eff * horizontal_distance * horizontal_distance + 2.0 * h * v2);
+    let discriminant =
+        v4 - g_eff * (g_eff * horizontal_distance * horizontal_distance + 2.0 * h * v2);
 
     debug_info.is_valid = true;
     debug_info.player_id = player_id;
@@ -79,7 +78,6 @@ pub(super) fn calculate_stability_power_factor(
     }
 
     // 安定性が低いほど威力減衰
-    let power_reduction =
-        (config.stability_threshold - stability) / config.stability_threshold;
+    let power_reduction = (config.stability_threshold - stability) / config.stability_threshold;
     1.0 - power_reduction * 0.5
 }

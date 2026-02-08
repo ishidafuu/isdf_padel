@@ -140,7 +140,10 @@ pub fn knockback_movement_system(
 /// @spec 30203_knockback_spec.md#req-30203-004
 /// @spec 30203_knockback_spec.md#req-30203-005
 /// @spec 30203_knockback_spec.md#req-30203-006
-pub fn knockback_timer_system(fixed_dt: Res<FixedDeltaTime>, mut query: Query<(&Player, &mut KnockbackState)>) {
+pub fn knockback_timer_system(
+    fixed_dt: Res<FixedDeltaTime>,
+    mut query: Query<(&Player, &mut KnockbackState)>,
+) {
     let delta = fixed_dt.delta_secs();
 
     for (player, mut knockback) in query.iter_mut() {

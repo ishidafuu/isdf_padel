@@ -5,7 +5,9 @@
 
 use bevy::prelude::*;
 
-use crate::components::{AiController, InputState, KnockbackState, LogicalPosition, Player, Velocity};
+use crate::components::{
+    AiController, InputState, KnockbackState, LogicalPosition, Player, Velocity,
+};
 use crate::core::events::PlayerMoveEvent;
 use crate::core::CourtSide;
 use crate::resource::config::GameConfig;
@@ -37,7 +39,11 @@ fn calculate_movement_velocity(
 
     // 速度ベクトル計算
     let target_velocity = Vec3::new(
-        if x_movement_allowed { normalized_input.x * move_speed_x } else { 0.0 },
+        if x_movement_allowed {
+            normalized_input.x * move_speed_x
+        } else {
+            0.0
+        },
         0.0, // Y軸は移動システムでは操作しない
         normalized_input.y * move_speed_z,
     );
@@ -103,7 +109,13 @@ pub fn movement_system(
     serve_state: Res<ServeState>,
     rally_state: Res<RallyState>,
     mut query: Query<
-        (&Player, &mut LogicalPosition, &mut Velocity, &KnockbackState, &InputState),
+        (
+            &Player,
+            &mut LogicalPosition,
+            &mut Velocity,
+            &KnockbackState,
+            &InputState,
+        ),
         Without<AiController>,
     >,
     mut event_writer: MessageWriter<PlayerMoveEvent>,
@@ -136,7 +148,8 @@ pub fn movement_system(
         }
 
         // @spec 30102_serve_spec.md#req-30102-086: サーブ待機中はX方向移動禁止
-        let x_movement_allowed = !(is_serve_state && is_server && serve_state.phase == ServeSubPhase::Waiting);
+        let x_movement_allowed =
+            !(is_serve_state && is_server && serve_state.phase == ServeSubPhase::Waiting);
 
         // 速度計算
         let final_velocity = calculate_movement_velocity(raw_input, &config, x_movement_allowed);

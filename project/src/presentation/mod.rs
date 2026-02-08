@@ -106,7 +106,9 @@ pub fn spawn_player_shadow_system(
         // 影をスポーン（プレイヤーはボールより大きい）
         let (width, height) = config.shadow.player_size;
         commands.spawn((
-            Shadow { owner: player_entity },
+            Shadow {
+                owner: player_entity,
+            },
             Sprite {
                 color: Color::srgba(0.0, 0.0, 0.0, config.shadow.player_alpha),
                 custom_size: Some(Vec2::new(width, height)),
