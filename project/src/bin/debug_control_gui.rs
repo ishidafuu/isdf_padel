@@ -505,7 +505,13 @@ impl DebugControlGuiApp {
         }
 
         if field.is_float() {
-            let state = self.float_states.entry(field.key.clone()).or_default();
+            let base_value = self.base_float_value(field);
+            let state = self.float_states.entry(field.key.clone()).or_insert_with(|| {
+                FloatState {
+                    enabled: false,
+                    value: base_value.unwrap_or(0.0),
+                }
+            });
             ui.horizontal(|ui| {
                 ui.checkbox(&mut state.enabled, field.label());
                 ui.add_enabled_ui(state.enabled, |ui| {
@@ -515,6 +521,14 @@ impl DebugControlGuiApp {
                             .range(field.min()..=field.max()),
                     );
                 });
+                if let Some(base_value) = base_value {
+                    let hint = if state.enabled {
+                        format!("既定値: {:.3}", base_value)
+                    } else {
+                        format!("OFF時の適用値: {:.3}", base_value)
+                    };
+                    ui.label(egui::RichText::new(hint).weak());
+                }
             });
             return;
         }
@@ -691,6 +705,15 @@ impl DebugControlGuiApp {
             .iter()
             .map(|section| self.runtime_section_enabled_count(section))
             .sum()
+    }
+
+    fn base_float_value(&self, field: &DebugFieldDef) -> Option<f32> {
+        self.base_config
+            .as_ref()
+            .and_then(|base| match get_config_value(base, field.key()) {
+                Some(DebugOverrideValue::Float(v)) => Some(v),
+                _ => None,
+            })
     }
 
     fn env_active_count(&self) -> usize {
