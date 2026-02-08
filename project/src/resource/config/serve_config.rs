@@ -76,7 +76,7 @@ impl Default for ServeConfig {
             toss_velocity_y: 3.5,
             toss_velocity_min_y: 2.8,
             toss_velocity_max_y: 4.8,
-            toss_hold_max_secs: 0.5,
+            toss_hold_max_secs: 0.3,
             toss_depth_shift: 0.45,
             toss_launch_angle_bonus_deg: 6.0,
             practice_infinite_mode: false,
