@@ -29,6 +29,7 @@ pub struct RacketSwingState {
     pub pre_contact_position: Vec3,
     pub post_contact_position: Vec3,
     pub end_position: Vec3,
+    pub follow_through_control_position: Vec3,
     /// ラケット中心位置（論理座標）
     pub previous_racket_position: Vec3,
     pub current_racket_position: Vec3,
@@ -49,6 +50,7 @@ impl Default for RacketSwingState {
             pre_contact_position: Vec3::ZERO,
             post_contact_position: Vec3::ZERO,
             end_position: Vec3::ZERO,
+            follow_through_control_position: Vec3::ZERO,
             previous_racket_position: Vec3::ZERO,
             current_racket_position: Vec3::ZERO,
         }

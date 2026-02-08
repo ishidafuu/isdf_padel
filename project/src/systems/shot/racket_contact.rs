@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use crate::components::{Ball, LogicalPosition, Player, ShotState, Velocity};
+use crate::components::{Ball, BounceState, LogicalPosition, Player, ShotState, Velocity};
 use crate::core::events::{RacketContactEvent, ShotEvent, SwingIntentEvent};
 use crate::core::CourtSide;
 use crate::resource::config::GameConfig;
@@ -15,14 +15,15 @@ use crate::resource::FixedDeltaTime;
 pub fn plan_racket_swing_system(
     config: Res<GameConfig>,
     mut intents: MessageReader<SwingIntentEvent>,
-    ball_query: Query<(&LogicalPosition, &Velocity), With<Ball>>,
+    ball_query: Query<(&LogicalPosition, &Velocity, &BounceState), With<Ball>>,
     mut player_query: Query<(&Player, &LogicalPosition, &mut ShotState), Without<Ball>>,
 ) {
-    let Some((ball_pos, ball_vel)) = ball_query.iter().next() else {
+    let Some((ball_pos, ball_vel, bounce_state)) = ball_query.iter().next() else {
         return;
     };
     let ball_pos = ball_pos.value;
     let ball_vel = ball_vel.value;
+    let is_volley = bounce_state.time_since_bounce.is_none();
     let gravity = config.physics.gravity;
     let swing_cfg = &config.shot.racket_swing;
 
@@ -32,7 +33,7 @@ pub fn plan_racket_swing_system(
                 continue;
             }
 
-            let (planned_hit, hit_time) = predict_hit_point(
+            let (predicted_hit, hit_time) = predict_hit_point(
                 player_pos.value,
                 ball_pos,
                 ball_vel,
@@ -43,10 +44,17 @@ pub fn plan_racket_swing_system(
                 swing_cfg.reach_distance,
                 swing_cfg.max_hit_height_diff,
             );
+            let planned_hit = clamp_hit_to_reach(
+                player_pos.value,
+                predicted_hit,
+                swing_cfg.reach_distance,
+                swing_cfg.max_hit_height_diff,
+            );
 
             let swing = &mut shot_state.racket_swing;
             let front_sign = front_sign(player.court_side);
             let lateral_sign = if intent.direction.y >= 0.0 { 1.0 } else { -1.0 };
+            let is_slice_like = is_slice_like_hit(ball_vel, planned_hit, player_pos.value);
 
             swing.is_active = true;
             swing.contact_done = false;
@@ -57,25 +65,70 @@ pub fn plan_racket_swing_system(
                 .clamp(0.01, swing.duration_seconds - 0.01);
             swing.input_direction = intent.direction;
             swing.hold_time_ms = intent.hold_time_ms;
-            swing.planned_hit_position = planned_hit;
+            if is_volley || is_slice_like {
+                // ボレー/スライスは直線寄り（面を直接合わせる）軌道
+                swing.planned_hit_position = planned_hit;
+                swing.start_position =
+                    player_pos.value + Vec3::new(-0.38 * front_sign, 1.00, -0.15 * lateral_sign);
+                swing.pre_contact_position = swing.start_position
+                    + (planned_hit - swing.start_position) * 0.65
+                    + Vec3::new(-0.05 * front_sign, 0.08, -0.08 * lateral_sign);
+                swing.post_contact_position =
+                    planned_hit + Vec3::new(0.22 * front_sign, 0.10, 0.12 * lateral_sign);
+                swing.end_position = swing.post_contact_position
+                    + Vec3::new(0.12 * front_sign, -0.05, 0.03 * lateral_sign);
+                swing.follow_through_control_position =
+                    swing.end_position + Vec3::new(0.06 * front_sign, -0.04, 0.02 * lateral_sign);
+            } else {
+                // 通常は「後ろから巻き込む」遠心力寄りの軌道
+                let travel_xz = Vec2::new(ball_vel.x, ball_vel.z)
+                    .try_normalize()
+                    .unwrap_or(Vec2::new(front_sign, 0.0));
+                let behind_xz = -travel_xz;
+                let side_xz = Vec2::new(-travel_xz.y, travel_xz.x) * lateral_sign;
+                let behind = Vec3::new(behind_xz.x, 0.0, behind_xz.y);
+                let side = Vec3::new(side_xz.x, 0.0, side_xz.y);
+                let travel = -behind;
 
-            // スイング軌道をプレイヤー近傍で構築し、接触時にplanned_hitを通過させる
-            swing.start_position =
-                player_pos.value + Vec3::new(-0.45 * front_sign, 1.05, -0.20 * lateral_sign);
-            swing.pre_contact_position = swing.start_position
-                + (planned_hit - swing.start_position) * 0.55
-                + Vec3::new(-0.12 * front_sign, 0.18, -0.18 * lateral_sign);
-            swing.post_contact_position =
-                planned_hit + Vec3::new(0.35 * front_sign, 0.20, 0.18 * lateral_sign);
-            swing.end_position = swing.post_contact_position
-                + Vec3::new(0.18 * front_sign, -0.08, 0.05 * lateral_sign);
+                swing.planned_hit_position =
+                    planned_hit + behind * 0.18 + Vec3::new(0.0, -0.04, 0.0);
+                swing.planned_hit_position.y = swing.planned_hit_position.y.max(0.25);
+                swing.planned_hit_position = clamp_hit_to_reach(
+                    player_pos.value,
+                    swing.planned_hit_position,
+                    swing_cfg.reach_distance,
+                    swing_cfg.max_hit_height_diff,
+                );
+
+                swing.start_position =
+                    player_pos.value + behind * 0.85 + side * 0.45 + Vec3::new(0.0, 1.35, 0.0);
+                swing.pre_contact_position =
+                    player_pos.value + behind * 0.55 + side * 0.95 + Vec3::new(0.0, 1.75, 0.0);
+                swing.post_contact_position = swing.planned_hit_position
+                    + side * 0.55
+                    + travel * 0.30
+                    + Vec3::new(0.0, 0.28, 0.0);
+                swing.end_position = swing.planned_hit_position + travel * 0.58 - side * 0.18
+                    + Vec3::new(0.0, 0.12, 0.0);
+                swing.follow_through_control_position =
+                    swing.end_position + travel * 0.22 - side * 0.12 + Vec3::new(0.0, -0.10, 0.0);
+            }
 
             swing.previous_racket_position = swing.start_position;
             swing.current_racket_position = swing.start_position;
 
             info!(
-                "Swing planned: player={}, hit_time={:.3}, hit=({:.2},{:.2},{:.2})",
-                player.id, hit_time, planned_hit.x, planned_hit.y, planned_hit.z
+                "Swing planned: player={}, style={}, hit_time={:.3}, hit=({:.2},{:.2},{:.2})",
+                player.id,
+                if is_volley || is_slice_like {
+                    "direct"
+                } else {
+                    "whip"
+                },
+                hit_time,
+                swing.planned_hit_position.x,
+                swing.planned_hit_position.y,
+                swing.planned_hit_position.z
             );
         }
     }
@@ -222,32 +275,63 @@ fn predict_ball_position(ball_pos: Vec3, ball_vel: Vec3, gravity: f32, t: f32) -
     ball_pos + ball_vel * t + Vec3::new(0.0, 0.5 * gravity * t * t, 0.0)
 }
 
+fn clamp_hit_to_reach(
+    player_pos: Vec3,
+    hit: Vec3,
+    reach_distance: f32,
+    max_hit_height_diff: f32,
+) -> Vec3 {
+    let mut clamped = hit;
+
+    let horizontal = Vec2::new(hit.x - player_pos.x, hit.z - player_pos.z);
+    if horizontal.length_squared() > f32::EPSILON {
+        let limited = horizontal.clamp_length_max(reach_distance);
+        clamped.x = player_pos.x + limited.x;
+        clamped.z = player_pos.z + limited.y;
+    } else {
+        clamped.x = player_pos.x;
+        clamped.z = player_pos.z;
+    }
+
+    let min_y = player_pos.y - max_hit_height_diff;
+    let max_y = player_pos.y + max_hit_height_diff;
+    clamped.y = hit.y.clamp(min_y, max_y).max(0.0);
+
+    clamped
+}
+
 fn sample_swing_position(swing: &crate::components::RacketSwingState, time: f32) -> Vec3 {
     let t = (time / swing.duration_seconds).clamp(0.0, 1.0);
     let tc = (swing.contact_time_seconds / swing.duration_seconds).clamp(0.01, 0.99);
 
     if t <= tc {
         let u = (t / tc).clamp(0.0, 1.0);
-        quadratic_bezier(
+        cubic_bezier(
             swing.start_position,
             swing.pre_contact_position,
+            swing.post_contact_position,
             swing.planned_hit_position,
             u,
         )
     } else {
         let u = ((t - tc) / (1.0 - tc)).clamp(0.0, 1.0);
-        quadratic_bezier(
+        cubic_bezier(
             swing.planned_hit_position,
             swing.post_contact_position,
+            swing.follow_through_control_position,
             swing.end_position,
             u,
         )
     }
 }
 
-fn quadratic_bezier(p0: Vec3, p1: Vec3, p2: Vec3, t: f32) -> Vec3 {
+fn cubic_bezier(p0: Vec3, p1: Vec3, p2: Vec3, p3: Vec3, t: f32) -> Vec3 {
     let omt = 1.0 - t;
-    omt * omt * p0 + 2.0 * omt * t * p1 + t * t * p2
+    omt * omt * omt * p0 + 3.0 * omt * omt * t * p1 + 3.0 * omt * t * t * p2 + t * t * t * p3
+}
+
+fn is_slice_like_hit(ball_vel: Vec3, planned_hit: Vec3, player_pos: Vec3) -> bool {
+    ball_vel.y < -0.6 && planned_hit.y <= player_pos.y + 1.3
 }
 
 fn distance_point_to_segment(point: Vec3, seg_a: Vec3, seg_b: Vec3) -> f32 {
