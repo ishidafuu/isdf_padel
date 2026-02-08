@@ -11,6 +11,7 @@
 | フォルダ | 番号 | 内容 |
 |---------|------|------|
 | 71_simulation | 771 | シミュレーション・自動テストツール |
+| 72_debug_control | 772 | 実行時デバッグ制御ツール |
 
 ## 番号体系
 
@@ -24,3 +25,4 @@
 |------|-------------|
 | 7_tools/70000_overview.md | 70000 |
 | 7_tools/71_simulation/77100_headless_sim.md | 77100 |
+| 7_tools/72_debug_control/77210_debug_control.md | 77210 |

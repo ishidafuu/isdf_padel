@@ -27,7 +27,13 @@ use presentation::{
 use resource::config::{load_game_config, GameConfig, GameConfigHandle, GameConfigLoader};
 use resource::debug::LastShotDebugInfo;
 use resource::MatchFlowState;
-use resource::{FixedDeltaTime, GameRng};
+use resource::{
+    compose_effective_config, load_runtime_overrides, DebugRuntimeOverrides, FixedDeltaTime,
+    GameRng, DEBUG_RUNTIME_CONFIG_PATH,
+};
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 use systems::{
     ai_movement_system, ai_shot_system, ceiling_collision_system, debug_marker_system,
     gamepad_input_system, gravity_system, human_input_system, jump_system,
@@ -38,10 +44,44 @@ use systems::{
     MatchFlowPlugin, PointJudgmentPlugin, ScoringPlugin,
 };
 
+#[derive(Resource, Clone)]
+struct BaseGameConfig(GameConfig);
+
+#[derive(Resource, Clone, Default)]
+struct StartupEnvOverrides(DebugRuntimeOverrides);
+
+#[derive(Resource, Clone, Default)]
+struct RuntimeOverrides(DebugRuntimeOverrides);
+
+#[derive(Resource)]
+struct RuntimeOverridesWatcher {
+    path: PathBuf,
+    last_modified: Option<SystemTime>,
+}
+
+impl RuntimeOverridesWatcher {
+    fn new(path: impl Into<PathBuf>) -> Self {
+        let path = path.into();
+        let last_modified = read_modified_time(&path);
+        Self {
+            path,
+            last_modified,
+        }
+    }
+}
+
 fn main() {
     // GameConfig をロード（初回起動用、アセットシステム起動前に同期的に読み込み）
-    let config =
+    let base_config =
         load_game_config("assets/config/game_config.ron").expect("Failed to load game config");
+    let startup_env_overrides = DebugRuntimeOverrides::from_env();
+    let runtime_overrides = load_runtime_overrides(DEBUG_RUNTIME_CONFIG_PATH).unwrap_or_else(|e| {
+        eprintln!(
+            "Warning: failed to load {}: {}",
+            DEBUG_RUNTIME_CONFIG_PATH, e
+        );
+        DebugRuntimeOverrides::default()
+    });
 
     let mut app = App::new();
 
@@ -52,7 +92,12 @@ fn main() {
     add_game_plugins(&mut app);
 
     // リソース・メッセージ初期化
-    add_resources(&mut app, config);
+    add_resources(
+        &mut app,
+        base_config,
+        startup_env_overrides,
+        runtime_overrides,
+    );
     add_messages(&mut app);
 
     // システム登録
@@ -94,8 +139,20 @@ fn add_default_plugins(app: &mut App) {
 }
 
 /// リソースを初期化
-fn add_resources(app: &mut App, config: GameConfig) {
-    app.insert_resource(config)
+fn add_resources(
+    app: &mut App,
+    base_config: GameConfig,
+    startup_env_overrides: DebugRuntimeOverrides,
+    runtime_overrides: DebugRuntimeOverrides,
+) {
+    let effective_config =
+        compose_effective_config(&base_config, &startup_env_overrides, &runtime_overrides);
+
+    app.insert_resource(effective_config)
+        .insert_resource(BaseGameConfig(base_config))
+        .insert_resource(StartupEnvOverrides(startup_env_overrides))
+        .insert_resource(RuntimeOverrides(runtime_overrides))
+        .insert_resource(RuntimeOverridesWatcher::new(DEBUG_RUNTIME_CONFIG_PATH))
         .init_resource::<FixedDeltaTime>()
         .init_resource::<GameRng>()
         .init_resource::<LastShotDebugInfo>();
@@ -162,6 +219,8 @@ fn add_game_logic_systems(app: &mut App) {
         (
             // 設定ホットリロード
             update_config_on_change,
+            // 実行中デバッグ上書き設定の反映
+            update_debug_runtime_overrides,
             // ふっとばし開始（BallHitEvent を処理）
             knockback_start_system,
             // ジャンプ・重力
@@ -386,6 +445,9 @@ fn update_config_on_change(
     mut events: EventReader<AssetEvent<GameConfig>>,
     assets: Res<Assets<GameConfig>>,
     handle: Option<Res<GameConfigHandle>>,
+    mut base_config: ResMut<BaseGameConfig>,
+    startup_env_overrides: Res<StartupEnvOverrides>,
+    runtime_overrides: Res<RuntimeOverrides>,
     mut config: ResMut<GameConfig>,
 ) {
     let Some(handle) = handle else { return };
@@ -394,12 +456,68 @@ fn update_config_on_change(
         if let AssetEvent::Modified { id } = event {
             if handle.0.id() == *id {
                 if let Some(new_config) = assets.get(*id) {
-                    *config = new_config.clone();
+                    base_config.0 = new_config.clone();
+                    *config = compose_effective_config(
+                        &base_config.0,
+                        &startup_env_overrides.0,
+                        &runtime_overrides.0,
+                    );
                     info!("GameConfig hot-reloaded!");
                 }
             }
         }
     }
+}
+
+/// 実行中デバッグ上書き設定ファイルを監視して適用
+/// @spec 77210_debug_control.md#req-77210-001
+fn update_debug_runtime_overrides(
+    mut runtime_overrides: ResMut<RuntimeOverrides>,
+    mut watcher: ResMut<RuntimeOverridesWatcher>,
+    base_config: Res<BaseGameConfig>,
+    startup_env_overrides: Res<StartupEnvOverrides>,
+    mut config: ResMut<GameConfig>,
+) {
+    let new_modified = read_modified_time(&watcher.path);
+    if new_modified == watcher.last_modified {
+        return;
+    }
+    watcher.last_modified = new_modified;
+
+    let loaded = if watcher.path.exists() {
+        match load_runtime_overrides(&watcher.path) {
+            Ok(value) => value,
+            Err(e) => {
+                warn!(
+                    "Failed to reload runtime overrides from {}: {}",
+                    watcher.path.display(),
+                    e
+                );
+                return;
+            }
+        }
+    } else {
+        DebugRuntimeOverrides::default()
+    };
+
+    if loaded == runtime_overrides.0 {
+        return;
+    }
+
+    runtime_overrides.0 = loaded;
+    *config = compose_effective_config(
+        &base_config.0,
+        &startup_env_overrides.0,
+        &runtime_overrides.0,
+    );
+    info!(
+        "Runtime overrides reloaded from {}",
+        watcher.path.to_string_lossy()
+    );
+}
+
+fn read_modified_time(path: &Path) -> Option<SystemTime> {
+    fs::metadata(path).ok()?.modified().ok()
 }
 
 /// エスケープキーでウィンドウを閉じる

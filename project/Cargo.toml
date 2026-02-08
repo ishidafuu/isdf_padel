@@ -40,6 +40,18 @@ path = "src/bin/replay_viewer.rs"
 name = "trace_narrator"
 path = "src/bin/trace_narrator.rs"
 
+# デバッグ制御バイナリ（別プロセスで設定切り替え）
+# @spec 77210_debug_control.md
+[[bin]]
+name = "debug_control"
+path = "src/bin/debug_control.rs"
+
+# デバッグ制御GUIバイナリ（別ウィンドウ）
+# @spec 77210_debug_control.md
+[[bin]]
+name = "debug_control_gui"
+path = "src/bin/debug_control_gui.rs"
+
 [dependencies]
 bevy = { version = "0.17", features = ["file_watcher", "serialize"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -47,6 +59,7 @@ ron = "0.10"
 bincode = "1.3"
 thiserror = "2.0"
 rand = "0.9"
+eframe = "0.33"
 # Headless simulation dependencies
 clap = { version = "4.0", features = ["derive"] }
 serde_json = "1.0"

@@ -3,11 +3,13 @@
 
 pub mod config;
 pub mod debug;
+pub mod debug_control;
 pub mod fixed_delta;
 pub mod game_rng;
 pub mod scoring;
 
 pub use config::*;
+pub use debug_control::*;
 pub use fixed_delta::*;
 pub use game_rng::*;
 pub use scoring::*;

@@ -4,3 +4,5 @@ assets/replays/
 # Debug files
 debug_log.txt
 debug_trace.csv
+assets/config/debug_runtime.ron
+assets/config/debug_env.ron
