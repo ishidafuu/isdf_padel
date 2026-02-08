@@ -84,7 +84,7 @@ GameConfig(
         toss_velocity_y: 3.5,           // トス上向き初速度 m/s
         toss_velocity_min_y: 2.8,       // 長押し最小時のトス初速 m/s
         toss_velocity_max_y: 4.8,       // 長押し最大時のトス初速 m/s
-        toss_hold_max_secs: 1.0,        // 1秒長押しで最大トス（以降は自動リリース）
+        toss_hold_max_secs: 0.5,        // 0.5秒長押しで最大トス（以降は自動リリース）
         toss_depth_shift: 0.45,         // 高トスほど奥を狙う深さ補正量 m
         toss_launch_angle_bonus_deg: 6.0, // 高トス時の高弾道ボーナス上限 度
         practice_infinite_mode: true,   // サーブ着地後に常に再サーブ（手触り確認用）

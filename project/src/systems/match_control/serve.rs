@@ -32,11 +32,19 @@ fn calculate_toss_velocity_by_hold(
     input_hold_time_ms: f32,
     serve_config: &ServeConfig,
 ) -> (f32, f32) {
-    let hold_secs = (input_hold_time_ms / 1000.0).max(0.0);
-    let hold_t = if serve_config.toss_hold_max_secs <= 0.0 {
+    let raw_hold_secs = (input_hold_time_ms / 1000.0).max(0.0);
+    let max_hold_secs = serve_config.toss_hold_max_secs.max(0.0);
+    let min_hold_secs = 0.1_f32.min(max_hold_secs);
+    let hold_secs = if max_hold_secs <= 0.0 {
+        raw_hold_secs.max(0.1)
+    } else {
+        raw_hold_secs.clamp(min_hold_secs, max_hold_secs)
+    };
+
+    let hold_t = if max_hold_secs <= 0.0 {
         1.0
     } else {
-        (hold_secs / serve_config.toss_hold_max_secs).clamp(0.0, 1.0)
+        ((hold_secs - min_hold_secs) / (max_hold_secs - min_hold_secs).max(0.001)).clamp(0.0, 1.0)
     };
     let min_v = serve_config
         .toss_velocity_min_y
@@ -445,9 +453,16 @@ mod tests {
         let serve_config = ServeConfig::default();
 
         let (v_short, _) = calculate_toss_velocity_by_hold(0.0, &serve_config);
+        let (v_floor, _) = calculate_toss_velocity_by_hold(100.0, &serve_config);
         let (v_mid, _) = calculate_toss_velocity_by_hold(250.0, &serve_config);
         let (v_long, _) = calculate_toss_velocity_by_hold(1000.0, &serve_config);
 
+        assert!(
+            (v_short - v_floor).abs() < 0.001,
+            "Expected hold under 0.1s to be clamped to 0.1s: short={}, floor={}",
+            v_short,
+            v_floor
+        );
         assert!(
             v_short < v_mid && v_mid < v_long,
             "Expected toss velocity to increase with hold time: short={}, mid={}, long={}",
