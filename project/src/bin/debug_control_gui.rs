@@ -2,21 +2,26 @@
 //! @spec 77210_debug_control.md
 
 use eframe::egui;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
+use std::path::Path;
 use std::process::Command;
 
 use padel_game::resource::{
-    compose_effective_config, load_env_profile, load_game_config, load_runtime_overrides,
-    save_env_profile, save_runtime_overrides, DebugEnvProfile, DebugRuntimeOverrides,
-    DEBUG_ENV_CONFIG_PATH, DEBUG_RUNTIME_CONFIG_PATH,
+    compose_effective_config, get_config_value, get_override_value, load_env_profile,
+    load_game_config, load_runtime_overrides, override_field_type, save_env_profile,
+    save_runtime_overrides, set_override_value, DebugEnvProfile, DebugOverrideType,
+    DebugOverrideValue, DebugRuntimeOverrides, DEBUG_ENV_CONFIG_PATH, DEBUG_RUNTIME_CONFIG_PATH,
 };
+
+const DEBUG_FIELDS_CONFIG_PATH: &str = "assets/config/debug_fields.ron";
 
 fn main() {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Padel デバッグ制御 GUI")
-            .with_inner_size([960.0, 760.0]),
+            .with_inner_size([1040.0, 820.0]),
         ..Default::default()
     };
 
@@ -38,7 +43,6 @@ fn main() {
 
 fn configure_japanese_font(ctx: &egui::Context) {
     let Some(font_bytes) = load_japanese_font_bytes() else {
-        // フォントが見つからない場合はデフォルトのまま動かす
         return;
     };
 
@@ -59,7 +63,6 @@ fn configure_japanese_font(ctx: &egui::Context) {
 }
 
 fn load_japanese_font_bytes() -> Option<Vec<u8>> {
-    // macOSで一般的な日本語フォント候補
     let candidates = [
         "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
         "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc",
@@ -72,27 +75,10 @@ fn load_japanese_font_bytes() -> Option<Vec<u8>> {
     candidates.iter().find_map(|path| fs::read(path).ok())
 }
 
-#[derive(Clone, Copy)]
-struct OptionalF32Field {
-    use_override: bool,
+#[derive(Clone, Copy, Default)]
+struct FloatState {
+    enabled: bool,
     value: f32,
-}
-
-impl OptionalF32Field {
-    fn from_option(value: Option<f32>) -> Self {
-        Self {
-            use_override: value.is_some(),
-            value: value.unwrap_or(0.0),
-        }
-    }
-
-    fn to_option(self) -> Option<f32> {
-        if self.use_override {
-            Some(self.value)
-        } else {
-            None
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -101,18 +87,60 @@ struct EnvRow {
     value: String,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+#[serde(default)]
+struct DebugFieldCatalog {
+    sections: Vec<DebugFieldSection>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+#[serde(default)]
+struct DebugFieldSection {
+    title: String,
+    fields: Vec<DebugFieldDef>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum DebugFieldDef {
+    Flag {
+        key: String,
+        label: String,
+    },
+    Float {
+        key: String,
+        label: String,
+        min: f32,
+        max: f32,
+        step: f32,
+    },
+}
+
+impl DebugFieldDef {
+    fn key(&self) -> &str {
+        match self {
+            Self::Flag { key, .. } => key,
+            Self::Float { key, .. } => key,
+        }
+    }
+
+    fn label(&self) -> &str {
+        match self {
+            Self::Flag { label, .. } => label,
+            Self::Float { label, .. } => label,
+        }
+    }
+}
+
 struct DebugControlGuiApp {
     base_config: Option<padel_game::resource::GameConfig>,
     startup_env: DebugRuntimeOverrides,
 
+    catalog: DebugFieldCatalog,
     runtime_enabled: bool,
-    practice_infinite_mode: bool,
-    player_move_speed: OptionalF32Field,
-    player_move_speed_z: OptionalF32Field,
-    ball_normal_shot_speed: OptionalF32Field,
-    ball_power_shot_speed: OptionalF32Field,
-    serve_speed: OptionalF32Field,
-    gravity: OptionalF32Field,
+    runtime_seed: DebugRuntimeOverrides,
+    flag_states: BTreeMap<String, bool>,
+    float_states: BTreeMap<String, FloatState>,
 
     env_rows: Vec<EnvRow>,
     new_env_key: String,
@@ -127,14 +155,11 @@ impl DebugControlGuiApp {
         Self {
             base_config: None,
             startup_env: DebugRuntimeOverrides::from_env(),
+            catalog: default_field_catalog(),
             runtime_enabled: false,
-            practice_infinite_mode: false,
-            player_move_speed: OptionalF32Field::from_option(None),
-            player_move_speed_z: OptionalF32Field::from_option(None),
-            ball_normal_shot_speed: OptionalF32Field::from_option(None),
-            ball_power_shot_speed: OptionalF32Field::from_option(None),
-            serve_speed: OptionalF32Field::from_option(None),
-            gravity: OptionalF32Field::from_option(None),
+            runtime_seed: DebugRuntimeOverrides::default(),
+            flag_states: BTreeMap::new(),
+            float_states: BTreeMap::new(),
             env_rows: Vec::new(),
             new_env_key: String::new(),
             new_env_value: String::new(),
@@ -148,6 +173,9 @@ impl DebugControlGuiApp {
         let startup_env = DebugRuntimeOverrides::from_env();
         let runtime = load_runtime_overrides(DEBUG_RUNTIME_CONFIG_PATH)?;
         let env_profile = load_env_profile(DEBUG_ENV_CONFIG_PATH)?;
+        let catalog = load_or_create_field_catalog(DEBUG_FIELDS_CONFIG_PATH)?;
+
+        let (flag_states, float_states) = build_editor_states(&catalog, &base, &runtime);
 
         let env_rows = env_profile
             .vars
@@ -158,39 +186,17 @@ impl DebugControlGuiApp {
         Ok(Self {
             base_config: Some(base),
             startup_env,
+            catalog,
             runtime_enabled: runtime.enabled,
-            practice_infinite_mode: runtime.practice_infinite_mode.unwrap_or(false),
-            player_move_speed: OptionalF32Field::from_option(runtime.player_move_speed),
-            player_move_speed_z: OptionalF32Field::from_option(runtime.player_move_speed_z),
-            ball_normal_shot_speed: OptionalF32Field::from_option(runtime.ball_normal_shot_speed),
-            ball_power_shot_speed: OptionalF32Field::from_option(runtime.ball_power_shot_speed),
-            serve_speed: OptionalF32Field::from_option(runtime.serve_speed),
-            gravity: OptionalF32Field::from_option(runtime.gravity),
+            runtime_seed: runtime,
+            flag_states,
+            float_states,
             env_rows,
             new_env_key: String::new(),
             new_env_value: String::new(),
             launch_release: false,
             status_message: "読み込み完了".to_string(),
         })
-    }
-
-    fn runtime_overrides(&self) -> DebugRuntimeOverrides {
-        DebugRuntimeOverrides {
-            enabled: self.runtime_enabled,
-            // フラグ項目は1チェック方式:
-            // ONのときのみ明示上書きし、OFFは未指定（デフォルトOFFをそのまま使う）
-            practice_infinite_mode: if self.practice_infinite_mode {
-                Some(true)
-            } else {
-                None
-            },
-            player_move_speed: self.player_move_speed.to_option(),
-            player_move_speed_z: self.player_move_speed_z.to_option(),
-            ball_normal_shot_speed: self.ball_normal_shot_speed.to_option(),
-            ball_power_shot_speed: self.ball_power_shot_speed.to_option(),
-            serve_speed: self.serve_speed.to_option(),
-            gravity: self.gravity.to_option(),
-        }
     }
 
     fn env_profile(&self) -> DebugEnvProfile {
@@ -205,6 +211,38 @@ impl DebugControlGuiApp {
         DebugEnvProfile { vars }
     }
 
+    fn build_runtime_from_ui(&self) -> Result<DebugRuntimeOverrides, String> {
+        let mut overrides = self.runtime_seed.clone();
+
+        for section in &self.catalog.sections {
+            for field in &section.fields {
+                match field {
+                    DebugFieldDef::Flag { key, .. } => {
+                        let checked = self.flag_states.get(key).copied().unwrap_or(false);
+                        let value = if checked {
+                            Some(DebugOverrideValue::Bool(true))
+                        } else {
+                            None
+                        };
+                        set_override_value(&mut overrides, key, value)?;
+                    }
+                    DebugFieldDef::Float { key, .. } => {
+                        let state = self.float_states.get(key).copied().unwrap_or_default();
+                        let value = if state.enabled {
+                            Some(DebugOverrideValue::Float(state.value))
+                        } else {
+                            None
+                        };
+                        set_override_value(&mut overrides, key, value)?;
+                    }
+                }
+            }
+        }
+
+        overrides.enabled = self.runtime_enabled;
+        Ok(overrides)
+    }
+
     fn reload_files(&mut self) {
         match Self::load() {
             Ok(new_state) => *self = new_state,
@@ -213,16 +251,27 @@ impl DebugControlGuiApp {
     }
 
     fn save_runtime(&mut self) {
-        let mut overrides = self.runtime_overrides();
+        let mut overrides = match self.build_runtime_from_ui() {
+            Ok(v) => v,
+            Err(err) => {
+                self.status_message = format!("実行中上書きの保存失敗: {}", err);
+                return;
+            }
+        };
+
         if overrides.has_any_value() && !overrides.enabled {
-            // 値があるのに無効だと「保存したのに反映されない」状態になるため自動有効化
             overrides.enabled = true;
             self.runtime_enabled = true;
         }
 
         match save_runtime_overrides(DEBUG_RUNTIME_CONFIG_PATH, &overrides) {
-            Ok(()) => self.status_message = "実行中上書きの保存完了".to_string(),
-            Err(err) => self.status_message = format!("実行中上書きの保存失敗: {}", err),
+            Ok(()) => {
+                self.runtime_seed = overrides;
+                self.status_message = "実行中上書きの保存完了".to_string();
+            }
+            Err(err) => {
+                self.status_message = format!("実行中上書きの保存失敗: {}", err);
+            }
         }
     }
 
@@ -299,24 +348,52 @@ impl DebugControlGuiApp {
                     Err(err) => self.status_message = err,
                 }
             }
+            if ui.button("項目定義ファイルを開く").clicked() {
+                match Self::open_file_default(DEBUG_FIELDS_CONFIG_PATH) {
+                    Ok(()) => self.status_message = "項目定義ファイルを開きました".to_string(),
+                    Err(err) => self.status_message = err,
+                }
+            }
         });
         ui.separator();
 
-        ui.checkbox(&mut self.practice_infinite_mode, "練習サーブ無限化");
-        draw_optional_f32_row(ui, "プレイヤー移動速度(X)", &mut self.player_move_speed);
-        draw_optional_f32_row(ui, "プレイヤー移動速度(Z)", &mut self.player_move_speed_z);
-        draw_optional_f32_row(
-            ui,
-            "ボール通常ショット速度",
-            &mut self.ball_normal_shot_speed,
-        );
-        draw_optional_f32_row(
-            ui,
-            "ボール強打ショット速度",
-            &mut self.ball_power_shot_speed,
-        );
-        draw_optional_f32_row(ui, "サーブ速度", &mut self.serve_speed);
-        draw_optional_f32_row(ui, "重力加速度", &mut self.gravity);
+        for section in self.catalog.sections.clone() {
+            egui::CollapsingHeader::new(&section.title)
+                .default_open(true)
+                .show(ui, |ui| {
+                    for field in &section.fields {
+                        self.draw_runtime_field(ui, field);
+                    }
+                });
+        }
+    }
+
+    fn draw_runtime_field(&mut self, ui: &mut egui::Ui, field: &DebugFieldDef) {
+        match field {
+            DebugFieldDef::Flag { key, label } => {
+                let state = self.flag_states.entry(key.clone()).or_insert(false);
+                ui.checkbox(state, label);
+            }
+            DebugFieldDef::Float {
+                key,
+                label,
+                min,
+                max,
+                step,
+            } => {
+                let state = self.float_states.entry(key.clone()).or_default();
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut state.enabled, label);
+                    ui.add_enabled_ui(state.enabled, |ui| {
+                        ui.add(
+                            egui::DragValue::new(&mut state.value)
+                                .speed(*step as f64)
+                                .range(*min..=*max),
+                        );
+                    });
+                });
+            }
+        }
     }
 
     fn draw_env_editor(&mut self, ui: &mut egui::Ui) {
@@ -370,23 +447,41 @@ impl DebugControlGuiApp {
 
     fn draw_effective_preview(&self, ui: &mut egui::Ui) {
         ui.heading("実効値プレビュー");
+
         let Some(base) = &self.base_config else {
             ui.label("base game_config の読み込みに失敗しています。");
             return;
         };
 
-        let effective =
-            compose_effective_config(base, &self.startup_env, &self.runtime_overrides());
-        ui.monospace(format!(
-            "練習サーブ無限化: {}\nプレイヤー移動速度(X): {:.3}\nプレイヤー移動速度(Z): {:.3}\nボール通常ショット速度: {:.3}\nボール強打ショット速度: {:.3}\nサーブ速度: {:.3}\n重力加速度: {:.3}",
-            effective.serve.practice_infinite_mode,
-            effective.player.move_speed,
-            effective.player.move_speed_z,
-            effective.ball.normal_shot_speed,
-            effective.ball.power_shot_speed,
-            effective.serve.serve_speed,
-            effective.physics.gravity
-        ));
+        let mut runtime = match self.build_runtime_from_ui() {
+            Ok(v) => v,
+            Err(err) => {
+                ui.label(format!("プレビュー生成失敗: {}", err));
+                return;
+            }
+        };
+        if runtime.has_any_value() && !runtime.enabled {
+            runtime.enabled = true;
+        }
+
+        let effective = compose_effective_config(base, &self.startup_env, &runtime);
+
+        for section in &self.catalog.sections {
+            ui.label(format!("[{}]", section.title));
+            let mut lines = Vec::new();
+            for field in &section.fields {
+                let line = match get_config_value(&effective, field.key()) {
+                    Some(DebugOverrideValue::Bool(v)) => {
+                        format!("{}: {}", field.label(), if v { "ON" } else { "OFF" })
+                    }
+                    Some(DebugOverrideValue::Float(v)) => format!("{}: {:.3}", field.label(), v),
+                    None => format!("{}: (未対応キー)", field.label()),
+                };
+                lines.push(line);
+            }
+            ui.monospace(lines.join("\n"));
+            ui.separator();
+        }
     }
 }
 
@@ -425,15 +520,233 @@ impl eframe::App for DebugControlGuiApp {
     }
 }
 
-fn draw_optional_f32_row(ui: &mut egui::Ui, label: &str, field: &mut OptionalF32Field) {
-    ui.horizontal(|ui| {
-        ui.checkbox(&mut field.use_override, label);
-        ui.add_enabled_ui(field.use_override, |ui| {
-            ui.add(
-                egui::DragValue::new(&mut field.value)
-                    .speed(0.05)
-                    .range(-1000.0..=1000.0),
-            );
-        });
-    });
+fn load_or_create_field_catalog(path: &str) -> Result<DebugFieldCatalog, String> {
+    let target = Path::new(path);
+
+    if target.exists() {
+        let content = fs::read_to_string(target)
+            .map_err(|e| format!("Failed to read field catalog {}: {}", target.display(), e))?;
+        return ron::from_str(&content)
+            .map_err(|e| format!("Failed to parse field catalog {}: {}", target.display(), e));
+    }
+
+    let catalog = default_field_catalog();
+    if let Some(parent) = target.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create {}: {}", parent.display(), e))?;
+    }
+
+    let pretty = ron::ser::PrettyConfig::new()
+        .depth_limit(5)
+        .separate_tuple_members(true);
+    let payload = ron::ser::to_string_pretty(&catalog, pretty)
+        .map_err(|e| format!("Failed to serialize field catalog: {}", e))?;
+    fs::write(target, payload)
+        .map_err(|e| format!("Failed to write field catalog {}: {}", target.display(), e))?;
+
+    Ok(catalog)
+}
+
+fn build_editor_states(
+    catalog: &DebugFieldCatalog,
+    base: &padel_game::resource::GameConfig,
+    runtime: &DebugRuntimeOverrides,
+) -> (BTreeMap<String, bool>, BTreeMap<String, FloatState>) {
+    let mut flag_states = BTreeMap::new();
+    let mut float_states = BTreeMap::new();
+
+    for section in &catalog.sections {
+        for field in &section.fields {
+            match field {
+                DebugFieldDef::Flag { key, .. } => {
+                    let checked = matches!(
+                        get_override_value(runtime, key),
+                        Some(DebugOverrideValue::Bool(true))
+                    );
+                    flag_states.insert(key.clone(), checked);
+                }
+                DebugFieldDef::Float { key, .. } => {
+                    let runtime_value = match get_override_value(runtime, key) {
+                        Some(DebugOverrideValue::Float(v)) => Some(v),
+                        _ => None,
+                    };
+                    let base_value = match get_config_value(base, key) {
+                        Some(DebugOverrideValue::Float(v)) => Some(v),
+                        _ => None,
+                    };
+
+                    let state = if let Some(v) = runtime_value {
+                        FloatState {
+                            enabled: true,
+                            value: v,
+                        }
+                    } else {
+                        FloatState {
+                            enabled: false,
+                            value: base_value.unwrap_or(0.0),
+                        }
+                    };
+                    float_states.insert(key.clone(), state);
+                }
+            }
+        }
+    }
+
+    (flag_states, float_states)
+}
+
+fn default_field_catalog() -> DebugFieldCatalog {
+    DebugFieldCatalog {
+        sections: vec![
+            DebugFieldSection {
+                title: "デバッグ".to_string(),
+                fields: vec![DebugFieldDef::Flag {
+                    key: "serve.practice_infinite_mode".to_string(),
+                    label: "練習サーブ無限化".to_string(),
+                }],
+            },
+            DebugFieldSection {
+                title: "物理".to_string(),
+                fields: vec![
+                    float_field("physics.gravity", "重力加速度", -50.0, 0.0, 0.1),
+                    float_field("physics.max_fall_speed", "最大落下速度", -100.0, 0.0, 0.1),
+                ],
+            },
+            DebugFieldSection {
+                title: "プレイヤー".to_string(),
+                fields: vec![
+                    float_field("player.move_speed", "移動速度(X)", 0.0, 30.0, 0.1),
+                    float_field("player.move_speed_z", "移動速度(Z)", 0.0, 30.0, 0.1),
+                    float_field("player.max_speed", "最大速度", 0.0, 50.0, 0.1),
+                    float_field("player.jump_force", "ジャンプ力", 0.0, 30.0, 0.1),
+                ],
+            },
+            DebugFieldSection {
+                title: "ボール".to_string(),
+                fields: vec![
+                    float_field("ball.normal_shot_speed", "通常ショット速度", 0.0, 40.0, 0.1),
+                    float_field("ball.power_shot_speed", "強打ショット速度", 0.0, 50.0, 0.1),
+                    float_field("ball.bounce_factor", "バウンド減衰", 0.0, 2.0, 0.01),
+                    float_field("ball.radius", "ボール半径", 0.01, 2.0, 0.01),
+                    float_field(
+                        "ball.min_bounce_velocity",
+                        "最小バウンド速度",
+                        0.0,
+                        20.0,
+                        0.05,
+                    ),
+                    float_field("ball.wall_bounce_factor", "壁バウンド減衰", 0.0, 2.0, 0.01),
+                ],
+            },
+            DebugFieldSection {
+                title: "サーブ".to_string(),
+                fields: vec![
+                    float_field("serve.serve_speed", "サーブ速度", 0.0, 40.0, 0.1),
+                    float_field("serve.serve_angle", "サーブ角度", -90.0, 90.0, 0.1),
+                    float_field("serve.toss_velocity_y", "トス速度", 0.0, 20.0, 0.05),
+                    float_field(
+                        "serve.toss_velocity_min_y",
+                        "トス速度(最小)",
+                        0.0,
+                        20.0,
+                        0.05,
+                    ),
+                    float_field(
+                        "serve.toss_velocity_max_y",
+                        "トス速度(最大)",
+                        0.0,
+                        20.0,
+                        0.05,
+                    ),
+                    float_field(
+                        "serve.toss_hold_max_secs",
+                        "トス長押し最大秒",
+                        0.0,
+                        2.0,
+                        0.01,
+                    ),
+                    float_field("serve.toss_depth_shift", "トス奥行き補正", 0.0, 3.0, 0.01),
+                    float_field(
+                        "serve.toss_launch_angle_bonus_deg",
+                        "トス角度ボーナス",
+                        0.0,
+                        30.0,
+                        0.1,
+                    ),
+                    float_field("serve.toss_timeout", "トス失敗タイムアウト", 0.0, 20.0, 0.1),
+                    float_field("serve.hit_height_min", "ヒット高さ(最小)", 0.0, 10.0, 0.01),
+                    float_field("serve.hit_height_max", "ヒット高さ(最大)", 0.0, 10.0, 0.01),
+                    float_field(
+                        "serve.hit_height_optimal",
+                        "ヒット高さ(最適)",
+                        0.0,
+                        10.0,
+                        0.01,
+                    ),
+                    float_field("serve.ai_hit_tolerance", "AIヒット許容", 0.0, 2.0, 0.01),
+                ],
+            },
+            DebugFieldSection {
+                title: "ショット".to_string(),
+                fields: vec![
+                    float_field("shot.max_distance", "最大ショット距離", 0.0, 10.0, 0.01),
+                    float_field("shot.cooldown_time", "ショットクールダウン", 0.0, 5.0, 0.01),
+                    float_field("shot.jump_threshold", "ジャンプ閾値", 0.0, 5.0, 0.01),
+                ],
+            },
+            DebugFieldSection {
+                title: "AI".to_string(),
+                fields: vec![
+                    float_field("ai.move_speed", "AI移動速度", 0.0, 30.0, 0.1),
+                    float_field("ai.shot_cooldown", "AIショットクールダウン", 0.0, 5.0, 0.01),
+                    float_field("ai.prediction_accuracy", "AI予測精度", 0.0, 1.0, 0.01),
+                    float_field("ai.prediction_error", "AI予測誤差", 0.0, 5.0, 0.01),
+                    float_field("ai.direction_variance", "AI方向ブレ", 0.0, 45.0, 0.1),
+                    float_field("ai.reaction_delay", "AI反応遅延", 0.0, 2.0, 0.01),
+                    float_field("ai.offensive_probability", "AI攻め確率", 0.0, 1.0, 0.01),
+                    float_field(
+                        "ai.serve_offensive_probability",
+                        "AIサーブ攻め確率",
+                        0.0,
+                        1.0,
+                        0.01,
+                    ),
+                ],
+            },
+        ],
+    }
+}
+
+fn float_field(key: &str, label: &str, min: f32, max: f32, step: f32) -> DebugFieldDef {
+    DebugFieldDef::Float {
+        key: key.to_string(),
+        label: label.to_string(),
+        min,
+        max,
+        step,
+    }
+}
+
+#[allow(dead_code)]
+fn validate_catalog(catalog: &DebugFieldCatalog) -> Result<(), String> {
+    for section in &catalog.sections {
+        for field in &section.fields {
+            let key = field.key();
+            let Some(expected_kind) = override_field_type(key) else {
+                return Err(format!("Unknown override key in catalog: {}", key));
+            };
+
+            match (field, expected_kind) {
+                (DebugFieldDef::Flag { .. }, DebugOverrideType::Bool) => {}
+                (DebugFieldDef::Float { .. }, DebugOverrideType::Float) => {}
+                _ => {
+                    return Err(format!(
+                        "Type mismatch in catalog for key '{}': {:?}",
+                        key, expected_kind
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
 }

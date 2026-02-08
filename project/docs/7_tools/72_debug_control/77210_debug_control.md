@@ -6,6 +6,7 @@
 
 - 実行中上書き: `assets/config/debug_runtime.ron`
 - 起動時環境変数プロファイル: `assets/config/debug_env.ron`
+- GUI項目定義: `assets/config/debug_fields.ron`
 
 ## 目的
 
@@ -26,6 +27,9 @@
 
 - **REQ-77210-004**  
   実効設定は `base game_config` + `startup env overrides` + `runtime overrides` の順に合成されること。
+
+- **REQ-77210-005**  
+  GUIの調整項目は `debug_fields.ron` から読み込み、コードのハードコーディングなしで表示順・表示名・範囲を変更できること。
 
 ## CLI
 
@@ -60,6 +64,7 @@ GUIでは以下を操作できる。
 - 実効値プレビュー（base + startup env + runtime）
 - 環境変数プロファイル付きでゲーム起動
 - `Cmd+S`（Windows/Linuxは `Ctrl+S`）で runtime/env をまとめて保存
+- `debug_fields.ron` を編集して表示項目を追加/削除/並び替え
 
 ## ゲーム側の反映
 

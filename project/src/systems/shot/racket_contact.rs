@@ -130,7 +130,9 @@ pub fn update_racket_swing_system(
             );
             let distance = dist_now.min(dist_prev);
 
-            if distance <= swing_cfg.contact_radius {
+            // ラケット接触半径 + ボール半径で判定し、見た目と実接触のズレを減らす
+            let contact_threshold = swing_cfg.contact_radius + config.ball.radius;
+            if distance <= contact_threshold {
                 swing.contact_done = true;
                 let contact_point = closest_point_on_segment(
                     ball_pos,

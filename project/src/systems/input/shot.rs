@@ -31,15 +31,14 @@ pub fn shot_input_system(
         &KnockbackState,
         &InputState,
     )>,
-    ball_query: Query<(&LogicalPosition, &LastShooter, &BounceCount), With<Ball>>,
+    ball_query: Query<(&LastShooter, &BounceCount), With<Ball>>,
     mut event_writer: MessageWriter<SwingIntentEvent>,
 ) {
-    // ボールの位置とLastShooterとBounceCountを取得（存在しない場合はショット不可）
-    let (ball_logical_pos, last_shooter, bounce_count) = match ball_query.iter().next() {
+    // LastShooterとBounceCountを取得（存在しない場合はショット不可）
+    let (last_shooter, bounce_count) = match ball_query.iter().next() {
         Some(t) => t,
         None => return, // ボールがない場合は何もしない
     };
-    let ball_pos = ball_logical_pos.value;
 
     for (player, player_logical_pos, mut shot_state, knockback, input_state) in
         player_query.iter_mut()
@@ -93,16 +92,6 @@ pub fn shot_input_system(
 
         let player_pos = player_logical_pos.value;
 
-        // REQ-30601-002: 球体判定（3D距離）
-        let distance_3d = (player_pos - ball_pos).length();
-        if distance_3d > config.shot.max_distance {
-            info!(
-                "Player {} shot ignored: too far (distance_3d: {:.2}, max: {:.2})",
-                player.id, distance_3d, config.shot.max_distance
-            );
-            continue;
-        }
-
         // REQ-30601-006: ショット条件を満たした場合、ShotEvent を発行
 
         // REQ-30602-001: ショット方向の決定
@@ -122,7 +111,7 @@ pub fn shot_input_system(
         });
 
         info!(
-            "Player {} shot! direction: {:?}, height: {:.2}",
+            "Player {} swing intent! direction: {:?}, height: {:.2}",
             player.id, direction, player_pos.y
         );
     }
