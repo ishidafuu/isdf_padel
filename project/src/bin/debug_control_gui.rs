@@ -523,11 +523,7 @@ impl DebugControlGuiApp {
                     );
                 });
                 if let Some(base_value) = base_value {
-                    let hint = if state.enabled {
-                        format!("既定値: {:.3}", base_value)
-                    } else {
-                        format!("OFF時の適用値: {:.3}", base_value)
-                    };
+                    let hint = format!("({:.3})", base_value);
                     ui.label(egui::RichText::new(hint).weak());
                 }
             });
