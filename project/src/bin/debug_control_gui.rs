@@ -5,7 +5,7 @@ use eframe::egui;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use padel_game::resource::{
@@ -16,6 +16,7 @@ use padel_game::resource::{
 };
 
 const DEBUG_FIELDS_CONFIG_PATH: &str = "assets/config/debug_fields.ron";
+const GAME_CONFIG_PATH: &str = "assets/config/game_config.ron";
 
 fn main() {
     let options = eframe::NativeOptions {
@@ -100,35 +101,44 @@ struct DebugFieldSection {
     fields: Vec<DebugFieldDef>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-enum DebugFieldDef {
-    Flag {
-        key: String,
-        label: String,
-    },
-    Float {
-        key: String,
-        label: String,
-        min: f32,
-        max: f32,
-        step: f32,
-    },
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+#[serde(default)]
+struct DebugFieldDef {
+    kind: String,
+    key: String,
+    label: String,
+    min: Option<f32>,
+    max: Option<f32>,
+    step: Option<f32>,
 }
 
 impl DebugFieldDef {
+    fn is_flag(&self) -> bool {
+        self.kind.eq_ignore_ascii_case("flag")
+    }
+
+    fn is_float(&self) -> bool {
+        self.kind.eq_ignore_ascii_case("float")
+    }
+
     fn key(&self) -> &str {
-        match self {
-            Self::Flag { key, .. } => key,
-            Self::Float { key, .. } => key,
-        }
+        &self.key
     }
 
     fn label(&self) -> &str {
-        match self {
-            Self::Flag { label, .. } => label,
-            Self::Float { label, .. } => label,
-        }
+        &self.label
+    }
+
+    fn min(&self) -> f32 {
+        self.min.unwrap_or(-1000.0)
+    }
+
+    fn max(&self) -> f32 {
+        self.max.unwrap_or(1000.0)
+    }
+
+    fn step(&self) -> f32 {
+        self.step.unwrap_or(0.1)
     }
 }
 
@@ -169,10 +179,17 @@ impl DebugControlGuiApp {
     }
 
     fn load() -> Result<Self, String> {
-        let base = load_game_config("assets/config/game_config.ron")?;
+        let base_path = resolve_project_path(GAME_CONFIG_PATH);
+        let base_path = base_path.to_string_lossy().into_owned();
+        let runtime_path = resolve_project_path(DEBUG_RUNTIME_CONFIG_PATH);
+        let runtime_path = runtime_path.to_string_lossy().into_owned();
+        let env_path = resolve_project_path(DEBUG_ENV_CONFIG_PATH);
+        let env_path = env_path.to_string_lossy().into_owned();
+
+        let base = load_game_config(&base_path)?;
         let startup_env = DebugRuntimeOverrides::from_env();
-        let runtime = load_runtime_overrides(DEBUG_RUNTIME_CONFIG_PATH)?;
-        let env_profile = load_env_profile(DEBUG_ENV_CONFIG_PATH)?;
+        let runtime = load_runtime_overrides(&runtime_path)?;
+        let env_profile = load_env_profile(&env_path)?;
         let catalog = load_or_create_field_catalog(DEBUG_FIELDS_CONFIG_PATH)?;
 
         let (flag_states, float_states) = build_editor_states(&catalog, &base, &runtime);
@@ -216,25 +233,32 @@ impl DebugControlGuiApp {
 
         for section in &self.catalog.sections {
             for field in &section.fields {
-                match field {
-                    DebugFieldDef::Flag { key, .. } => {
-                        let checked = self.flag_states.get(key).copied().unwrap_or(false);
-                        let value = if checked {
-                            Some(DebugOverrideValue::Bool(true))
-                        } else {
-                            None
-                        };
-                        set_override_value(&mut overrides, key, value)?;
-                    }
-                    DebugFieldDef::Float { key, .. } => {
-                        let state = self.float_states.get(key).copied().unwrap_or_default();
-                        let value = if state.enabled {
-                            Some(DebugOverrideValue::Float(state.value))
-                        } else {
-                            None
-                        };
-                        set_override_value(&mut overrides, key, value)?;
-                    }
+                if field.is_flag() {
+                    let checked = self.flag_states.get(field.key()).copied().unwrap_or(false);
+                    let value = if checked {
+                        Some(DebugOverrideValue::Bool(true))
+                    } else {
+                        None
+                    };
+                    set_override_value(&mut overrides, field.key(), value)?;
+                } else if field.is_float() {
+                    let state = self
+                        .float_states
+                        .get(field.key())
+                        .copied()
+                        .unwrap_or_default();
+                    let value = if state.enabled {
+                        Some(DebugOverrideValue::Float(state.value))
+                    } else {
+                        None
+                    };
+                    set_override_value(&mut overrides, field.key(), value)?;
+                } else {
+                    return Err(format!(
+                        "不明なkindです: key='{}', kind='{}'",
+                        field.key(),
+                        field.kind
+                    ));
                 }
             }
         }
@@ -264,7 +288,9 @@ impl DebugControlGuiApp {
             self.runtime_enabled = true;
         }
 
-        match save_runtime_overrides(DEBUG_RUNTIME_CONFIG_PATH, &overrides) {
+        let runtime_path = resolve_project_path(DEBUG_RUNTIME_CONFIG_PATH);
+        let runtime_path = runtime_path.to_string_lossy().into_owned();
+        match save_runtime_overrides(&runtime_path, &overrides) {
             Ok(()) => {
                 self.runtime_seed = overrides;
                 self.status_message = "実行中上書きの保存完了".to_string();
@@ -276,7 +302,9 @@ impl DebugControlGuiApp {
     }
 
     fn save_env(&mut self) {
-        match save_env_profile(DEBUG_ENV_CONFIG_PATH, &self.env_profile()) {
+        let env_path = resolve_project_path(DEBUG_ENV_CONFIG_PATH);
+        let env_path = env_path.to_string_lossy().into_owned();
+        match save_env_profile(&env_path, &self.env_profile()) {
             Ok(()) => self.status_message = "起動時環境変数の保存完了".to_string(),
             Err(err) => self.status_message = format!("起動時環境変数の保存失敗: {}", err),
         }
@@ -316,22 +344,34 @@ impl DebugControlGuiApp {
         }
     }
 
-    fn open_file_default(path: &str) -> Result<(), String> {
+    fn open_file_default(path: &str) -> Result<String, String> {
+        let resolved = resolve_project_path(path);
+        if !resolved.exists() {
+            return Err(format!("ファイルが存在しません: {}", resolved.display()));
+        }
+
         #[cfg(target_os = "macos")]
         {
-            Command::new("open")
-                .arg(path)
-                .spawn()
+            let status = Command::new("open")
+                .arg("-t")
+                .arg(&resolved)
+                .status()
                 .map_err(|e| format!("open failed: {}", e))?;
-            return Ok(());
+            if !status.success() {
+                return Err(format!("open failed with status: {}", status));
+            }
+            return Ok(resolved.display().to_string());
         }
         #[cfg(not(target_os = "macos"))]
         {
-            Command::new("xdg-open")
-                .arg(path)
-                .spawn()
+            let status = Command::new("xdg-open")
+                .arg(&resolved)
+                .status()
                 .map_err(|e| format!("xdg-open failed: {}", e))?;
-            Ok(())
+            if !status.success() {
+                return Err(format!("xdg-open failed with status: {}", status));
+            }
+            Ok(resolved.display().to_string())
         }
     }
 
@@ -344,13 +384,17 @@ impl DebugControlGuiApp {
             }
             if ui.button("実行中上書きファイルを開く").clicked() {
                 match Self::open_file_default(DEBUG_RUNTIME_CONFIG_PATH) {
-                    Ok(()) => self.status_message = "runtimeファイルを開きました".to_string(),
+                    Ok(path) => {
+                        self.status_message = format!("runtimeファイルを開きました: {}", path);
+                    }
                     Err(err) => self.status_message = err,
                 }
             }
             if ui.button("項目定義ファイルを開く").clicked() {
                 match Self::open_file_default(DEBUG_FIELDS_CONFIG_PATH) {
-                    Ok(()) => self.status_message = "項目定義ファイルを開きました".to_string(),
+                    Ok(path) => {
+                        self.status_message = format!("項目定義ファイルを開きました: {}", path);
+                    }
                     Err(err) => self.status_message = err,
                 }
             }
@@ -369,31 +413,31 @@ impl DebugControlGuiApp {
     }
 
     fn draw_runtime_field(&mut self, ui: &mut egui::Ui, field: &DebugFieldDef) {
-        match field {
-            DebugFieldDef::Flag { key, label } => {
-                let state = self.flag_states.entry(key.clone()).or_insert(false);
-                ui.checkbox(state, label);
-            }
-            DebugFieldDef::Float {
-                key,
-                label,
-                min,
-                max,
-                step,
-            } => {
-                let state = self.float_states.entry(key.clone()).or_default();
-                ui.horizontal(|ui| {
-                    ui.checkbox(&mut state.enabled, label);
-                    ui.add_enabled_ui(state.enabled, |ui| {
-                        ui.add(
-                            egui::DragValue::new(&mut state.value)
-                                .speed(*step as f64)
-                                .range(*min..=*max),
-                        );
-                    });
-                });
-            }
+        if field.is_flag() {
+            let state = self.flag_states.entry(field.key.clone()).or_insert(false);
+            ui.checkbox(state, field.label());
+            return;
         }
+
+        if field.is_float() {
+            let state = self.float_states.entry(field.key.clone()).or_default();
+            ui.horizontal(|ui| {
+                ui.checkbox(&mut state.enabled, field.label());
+                ui.add_enabled_ui(state.enabled, |ui| {
+                    ui.add(
+                        egui::DragValue::new(&mut state.value)
+                            .speed(field.step() as f64)
+                            .range(field.min()..=field.max()),
+                    );
+                });
+            });
+            return;
+        }
+
+        ui.colored_label(
+            egui::Color32::YELLOW,
+            format!("未対応kind: {} ({})", field.kind, field.key),
+        );
     }
 
     fn draw_env_editor(&mut self, ui: &mut egui::Ui) {
@@ -404,7 +448,9 @@ impl DebugControlGuiApp {
             }
             if ui.button("起動時環境変数ファイルを開く").clicked() {
                 match Self::open_file_default(DEBUG_ENV_CONFIG_PATH) {
-                    Ok(()) => self.status_message = "envファイルを開きました".to_string(),
+                    Ok(path) => {
+                        self.status_message = format!("envファイルを開きました: {}", path);
+                    }
                     Err(err) => self.status_message = err,
                 }
             }
@@ -521,16 +567,19 @@ impl eframe::App for DebugControlGuiApp {
 }
 
 fn load_or_create_field_catalog(path: &str) -> Result<DebugFieldCatalog, String> {
-    let target = Path::new(path);
+    let target = resolve_project_path(path);
 
     if target.exists() {
-        let content = fs::read_to_string(target)
+        let content = fs::read_to_string(&target)
             .map_err(|e| format!("Failed to read field catalog {}: {}", target.display(), e))?;
-        return ron::from_str(&content)
-            .map_err(|e| format!("Failed to parse field catalog {}: {}", target.display(), e));
+        let catalog = parse_field_catalog_with_legacy_support(&content, &target)?;
+        validate_catalog(&catalog)?;
+        return Ok(catalog);
     }
 
     let catalog = default_field_catalog();
+    validate_catalog(&catalog)?;
+
     if let Some(parent) = target.parent() {
         fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create {}: {}", parent.display(), e))?;
@@ -541,7 +590,7 @@ fn load_or_create_field_catalog(path: &str) -> Result<DebugFieldCatalog, String>
         .separate_tuple_members(true);
     let payload = ron::ser::to_string_pretty(&catalog, pretty)
         .map_err(|e| format!("Failed to serialize field catalog: {}", e))?;
-    fs::write(target, payload)
+    fs::write(&target, payload)
         .map_err(|e| format!("Failed to write field catalog {}: {}", target.display(), e))?;
 
     Ok(catalog)
@@ -557,37 +606,37 @@ fn build_editor_states(
 
     for section in &catalog.sections {
         for field in &section.fields {
-            match field {
-                DebugFieldDef::Flag { key, .. } => {
-                    let checked = matches!(
-                        get_override_value(runtime, key),
-                        Some(DebugOverrideValue::Bool(true))
-                    );
-                    flag_states.insert(key.clone(), checked);
-                }
-                DebugFieldDef::Float { key, .. } => {
-                    let runtime_value = match get_override_value(runtime, key) {
-                        Some(DebugOverrideValue::Float(v)) => Some(v),
-                        _ => None,
-                    };
-                    let base_value = match get_config_value(base, key) {
-                        Some(DebugOverrideValue::Float(v)) => Some(v),
-                        _ => None,
-                    };
+            if field.is_flag() {
+                let checked = matches!(
+                    get_override_value(runtime, field.key()),
+                    Some(DebugOverrideValue::Bool(true))
+                );
+                flag_states.insert(field.key.clone(), checked);
+                continue;
+            }
 
-                    let state = if let Some(v) = runtime_value {
-                        FloatState {
-                            enabled: true,
-                            value: v,
-                        }
-                    } else {
-                        FloatState {
-                            enabled: false,
-                            value: base_value.unwrap_or(0.0),
-                        }
-                    };
-                    float_states.insert(key.clone(), state);
-                }
+            if field.is_float() {
+                let runtime_value = match get_override_value(runtime, field.key()) {
+                    Some(DebugOverrideValue::Float(v)) => Some(v),
+                    _ => None,
+                };
+                let base_value = match get_config_value(base, field.key()) {
+                    Some(DebugOverrideValue::Float(v)) => Some(v),
+                    _ => None,
+                };
+
+                let state = if let Some(v) = runtime_value {
+                    FloatState {
+                        enabled: true,
+                        value: v,
+                    }
+                } else {
+                    FloatState {
+                        enabled: false,
+                        value: base_value.unwrap_or(0.0),
+                    }
+                };
+                float_states.insert(field.key.clone(), state);
             }
         }
     }
@@ -600,10 +649,10 @@ fn default_field_catalog() -> DebugFieldCatalog {
         sections: vec![
             DebugFieldSection {
                 title: "デバッグ".to_string(),
-                fields: vec![DebugFieldDef::Flag {
-                    key: "serve.practice_infinite_mode".to_string(),
-                    label: "練習サーブ無限化".to_string(),
-                }],
+                fields: vec![flag_field(
+                    "serve.practice_infinite_mode",
+                    "練習サーブ無限化",
+                )],
             },
             DebugFieldSection {
                 title: "物理".to_string(),
@@ -717,17 +766,28 @@ fn default_field_catalog() -> DebugFieldCatalog {
     }
 }
 
-fn float_field(key: &str, label: &str, min: f32, max: f32, step: f32) -> DebugFieldDef {
-    DebugFieldDef::Float {
+fn flag_field(key: &str, label: &str) -> DebugFieldDef {
+    DebugFieldDef {
+        kind: "flag".to_string(),
         key: key.to_string(),
         label: label.to_string(),
-        min,
-        max,
-        step,
+        min: None,
+        max: None,
+        step: None,
     }
 }
 
-#[allow(dead_code)]
+fn float_field(key: &str, label: &str, min: f32, max: f32, step: f32) -> DebugFieldDef {
+    DebugFieldDef {
+        kind: "float".to_string(),
+        key: key.to_string(),
+        label: label.to_string(),
+        min: Some(min),
+        max: Some(max),
+        step: Some(step),
+    }
+}
+
 fn validate_catalog(catalog: &DebugFieldCatalog) -> Result<(), String> {
     for section in &catalog.sections {
         for field in &section.fields {
@@ -736,17 +796,146 @@ fn validate_catalog(catalog: &DebugFieldCatalog) -> Result<(), String> {
                 return Err(format!("Unknown override key in catalog: {}", key));
             };
 
-            match (field, expected_kind) {
-                (DebugFieldDef::Flag { .. }, DebugOverrideType::Bool) => {}
-                (DebugFieldDef::Float { .. }, DebugOverrideType::Float) => {}
-                _ => {
-                    return Err(format!(
-                        "Type mismatch in catalog for key '{}': {:?}",
-                        key, expected_kind
-                    ));
-                }
+            let actual_kind = if field.is_flag() {
+                Some(DebugOverrideType::Bool)
+            } else if field.is_float() {
+                Some(DebugOverrideType::Float)
+            } else {
+                None
+            };
+
+            if actual_kind != Some(expected_kind) {
+                return Err(format!(
+                    "Type mismatch in catalog for key '{}': expected={:?}, actual_kind={}",
+                    key, expected_kind, field.kind
+                ));
             }
         }
     }
+
     Ok(())
+}
+
+fn resolve_path(path: &str) -> PathBuf {
+    let p = Path::new(path);
+    if p.is_absolute() {
+        return p.to_path_buf();
+    }
+    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let candidate = cwd.join(p);
+    if candidate.exists() {
+        return candidate;
+    }
+    Path::new(env!("CARGO_MANIFEST_DIR")).join(p)
+}
+
+fn resolve_project_path(path: &str) -> PathBuf {
+    resolve_path(path)
+}
+
+fn parse_field_catalog_with_legacy_support(
+    content: &str,
+    path: &Path,
+) -> Result<DebugFieldCatalog, String> {
+    match ron::from_str::<DebugFieldCatalog>(content) {
+        Ok(catalog) => Ok(catalog),
+        Err(primary_err) => {
+            let migrated = migrate_legacy_kind_literals(content);
+            if migrated == content {
+                return Err(format!(
+                    "Failed to parse field catalog {}: {}",
+                    path.display(),
+                    primary_err
+                ));
+            }
+
+            ron::from_str::<DebugFieldCatalog>(&migrated).map_err(|fallback_err| {
+                format!(
+                    "Failed to parse field catalog {}: {} (fallback: {})",
+                    path.display(),
+                    primary_err,
+                    fallback_err
+                )
+            })
+        }
+    }
+}
+
+fn migrate_legacy_kind_literals(content: &str) -> String {
+    let mut changed = false;
+    let mut migrated = Vec::new();
+
+    for line in content.lines() {
+        if let Some(kind_pos) = line.find("kind:") {
+            let prefix = &line[..kind_pos + "kind:".len()];
+            let rest = &line[kind_pos + "kind:".len()..];
+            let ws_len = rest.len() - rest.trim_start().len();
+            let ws = &rest[..ws_len];
+            let value = &rest[ws_len..];
+            if value.starts_with('"') {
+                migrated.push(line.to_string());
+                continue;
+            }
+            if let Some(tail) = value.strip_prefix("flag") {
+                migrated.push(format!("{}{}\"flag\"{}", prefix, ws, tail));
+                changed = true;
+                continue;
+            }
+            if let Some(tail) = value.strip_prefix("float") {
+                migrated.push(format!("{}{}\"float\"{}", prefix, ws, tail));
+                changed = true;
+                continue;
+            }
+        }
+        migrated.push(line.to_string());
+    }
+
+    if changed {
+        migrated.join("\n")
+    } else {
+        content.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn フィールド種別は文字列形式を受け入れる() {
+        let ron = r#"
+(
+    sections: [
+        (
+            title: "t",
+            fields: [
+                (kind: "flag", key: "serve.practice_infinite_mode", label: "x"),
+            ],
+        ),
+    ],
+)
+"#;
+        let catalog: DebugFieldCatalog = ron::from_str(ron).expect("string kind should parse");
+        assert!(catalog.sections[0].fields[0].is_flag());
+    }
+
+    #[test]
+    fn 旧kind記法は読み込み時に移行して扱える() {
+        let ron = r#"
+(
+    sections: [
+        (
+            title: "t",
+            fields: [
+                (kind: flag, key: "serve.practice_infinite_mode", label: "x"),
+            ],
+        ),
+    ],
+)
+"#;
+        let migrated = migrate_legacy_kind_literals(ron);
+        let catalog: DebugFieldCatalog =
+            ron::from_str(&migrated).expect("migrated legacy kind should parse");
+        assert!(catalog.sections[0].fields[0].is_flag());
+    }
 }
