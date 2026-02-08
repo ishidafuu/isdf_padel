@@ -131,6 +131,7 @@ pub fn serve_position_system(
 pub fn serve_toss_input_system(
     mut commands: Commands,
     config: Res<GameConfig>,
+    fixed_dt: Res<FixedDeltaTime>,
     match_score: Res<MatchScore>,
     mut serve_state: ResMut<ServeState>,
     player_query: Query<(&Player, &LogicalPosition, &InputState)>,
@@ -160,19 +161,26 @@ pub fn serve_toss_input_system(
     // チャージ開始は just_pressed のみ許可し、前回入力の持ち越しを防ぐ。
     if input_state.shot_pressed {
         serve_state.toss_charge_started = true;
+        serve_state.toss_charge_elapsed_secs = 0.0;
         return;
     }
 
     // 押下中はチャージ継続（離した瞬間にトスする）
     if input_state.holding {
+        if serve_state.toss_charge_started {
+            serve_state.toss_charge_elapsed_secs += fixed_dt.delta_secs();
+        }
         return;
     }
     if !serve_state.toss_charge_started {
         return;
     }
 
-    let (toss_velocity_y, hold_secs) =
-        calculate_toss_velocity_by_hold(input_state.hold_time, &config.serve);
+    let input_hold_secs = (input_state.hold_time / 1000.0).max(0.0);
+    let measured_hold_secs = serve_state.toss_charge_elapsed_secs.max(0.0);
+    let hold_secs = measured_hold_secs.max(input_hold_secs);
+    let (toss_velocity_y, _raw_hold_secs) =
+        calculate_toss_velocity_by_hold(hold_secs * 1000.0, &config.serve);
 
     // @spec 30102_serve_spec.md#req-30102-080: トスボール生成
     let toss_pos = logical_pos.value + Vec3::new(0.0, config.serve.toss_start_offset_y, 0.0);
@@ -189,8 +197,8 @@ pub fn serve_toss_input_system(
     serve_state.start_toss(logical_pos.value, toss_velocity_y);
 
     info!(
-        "Toss: Ball tossed at {:?} with velocity {:?} by Player{} (hold={:.2}s)",
-        toss_pos, toss_vel, player.id, hold_secs
+        "Toss: Ball tossed at {:?} with velocity {:?} by Player{} (hold={:.2}s, measured={:.2}s, input={:.2}s)",
+        toss_pos, toss_vel, player.id, hold_secs, measured_hold_secs, input_hold_secs
     );
 }
 

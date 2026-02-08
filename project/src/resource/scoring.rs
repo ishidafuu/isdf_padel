@@ -252,6 +252,8 @@ pub struct ServeState {
     pub toss_velocity_y: f32,
     /// Waiting状態でトスボタン長押しが開始されたか
     pub toss_charge_started: bool,
+    /// サーブトスチャージの実測時間（秒）
+    pub toss_charge_elapsed_secs: f32,
 }
 
 impl Default for ServeState {
@@ -263,6 +265,7 @@ impl Default for ServeState {
             fault_count: 0,
             toss_velocity_y: 0.0,
             toss_charge_started: false,
+            toss_charge_elapsed_secs: 0.0,
         }
     }
 }
@@ -281,6 +284,7 @@ impl ServeState {
         self.toss_origin = Some(origin);
         self.toss_velocity_y = toss_velocity_y;
         self.toss_charge_started = false;
+        self.toss_charge_elapsed_secs = 0.0;
     }
 
     /// トス時間を更新
@@ -313,6 +317,7 @@ impl ServeState {
         self.toss_origin = None;
         self.toss_velocity_y = 0.0;
         self.toss_charge_started = false;
+        self.toss_charge_elapsed_secs = 0.0;
     }
 
     /// ヒット成功時のリセット（Rallyへ遷移するため）
